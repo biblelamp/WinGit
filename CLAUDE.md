@@ -7,7 +7,9 @@ files, log graph, diff, branches) similar to established commercial Git GUIs.
 
 **Hard rule:** do NOT copy assets, icons, texts, names or exact visuals of any
 proprietary product (SmartGit etc.). Layout ideas and workflows are fine;
-icons come from open sets (Fluent UI System Icons / Lucide / Codicons, MIT),
+icons come from open sets (Lucide — ISC, Fluent UI System Icons — MIT;
+Codicons icons are CC BY 4.0, avoid unless attribution is acceptable);
+record every imported icon in `THIRD-PARTY-NOTICES.md` and ship its license text,
 all UI texts are our own.
 
 License: Apache-2.0.

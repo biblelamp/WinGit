@@ -32,4 +32,19 @@
             <artifactId>rsyntaxtextarea</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- UI tests build components but never open windows -->
+                        <java.awt.headless>true</java.awt.headless>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
