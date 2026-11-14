@@ -1,38 +1,220 @@
 package cz.wingit.ui.files;
 
-import javax.swing.JTable;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.concurrent.ExecutionException;
+
 import javax.swing.JTextField;
+import javax.swing.RowFilter;
+import javax.swing.SwingWorker;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.TableRowSorter;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 
+import cz.wingit.core.GitService;
+import cz.wingit.core.status.FileChange;
+import cz.wingit.core.status.RepositoryStatus;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Components;
+import cz.wingit.ui.common.PlaceholderTable;
 import cz.wingit.ui.common.TitledPane;
 
 /**
- * Changed / untracked files of the working tree with a quick filter.
+ * Changed, untracked and conflicting files of the selected repository, with a quick filter
+ * on the path. Status is read in the background; results of an outdated request are dropped.
  */
 public final class FilesPane extends TitledPane {
 
     private static final long serialVersionUID = 1L;
 
-    public FilesPane() {
-        this(Components.readOnlyTable(
-                Messages.get("files.column.name"),
-                Messages.get("files.column.status"),
-                Messages.get("files.column.path")));
+    private final transient GitService git;
+    private final FileChangeTableModel model;
+    private final PlaceholderTable table;
+    private final TableRowSorter<FileChangeTableModel> sorter;
+    private final JTextField filter = new JTextField(20);
+    private transient SwingWorker<RepositoryStatus, Void> loader;
+    private transient Path current;
+    private boolean refreshQueued;
+    private final transient List<BiConsumer<Path, RepositoryStatus>> statusListeners = new ArrayList<>();
+    private int generation;
+
+    public FilesPane(GitService git) {
+        this(git, new FileChangeTableModel());
     }
 
-    private FilesPane(JTable table) {
-        super(Messages.get("files.title"), Components.borderlessScroll(table));
-        table.getColumnModel().getColumn(0).setPreferredWidth(UIScale.scale(300));
-        table.getColumnModel().getColumn(1).setPreferredWidth(UIScale.scale(120));
-        table.getColumnModel().getColumn(2).setPreferredWidth(UIScale.scale(400));
+    private FilesPane(GitService git, FileChangeTableModel model) {
+        this(git, model, new PlaceholderTable(model));
+    }
 
-        JTextField filter = new JTextField(20);
+    private FilesPane(GitService git, FileChangeTableModel model, PlaceholderTable table) {
+        super(Messages.get("files.title"), Components.borderlessScroll(table));
+        this.git = git;
+        this.model = model;
+        this.table = table;
+        this.sorter = new TableRowSorter<>(model);
+        configureTable();
+        configureFilter();
+        setHeaderTools(filter);
+        showRepository(Optional.empty());
+    }
+
+    /** Shows the status of {@code workTree}, or a hint when nothing is selected. Call on the EDT. */
+    public void showRepository(Optional<Path> workTree) {
+        current = workTree.orElse(null);
+        model.setChanges(List.of());
+        if (current == null) {
+            cancelLoader();
+            table.setPlaceholder(Messages.get("files.placeholder.noRepository"));
+            return;
+        }
+        table.setPlaceholder(Messages.get("files.placeholder.loading"));
+        load(current);
+    }
+
+    /** Notified (on the EDT) with every status successfully read for the shown repository. */
+    public void addStatusListener(BiConsumer<Path, RepositoryStatus> listener) {
+        statusListeners.add(listener);
+    }
+
+    /**
+     * Re-reads the status of the shown repository, keeping the current rows until the new result
+     * arrives (no flicker) and keeping selected files selected. Call on the EDT.
+     */
+    public void refresh() {
+        if (current == null) {
+            return;
+        }
+        if (loader != null && !loader.isDone()) {
+            refreshQueued = true; // don't restart a slow read; read once more when it finishes
+            return;
+        }
+        load(current);
+    }
+
+    private void cancelLoader() {
+        ++generation;
+        refreshQueued = false;
+        if (loader != null) {
+            loader.cancel(false);
+            loader = null;
+        }
+    }
+
+    private void load(Path path) {
+        cancelLoader();
+        int request = generation;
+        loader = new SwingWorker<>() {
+            @Override
+            protected RepositoryStatus doInBackground() {
+                return git.status(path);
+            }
+
+            @Override
+            protected void done() {
+                if (request != generation || isCancelled()) {
+                    return;
+                }
+                try {
+                    RepositoryStatus status = get();
+                    update(status.changes());
+                    statusListeners.forEach(listener -> listener.accept(path, status));
+                    table.setPlaceholder(Messages.get(status.isClean()
+                            ? "files.placeholder.clean" : "files.placeholder.filtered"));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    model.setChanges(List.of());
+                    table.setPlaceholder(Messages.format("files.placeholder.error", cause.getMessage()));
+                }
+                if (refreshQueued) {
+                    refreshQueued = false;
+                    load(path);
+                }
+            }
+        };
+        loader.execute();
+    }
+
+    private void update(List<FileChange> changes) {
+        if (changes.equals(model.changes())) {
+            return;
+        }
+        Set<String> selected = new HashSet<>();
+        for (int row : table.getSelectedRows()) {
+            selected.add(model.getChange(table.convertRowIndexToModel(row)).path());
+        }
+        model.setChanges(changes);
+        for (int row = 0; row < table.getRowCount(); row++) {
+            if (selected.contains(model.getChange(table.convertRowIndexToModel(row)).path())) {
+                table.addRowSelectionInterval(row, row);
+            }
+        }
+    }
+
+    /** Number of rows currently shown (after filtering). */
+    int visibleRowCount() {
+        return table.getRowCount();
+    }
+
+    private void configureTable() {
+        table.setShowGrid(false);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setRowSorter(sorter);
+        table.getColumnModel().getColumn(FileChangeTableModel.NAME).setCellRenderer(new FileNameCellRenderer(model));
+        table.getColumnModel().getColumn(FileChangeTableModel.NAME).setPreferredWidth(UIScale.scale(300));
+        table.getColumnModel().getColumn(FileChangeTableModel.STATUS).setPreferredWidth(UIScale.scale(160));
+        table.getColumnModel().getColumn(FileChangeTableModel.FOLDER).setPreferredWidth(UIScale.scale(400));
+    }
+
+    private void configureFilter() {
         filter.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Messages.get("files.filter.placeholder"));
         filter.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        setHeaderTools(filter);
+        filter.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                applyFilter();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                applyFilter();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                applyFilter();
+            }
+        });
+    }
+
+    /** Case-insensitive substring match on the relative path; both / and \ work as separators. */
+    void applyFilter() {
+        String text = filter.getText().strip().toLowerCase(Locale.ROOT).replace('\\', '/');
+        if (text.isEmpty()) {
+            sorter.setRowFilter(null);
+            return;
+        }
+        sorter.setRowFilter(new RowFilter<>() {
+            @Override
+            public boolean include(Entry<? extends FileChangeTableModel, ? extends Integer> entry) {
+                return entry.getModel().getChange(entry.getIdentifier()).path()
+                        .toLowerCase(Locale.ROOT).contains(text);
+            }
+        });
+    }
+
+    /** For tests: sets the filter text. */
+    void setFilterText(String text) {
+        filter.setText(text);
     }
 }

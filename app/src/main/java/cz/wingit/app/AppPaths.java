@@ -22,4 +22,8 @@ final class AppPaths {
     static Path repositoryListFile() {
         return dataDir().resolve("repositories.txt");
     }
+
+    static Path settingsFile() {
+        return dataDir().resolve("settings.properties");
+    }
 }

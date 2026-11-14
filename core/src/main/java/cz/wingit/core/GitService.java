@@ -1,8 +1,14 @@
 package cz.wingit.core;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+
+import cz.wingit.core.log.CommitInfo;
+import cz.wingit.core.refs.RepositoryRefs;
+import cz.wingit.core.status.RepositoryStatus;
+import cz.wingit.core.watch.RepositoryWatch;
 
 /**
  * Git operations used by the UI. Implementations block; never call them on the EDT.
@@ -20,6 +26,36 @@ public interface GitService {
      * Empty if the repository cannot be read.
      */
     Optional<String> currentBranch(Path workTree);
+
+    /**
+     * Working tree status (staged, unstaged, untracked and conflicting files; ignored files excluded).
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    RepositoryStatus status(Path workTree);
+
+    /**
+     * Local and remote branches (with upstream and ahead/behind counts), tags and stashes.
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    RepositoryRefs refs(Path workTree);
+
+    /**
+     * The newest {@code limit} commits reachable from HEAD, newest first (empty if there are none).
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    List<CommitInfo> recentCommits(Path workTree, int limit);
+
+    /**
+     * Watches the working tree for changes that can affect status or the current branch
+     * (debounced; Git-ignored paths and .git internals such as objects are skipped).
+     * {@code onChange} runs on a background thread.
+     *
+     * @throws GitException if the watch cannot be set up
+     */
+    RepositoryWatch watch(Path workTree, Runnable onChange);
 
     /** Runs {@code git init} in an existing directory. */
     void init(Path dir);

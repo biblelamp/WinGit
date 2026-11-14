@@ -1,5 +1,9 @@
 package cz.wingit.app;
 
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.Optional;
+
 import javax.swing.SwingUtilities;
 
 import cz.wingit.core.DefaultGitService;
@@ -20,10 +24,23 @@ public final class Main {
     public static void main(String[] args) {
         GitService git = new DefaultGitService(new GitCli());
         RepositoryList repositories = RepositoryList.load(AppPaths.repositoryListFile());
+        AppSettings settings = AppSettings.load(AppPaths.settingsFile());
 
         SwingUtilities.invokeLater(() -> {
             Theme.install(Theme.Mode.LIGHT);
-            new MainWindow(git, repositories).setVisible(true);
+            MainWindow window = new MainWindow(git, repositories);
+            settings.lastOpenedRepository().ifPresent(window::reopen);
+            window.addOpenListener(opened -> rememberOpened(settings, opened));
+            window.setVisible(true);
         });
+    }
+
+    private static void rememberOpened(AppSettings settings, Optional<Path> opened) {
+        try {
+            settings.setLastOpenedRepository(opened);
+        } catch (UncheckedIOException e) {
+            // Not critical: the app works without it, only the next start won't reopen the repository.
+            System.err.println("WinGit: " + e.getMessage());
+        }
     }
 }

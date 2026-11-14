@@ -10,10 +10,20 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 
 import cz.wingit.core.cli.GitCli;
+import cz.wingit.core.log.CommitInfo;
+import cz.wingit.core.log.LogReader;
+import cz.wingit.core.refs.RefsReader;
+import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.repo.Repositories;
+import cz.wingit.core.status.RepositoryStatus;
+import cz.wingit.core.status.StatusMapper;
+import cz.wingit.core.watch.RepositoryWatch;
+import cz.wingit.core.watch.RepositoryWatcher;
+import cz.wingit.core.watch.RepositoryWatches;
 
 /**
  * {@link GitService} that reads with JGit and writes through the {@code git} CLI.
@@ -51,6 +61,42 @@ public final class DefaultGitService implements GitService {
             return Optional.of(branch);
         } catch (IOException e) {
             return Optional.empty();
+        }
+    }
+
+    @Override
+    public RepositoryStatus status(Path workTree) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return StatusMapper.from(git.status().call());
+        } catch (IOException | GitAPIException e) {
+            throw new GitException("Cannot read status of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public RepositoryRefs refs(Path workTree) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return RefsReader.read(git);
+        } catch (IOException | GitAPIException e) {
+            throw new GitException("Cannot read branches of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public List<CommitInfo> recentCommits(Path workTree, int limit) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return LogReader.recent(git.getRepository(), limit);
+        } catch (IOException e) {
+            throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public RepositoryWatch watch(Path workTree, Runnable onChange) {
+        try {
+            return RepositoryWatches.start(workTree, RepositoryWatcher.DEFAULT_DEBOUNCE, onChange);
+        } catch (IOException e) {
+            throw new GitException("Cannot watch " + workTree + ": " + e.getMessage(), e);
         }
     }
 

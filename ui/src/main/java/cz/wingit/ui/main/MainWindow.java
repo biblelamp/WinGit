@@ -4,6 +4,11 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -12,6 +17,9 @@ import javax.swing.WindowConstants;
 import cz.wingit.core.GitService;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Messages;
+import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.files.FilesPane;
+import cz.wingit.ui.history.HistoryPane;
 import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
@@ -24,28 +32,67 @@ public final class MainWindow extends JFrame {
 
     private static final long serialVersionUID = 1L;
 
+    private final RepositoriesPane repositoriesPane;
+
     public MainWindow(GitService git, RepositoryList repositories) {
         super(Messages.get("mainWindow.title"));
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
-        RepositoriesPane repositoriesPane = new RepositoriesPane(git, repositories);
+        repositoriesPane = new RepositoriesPane(git, repositories);
         RemoveRepositoryAction removeRepository = new RemoveRepositoryAction(repositoriesPane);
         repositoriesPane.installRemoveAction(removeRepository);
         setJMenuBar(new MainMenuBar(
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
                 removeRepository));
-        setContentPane(createContent(repositoriesPane));
+        FilesPane filesPane = new FilesPane(git);
+        BranchesPane branchesPane = new BranchesPane(git);
+        HistoryPane historyPane = new HistoryPane(git);
+        filesPane.addStatusListener((path, status) -> repositoriesPane.updateChanged(path, !status.isClean()));
+        AutoRefresh autoRefresh = new AutoRefresh(git, () -> {
+            filesPane.refresh();
+            branchesPane.refresh();
+            historyPane.refresh();
+            repositoriesPane.openedRepository().ifPresent(repositoriesPane::refreshBranch);
+        });
+        // Other repositories are not watched; re-check them when the user comes back to the window.
+        addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowGainedFocus(WindowEvent e) {
+                repositoriesPane.refreshAll();
+            }
+        });
+        repositoriesPane.addOpenListener(opened -> {
+            filesPane.showRepository(opened);
+            branchesPane.showRepository(opened);
+            historyPane.showRepository(opened);
+            autoRefresh.watch(opened);
+        });
+        setContentPane(createContent(repositoriesPane, branchesPane, filesPane, historyPane));
 
         setMinimumSize(new Dimension(640, 400));
         setSize(fitToScreen(1280, 820));
         setLocationRelativeTo(null);
     }
 
-    static JPanel createContent(RepositoriesPane repositoriesPane) {
+    /** Notified (on the EDT) when a repository is opened, or with empty when none is open any more. */
+    public void addOpenListener(Consumer<Optional<Path>> listener) {
+        repositoriesPane.addOpenListener(listener);
+    }
+
+    /**
+     * Selects and opens a repository from the list, e.g. the one open in the last session.
+     * Does nothing if it is no longer in the list. Call on the EDT.
+     */
+    public void reopen(Path workTree) {
+        repositoriesPane.open(workTree);
+    }
+
+    static JPanel createContent(RepositoriesPane repositoriesPane, BranchesPane branchesPane, FilesPane filesPane,
+                                HistoryPane historyPane) {
         JPanel root = new JPanel(new BorderLayout());
         root.add(new MainToolBar(), BorderLayout.NORTH);
-        root.add(new MainContent(repositoriesPane), BorderLayout.CENTER);
+        root.add(new MainContent(repositoriesPane, branchesPane, filesPane, historyPane), BorderLayout.CENTER);
         root.add(new StatusBar(), BorderLayout.SOUTH);
         return root;
     }

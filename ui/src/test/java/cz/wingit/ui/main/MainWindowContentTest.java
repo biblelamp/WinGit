@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 import javax.swing.JMenu;
 import javax.swing.JPanel;
@@ -18,6 +21,9 @@ import cz.wingit.core.GitService;
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Theme;
+import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.files.FilesPane;
+import cz.wingit.ui.history.HistoryPane;
 import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
@@ -47,7 +53,8 @@ class MainWindowContentTest {
 
     @Test
     void contentBuildsWithAllPanes() {
-        JPanel content = MainWindow.createContent(repositoriesPane);
+        JPanel content = MainWindow.createContent(repositoriesPane, new BranchesPane(git), new FilesPane(git),
+                new HistoryPane(git));
         assertThat(content.getComponentCount()).isEqualTo(3);
     }
 
@@ -90,5 +97,29 @@ class MainWindowContentTest {
         assertThat(RepositoryList.load(store).paths()).containsExactly(second);
         assertThat(pane.selectedRepository()).contains(second);
         assertThat(Files.isDirectory(first)).isTrue();
+    }
+
+    @Test
+    void selectingDoesNotOpenButOpenSelectedDoes() throws Exception {
+        Path first = Files.createDirectory(tempDir.resolve("one"));
+        Path second = Files.createDirectory(tempDir.resolve("two"));
+        RepositoryList list = RepositoryList.load(tempDir.resolve("open.txt"));
+        list.add(first);
+        list.add(second);
+        RepositoriesPane pane = new RepositoriesPane(git, list);
+        List<Optional<Path>> opened = new ArrayList<>();
+        pane.addOpenListener(opened::add);
+
+        pane.addRepository(first); // selects only
+        assertThat(opened).isEmpty();
+        assertThat(pane.openedRepository()).isEmpty();
+
+        pane.openSelected();
+        assertThat(opened).containsExactly(Optional.of(first));
+        assertThat(pane.openedRepository()).contains(first);
+
+        pane.removeRepository(first); // removing the opened repository closes it
+        assertThat(opened).containsExactly(Optional.of(first), Optional.empty());
+        assertThat(pane.openedRepository()).isEmpty();
     }
 }

@@ -31,16 +31,17 @@ public final class MainContent extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    public MainContent(RepositoriesPane repositoriesPane) {
+    public MainContent(RepositoriesPane repositoriesPane, BranchesPane branchesPane, FilesPane filesPane,
+                       HistoryPane historyPane) {
         super(new BorderLayout());
 
         JSplitPane left = split(JSplitPane.VERTICAL_SPLIT,
-                repositoriesPane, new BranchesPane(), 400, 0.5);
+                repositoriesPane, branchesPane, 400, 0.5);
 
         JSplitPane lower = split(JSplitPane.VERTICAL_SPLIT,
-                new DiffPane(), new HistoryPane(), 200, 0.4);
+                new DiffPane(), historyPane, 200, 0.4);
         JSplitPane right = split(JSplitPane.VERTICAL_SPLIT,
-                new FilesPane(), lower, 260, 0.35);
+                filesPane, lower, 260, 0.35);
 
         add(split(JSplitPane.HORIZONTAL_SPLIT, left, right, 300, 0.0), BorderLayout.CENTER);
     }
