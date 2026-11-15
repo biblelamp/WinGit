@@ -1,0 +1,6 @@
+# Installer options (paths relative to the app module). The installer shows LICENSE
+# on its license page; the app directory gets LICENSE and THIRD-PARTY-NOTICES.md too.
+--license-file ../LICENSE
+--win-dir-chooser
+--win-menu
+--win-shortcut

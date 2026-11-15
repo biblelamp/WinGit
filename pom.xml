@@ -44,6 +44,7 @@
         <resources-plugin.version>3.3.1</resources-plugin.version>
         <jar-plugin.version>3.4.2</jar-plugin.version>
         <exec-plugin.version>3.5.0</exec-plugin.version>
+        <dependency-plugin.version>3.7.0</dependency-plugin.version>
 
         <!-- Only the app module is runnable via exec:java; mainClass is declared here because
              the plugin validates it even in modules where execution is skipped. -->
@@ -126,6 +127,22 @@
     </dependencies>
 
     <build>
+        <!-- Every module jar carries the project license and third-party notices in META-INF.
+             Declaring resources here replaces the default, so src/main/resources is listed too. -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/..</directory>
+                <targetPath>META-INF</targetPath>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>THIRD-PARTY-NOTICES.md</include>
+                </includes>
+            </resource>
+        </resources>
+
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -147,6 +164,11 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>${jar-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>${dependency-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>

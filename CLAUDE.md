@@ -75,7 +75,7 @@ mvn -q -DskipTests package          # build
 mvn -q verify                       # build + tests
 mvn -q -pl core test                # core tests only
 mvn -q -pl app -am compile exec:java    # run the app (builds core/ui in the reactor)
-mvn -q -pl app -Ppackage package    # jpackage installer (Windows)
+mvn -q -pl app -am -Ppackage package   # jpackage installer (Windows, needs WiX 3; -Djpackage.type=app-image without it)
 ```
 
 Tests that need a repo create a temporary one (`@TempDir` + `git init`);

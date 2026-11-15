@@ -16,6 +16,12 @@
 
     <properties>
         <exec.skip>false</exec.skip>
+
+        <!-- jpackage: numeric version only (no -SNAPSHOT); type msi/exe needs WiX 3 on PATH,
+             app-image works without it -->
+        <jpackage.type>msi</jpackage.type>
+        <jpackage.appVersion>0.1.0</jpackage.appVersion>
+        <jpackage.input>${project.build.directory}/jpackage-input</jpackage.input>
     </properties>
 
     <dependencies>
@@ -45,4 +51,101 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- mvn -q -pl app -am -Ppackage package  ->  target/installer/ -->
+        <profile>
+            <id>package</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jpackage-libs</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeScope>runtime</includeScope>
+                                    <outputDirectory>${jpackage.input}</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <!-- the app jar, plus LICENSE and notices installed next to it -->
+                            <execution>
+                                <id>jpackage-files</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${jpackage.input}</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.build.directory}</directory>
+                                            <includes>
+                                                <include>${project.build.finalName}.jar</include>
+                                            </includes>
+                                        </resource>
+                                        <resource>
+                                            <directory>${project.basedir}/..</directory>
+                                            <includes>
+                                                <include>LICENSE</include>
+                                                <include>THIRD-PARTY-NOTICES.md</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jpackage</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>jpackage</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <arguments>
+                                        <argument>--type</argument>
+                                        <argument>${jpackage.type}</argument>
+                                        <argument>--name</argument>
+                                        <argument>WinGit</argument>
+                                        <argument>--app-version</argument>
+                                        <argument>${jpackage.appVersion}</argument>
+                                        <argument>--description</argument>
+                                        <argument>${project.parent.description}</argument>
+                                        <argument>--input</argument>
+                                        <argument>${jpackage.input}</argument>
+                                        <argument>--main-jar</argument>
+                                        <argument>${project.build.finalName}.jar</argument>
+                                        <argument>--main-class</argument>
+                                        <argument>${exec.mainClass}</argument>
+                                        <!-- options valid only for this type, e.g. the license page -->
+                                        <argument>@src/jpackage/${jpackage.type}.args</argument>
+                                        <argument>--dest</argument>
+                                        <argument>${project.build.directory}/installer</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
