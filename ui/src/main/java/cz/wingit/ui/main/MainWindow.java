@@ -18,10 +18,12 @@ import cz.wingit.core.GitService;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.diff.DiffPane;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
 import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
+import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
 
@@ -44,15 +46,19 @@ public final class MainWindow extends JFrame {
         setJMenuBar(new MainMenuBar(
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
+                new CloseRepositoryAction(repositoriesPane),
                 removeRepository));
         FilesPane filesPane = new FilesPane(git);
         BranchesPane branchesPane = new BranchesPane(git);
         HistoryPane historyPane = new HistoryPane(git);
+        DiffPane diffPane = new DiffPane(git);
+        filesPane.addFileSelectionListener(diffPane::showFile);
         filesPane.addStatusListener((path, status) -> repositoriesPane.updateChanged(path, !status.isClean()));
         AutoRefresh autoRefresh = new AutoRefresh(git, () -> {
             filesPane.refresh();
             branchesPane.refresh();
             historyPane.refresh();
+            diffPane.refresh();
             repositoriesPane.openedRepository().ifPresent(repositoriesPane::refreshBranch);
         });
         // Other repositories are not watched; re-check them when the user comes back to the window.
@@ -63,12 +69,13 @@ public final class MainWindow extends JFrame {
             }
         });
         repositoriesPane.addOpenListener(opened -> {
+            diffPane.showRepository(opened);
             filesPane.showRepository(opened);
             branchesPane.showRepository(opened);
             historyPane.showRepository(opened);
             autoRefresh.watch(opened);
         });
-        setContentPane(createContent(repositoriesPane, branchesPane, filesPane, historyPane));
+        setContentPane(createContent(repositoriesPane, branchesPane, filesPane, diffPane, historyPane));
 
         setMinimumSize(new Dimension(640, 400));
         setSize(fitToScreen(1280, 820));
@@ -89,10 +96,10 @@ public final class MainWindow extends JFrame {
     }
 
     static JPanel createContent(RepositoriesPane repositoriesPane, BranchesPane branchesPane, FilesPane filesPane,
-                                HistoryPane historyPane) {
+                                DiffPane diffPane, HistoryPane historyPane) {
         JPanel root = new JPanel(new BorderLayout());
         root.add(new MainToolBar(), BorderLayout.NORTH);
-        root.add(new MainContent(repositoriesPane, branchesPane, filesPane, historyPane), BorderLayout.CENTER);
+        root.add(new MainContent(repositoriesPane, branchesPane, filesPane, diffPane, historyPane), BorderLayout.CENTER);
         root.add(new StatusBar(), BorderLayout.SOUTH);
         return root;
     }

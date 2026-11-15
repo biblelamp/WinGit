@@ -2,6 +2,8 @@ package cz.wingit.ui.repositories;
 
 import java.awt.Component;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 
 import javax.swing.AbstractAction;
 import javax.swing.JFileChooser;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
@@ -30,6 +33,8 @@ public final class AddRepositoryAction extends AbstractAction {
 
     public AddRepositoryAction(GitService git, RepositoriesPane pane) {
         super(Messages.get("menu.repository.addOrCreate"));
+        putValue(MNEMONIC_KEY, KeyEvent.VK_A);
+        putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
         this.git = git;
         this.pane = pane;
     }

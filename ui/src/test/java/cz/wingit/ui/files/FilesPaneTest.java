@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,6 +54,15 @@ class FilesPaneTest {
             pane[0].showRepository(Optional.of(repo));
         });
         awaitRows(pane[0], 3);
+
+        // selecting one row reports that file
+        List<Optional<FileChange>> selections = new ArrayList<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0].addFileSelectionListener(selections::add);
+            pane[0].selectRowForTest(0);
+        });
+        assertThat(selections).hasSize(1);
+        assertThat(selections.get(0)).isPresent();
 
         AtomicInteger filtered = new AtomicInteger();
         SwingUtilities.invokeAndWait(() -> {

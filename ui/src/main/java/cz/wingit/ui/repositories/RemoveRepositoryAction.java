@@ -1,6 +1,7 @@
 package cz.wingit.ui.repositories;
 
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 import javax.swing.AbstractAction;
 import javax.swing.SwingUtilities;
@@ -20,6 +21,9 @@ public final class RemoveRepositoryAction extends AbstractAction {
 
     public RemoveRepositoryAction(RepositoriesPane pane) {
         super(Messages.get("menu.repository.remove"));
+        // No accelerator on purpose: a global Delete would fire while typing in text fields.
+        // The repository list binds Delete itself (see RepositoriesPane#installRemoveAction).
+        putValue(MNEMONIC_KEY, KeyEvent.VK_R);
         this.pane = pane;
         updateEnabled();
         pane.addSelectionListener(this::updateEnabled);

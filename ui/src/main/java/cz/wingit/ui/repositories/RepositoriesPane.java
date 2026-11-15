@@ -134,12 +134,22 @@ public final class RepositoriesPane extends TitledPane {
         return true;
     }
 
+    /**
+     * Closes the opened repository: the panes are cleared and its file watcher stops.
+     * The repository stays in the list. Does nothing if none is open. Call on the EDT.
+     */
+    public void closeOpened() {
+        if (opened != null) {
+            setOpened(null);
+        }
+    }
+
     /** The repository whose data is shown, if any. */
     public Optional<Path> openedRepository() {
         return Optional.ofNullable(opened);
     }
 
-    /** Notified (on the EDT) when a repository is opened, or with empty when the opened one is removed. */
+    /** Notified (on the EDT) when a repository is opened, or with empty when the opened one is closed or removed. */
     public void addOpenListener(Consumer<Optional<Path>> listener) {
         openListeners.add(listener);
     }

@@ -76,6 +76,35 @@ class BranchesPaneTest {
                 .isEqualTo("origin/main ↑2 ↓1");
     }
 
+    @Test
+    void doubleClickOnBranchChecksItOut() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            Files.writeString(repo.resolve("a.txt"), "a", StandardCharsets.UTF_8);
+            git.add().addFilepattern("a.txt").call();
+            git.commit().setMessage("init").setAuthor(IDENT).setCommitter(IDENT).setSign(false).call();
+            git.branchCreate().setName("feature").call();
+        }
+        DefaultGitService service = new DefaultGitService(new GitCli());
+
+        AtomicReference<BranchesPane> pane = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new BranchesPane(service));
+            pane.get().showRepository(Optional.of(repo));
+        });
+        assertThat(awaitRows(pane.get(), 6)).contains("feature");
+
+        SwingUtilities.invokeAndWait(() -> {
+            pane.get().selectRowForTest("feature");
+            pane.get().switchToSelected();
+        });
+
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (!service.currentBranch(repo).equals(Optional.of("feature")) && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+        }
+        assertThat(service.currentBranch(repo)).contains("feature");
+    }
+
     private static List<String> awaitRows(BranchesPane pane, int expected) throws Exception {
         AtomicReference<List<String>> rows = new AtomicReference<>();
         long deadline = System.currentTimeMillis() + 10_000;

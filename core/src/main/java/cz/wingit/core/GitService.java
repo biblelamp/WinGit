@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.refs.RepositoryRefs;
+import cz.wingit.core.status.FileChange;
 import cz.wingit.core.status.RepositoryStatus;
 import cz.wingit.core.watch.RepositoryWatch;
 
@@ -35,6 +37,14 @@ public interface GitService {
     RepositoryStatus status(Path workTree);
 
     /**
+     * Both versions of a changed file and their aligned line diff: index vs working tree for
+     * unstaged changes, HEAD vs index for staged-only changes, HEAD vs working tree for conflicts.
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    FileDiff fileDiff(Path workTree, FileChange change);
+
+    /**
      * Local and remote branches (with upstream and ahead/behind counts), tags and stashes.
      *
      * @throws GitException if the repository cannot be read
@@ -56,6 +66,21 @@ public interface GitService {
      * @throws GitException if the watch cannot be set up
      */
     RepositoryWatch watch(Path workTree, Runnable onChange);
+
+    /**
+     * Checks out the local branch {@code branch} ({@code git switch}). Fails, leaving everything
+     * as it was, if local changes would be overwritten.
+     *
+     * @throws GitCommandException if Git refuses the switch
+     */
+    void switchBranch(Path workTree, String branch);
+
+    /**
+     * Creates the local branch {@code branch} tracking {@code remote/branch} and checks it out.
+     *
+     * @throws GitCommandException if the branch already exists or Git refuses the switch
+     */
+    void switchToNewTrackingBranch(Path workTree, String remote, String branch);
 
     /** Runs {@code git init} in an existing directory. */
     void init(Path dir);

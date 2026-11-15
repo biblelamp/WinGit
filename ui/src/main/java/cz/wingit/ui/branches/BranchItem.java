@@ -8,8 +8,26 @@ package cz.wingit.ui.branches;
  * @param label   main text
  * @param detail  dimmed text after the label (upstream, ahead/behind, stash message), or {@code null}
  * @param current whether this is the checked-out branch (shown bold)
+ * @param target  branch checked out on double-click / Enter, or {@code null} if the node has none
  */
-record BranchItem(String key, String label, String detail, boolean current) {
+record BranchItem(String key, String label, String detail, boolean current, Target target) {
+
+    /**
+     * A branch that can be checked out.
+     *
+     * @param remote remote name for a remote-tracking branch, {@code null} for a local branch
+     * @param branch branch name without the remote prefix
+     */
+    record Target(String remote, String branch) {
+
+        static Target local(String branch) {
+            return new Target(null, branch);
+        }
+
+        boolean isRemote() {
+            return remote != null;
+        }
+    }
 
     @Override
     public String toString() {

@@ -28,10 +28,11 @@ final class BranchTreeBuilder {
         int localCount = refs.localBranches().size() + (refs.detachedAt() != null ? 1 : 0);
         DefaultMutableTreeNode local = group(LOCAL, Messages.get("branches.local"), localCount);
         if (refs.detachedAt() != null) {
-            local.add(leaf("detached", Messages.format("branches.detached", refs.detachedAt()), null, true));
+            local.add(leaf("detached", Messages.format("branches.detached", refs.detachedAt()), null, true, null));
         }
         for (LocalBranch branch : refs.localBranches()) {
-            local.add(leaf("branch:" + branch.name(), branch.name(), trackingDetail(branch), branch.current()));
+            local.add(leaf("branch:" + branch.name(), branch.name(), trackingDetail(branch), branch.current(),
+                    branch.current() ? null : BranchItem.Target.local(branch.name())));
         }
         root.add(local);
 
@@ -39,7 +40,8 @@ final class BranchTreeBuilder {
         for (RemoteBranches remote : refs.remotes()) {
             DefaultMutableTreeNode node = group("remote:" + remote.remote(), remote.remote(), remote.branches().size());
             for (String branch : remote.branches()) {
-                node.add(leaf("remote-branch:" + remote.remote() + "/" + branch, branch, null, false));
+                node.add(leaf("remote-branch:" + remote.remote() + "/" + branch, branch, null, false,
+                        new BranchItem.Target(remote.remote(), branch)));
             }
             remotes.add(node);
         }
@@ -47,13 +49,13 @@ final class BranchTreeBuilder {
 
         DefaultMutableTreeNode tags = group(TAGS, Messages.get("branches.tags"), refs.tags().size());
         for (String tag : refs.tags()) {
-            tags.add(leaf("tag:" + tag, tag, null, false));
+            tags.add(leaf("tag:" + tag, tag, null, false, null));
         }
         root.add(tags);
 
         DefaultMutableTreeNode stashes = group(STASHES, Messages.get("branches.stashes"), refs.stashes().size());
         for (Stash stash : refs.stashes()) {
-            stashes.add(leaf("stash:" + stash.index(), "stash@{" + stash.index() + "}", stash.message(), false));
+            stashes.add(leaf("stash:" + stash.index(), "stash@{" + stash.index() + "}", stash.message(), false, null));
         }
         root.add(stashes);
         return root;
@@ -75,10 +77,12 @@ final class BranchTreeBuilder {
     }
 
     private static DefaultMutableTreeNode group(String key, String name, int count) {
-        return new DefaultMutableTreeNode(new BranchItem(key, Messages.format("branches.group", name, String.valueOf(count)), null, false));
+        String label = Messages.format("branches.group", name, String.valueOf(count));
+        return new DefaultMutableTreeNode(new BranchItem(key, label, null, false, null));
     }
 
-    private static DefaultMutableTreeNode leaf(String key, String label, String detail, boolean current) {
-        return new DefaultMutableTreeNode(new BranchItem(key, label, detail, current), false);
+    private static DefaultMutableTreeNode leaf(String key, String label, String detail, boolean current,
+                                               BranchItem.Target target) {
+        return new DefaultMutableTreeNode(new BranchItem(key, label, detail, current, target), false);
     }
 }

@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.concurrent.ExecutionException;
 
 import javax.swing.JTextField;
@@ -45,6 +46,9 @@ public final class FilesPane extends TitledPane {
     private transient Path current;
     private boolean refreshQueued;
     private final transient List<BiConsumer<Path, RepositoryStatus>> statusListeners = new ArrayList<>();
+    private final transient List<Consumer<Optional<FileChange>>> fileSelectionListeners = new ArrayList<>();
+    private transient Optional<FileChange> notifiedSelection = Optional.empty();
+    private boolean replacingRows;
     private int generation;
 
     public FilesPane(GitService git) {
@@ -78,6 +82,14 @@ public final class FilesPane extends TitledPane {
         }
         table.setPlaceholder(Messages.get("files.placeholder.loading"));
         load(current);
+    }
+
+    /**
+     * Notified (on the EDT) when the selected file changes: the file if exactly one row is selected,
+     * otherwise empty. Not notified while rows are replaced by a refresh that keeps the selection.
+     */
+    public void addFileSelectionListener(Consumer<Optional<FileChange>> listener) {
+        fileSelectionListeners.add(listener);
     }
 
     /** Notified (on the EDT) with every status successfully read for the shown repository. */
@@ -153,12 +165,34 @@ public final class FilesPane extends TitledPane {
         for (int row : table.getSelectedRows()) {
             selected.add(model.getChange(table.convertRowIndexToModel(row)).path());
         }
-        model.setChanges(changes);
-        for (int row = 0; row < table.getRowCount(); row++) {
-            if (selected.contains(model.getChange(table.convertRowIndexToModel(row)).path())) {
-                table.addRowSelectionInterval(row, row);
+        replacingRows = true;
+        try {
+            model.setChanges(changes);
+            for (int row = 0; row < table.getRowCount(); row++) {
+                if (selected.contains(model.getChange(table.convertRowIndexToModel(row)).path())) {
+                    table.addRowSelectionInterval(row, row);
+                }
             }
+        } finally {
+            replacingRows = false;
         }
+        notifySelection();
+    }
+
+    private void notifySelection() {
+        int[] rows = table.getSelectedRows();
+        Optional<FileChange> selection = rows.length == 1
+                ? Optional.of(model.getChange(table.convertRowIndexToModel(rows[0])))
+                : Optional.empty();
+        if (!selection.equals(notifiedSelection)) {
+            notifiedSelection = selection;
+            fileSelectionListeners.forEach(listener -> listener.accept(selection));
+        }
+    }
+
+    /** Selects a visible row (for tests). */
+    void selectRowForTest(int row) {
+        table.setRowSelectionInterval(row, row);
     }
 
     /** Number of rows currently shown (after filtering). */
@@ -170,6 +204,11 @@ public final class FilesPane extends TitledPane {
         table.setShowGrid(false);
         table.getTableHeader().setReorderingAllowed(false);
         table.setRowSorter(sorter);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && !replacingRows) {
+                notifySelection();
+            }
+        });
         table.getColumnModel().getColumn(FileChangeTableModel.NAME).setCellRenderer(new FileNameCellRenderer(model));
         table.getColumnModel().getColumn(FileChangeTableModel.NAME).setPreferredWidth(UIScale.scale(300));
         table.getColumnModel().getColumn(FileChangeTableModel.STATUS).setPreferredWidth(UIScale.scale(160));

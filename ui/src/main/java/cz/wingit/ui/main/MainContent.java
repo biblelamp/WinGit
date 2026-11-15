@@ -32,14 +32,14 @@ public final class MainContent extends JPanel {
     private static final long serialVersionUID = 1L;
 
     public MainContent(RepositoriesPane repositoriesPane, BranchesPane branchesPane, FilesPane filesPane,
-                       HistoryPane historyPane) {
+                       DiffPane diffPane, HistoryPane historyPane) {
         super(new BorderLayout());
 
         JSplitPane left = split(JSplitPane.VERTICAL_SPLIT,
                 repositoriesPane, branchesPane, 400, 0.5);
 
         JSplitPane lower = split(JSplitPane.VERTICAL_SPLIT,
-                new DiffPane(), historyPane, 200, 0.4);
+                diffPane, historyPane, 200, 0.4);
         JSplitPane right = split(JSplitPane.VERTICAL_SPLIT,
                 filesPane, lower, 260, 0.35);
 

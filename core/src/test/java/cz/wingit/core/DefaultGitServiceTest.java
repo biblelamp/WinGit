@@ -93,6 +93,56 @@ class DefaultGitServiceTest {
         assertThat(target).doesNotExist();
     }
 
+    @Test
+    void switchBranchChecksOutLocalBranch() throws Exception {
+        Path repo = createRepoWithCommit("switching");
+        try (Git jgit = Git.open(repo.toFile())) {
+            jgit.branchCreate().setName("feature").call();
+        }
+
+        git.switchBranch(repo, "feature");
+
+        assertThat(git.currentBranch(repo)).contains("feature");
+    }
+
+    @Test
+    void switchBranchRefusesToOverwriteLocalChanges() throws Exception {
+        Path repo = createRepoWithCommit("guarded");
+        String original = git.currentBranch(repo).orElseThrow();
+        try (Git jgit = Git.open(repo.toFile())) {
+            jgit.checkout().setCreateBranch(true).setName("other").call();
+            Files.writeString(repo.resolve("readme.txt"), "other", StandardCharsets.UTF_8);
+            jgit.add().addFilepattern("readme.txt").call();
+            PersonIdent ident = new PersonIdent("Test", "test@example.invalid");
+            jgit.commit().setMessage("other").setAuthor(ident).setCommitter(ident).setSign(false).call();
+            jgit.checkout().setName(original).call();
+        }
+        Files.writeString(repo.resolve("readme.txt"), "local edit", StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> git.switchBranch(repo, "other")).isInstanceOf(GitCommandException.class);
+        assertThat(git.currentBranch(repo)).contains(original);
+        assertThat(Files.readString(repo.resolve("readme.txt"), StandardCharsets.UTF_8)).isEqualTo("local edit");
+    }
+
+    @Test
+    void switchToNewTrackingBranchCreatesBranchFromRemote() throws Exception {
+        Path source = createRepoWithCommit("upstream");
+        try (Git jgit = Git.open(source.toFile())) {
+            jgit.branchCreate().setName("feature").call();
+        }
+        Path clone = tempDir.resolve("downstream");
+        git.clone(source.toUri().toString(), clone, line -> { });
+
+        git.switchToNewTrackingBranch(clone, "origin", "feature");
+
+        assertThat(git.currentBranch(clone)).contains("feature");
+        assertThat(git.refs(clone).localBranches())
+                .anySatisfy(b -> {
+                    assertThat(b.name()).isEqualTo("feature");
+                    assertThat(b.upstream()).isEqualTo("origin/feature");
+                });
+    }
+
     private Path createRepoWithCommit(String name) throws Exception {
         Path dir = Files.createDirectory(tempDir.resolve(name));
         try (Git jgit = Git.init().setDirectory(dir.toFile()).call()) {

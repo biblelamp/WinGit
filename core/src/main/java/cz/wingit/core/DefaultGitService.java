@@ -14,11 +14,14 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 
 import cz.wingit.core.cli.GitCli;
+import cz.wingit.core.diff.DiffReader;
+import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.log.LogReader;
 import cz.wingit.core.refs.RefsReader;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.repo.Repositories;
+import cz.wingit.core.status.FileChange;
 import cz.wingit.core.status.RepositoryStatus;
 import cz.wingit.core.status.StatusMapper;
 import cz.wingit.core.watch.RepositoryWatch;
@@ -74,6 +77,15 @@ public final class DefaultGitService implements GitService {
     }
 
     @Override
+    public FileDiff fileDiff(Path workTree, FileChange change) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return DiffReader.read(git.getRepository(), change);
+        } catch (IOException e) {
+            throw new GitException("Cannot read " + change.path() + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public RepositoryRefs refs(Path workTree) {
         try (Git git = Git.open(workTree.toFile())) {
             return RefsReader.read(git);
@@ -98,6 +110,16 @@ public final class DefaultGitService implements GitService {
         } catch (IOException e) {
             throw new GitException("Cannot watch " + workTree + ": " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void switchBranch(Path workTree, String branch) {
+        cli.run(workTree, List.of("switch", "--no-guess", branch));
+    }
+
+    @Override
+    public void switchToNewTrackingBranch(Path workTree, String remote, String branch) {
+        cli.run(workTree, List.of("switch", "--create", branch, "--track", remote + "/" + branch));
     }
 
     @Override

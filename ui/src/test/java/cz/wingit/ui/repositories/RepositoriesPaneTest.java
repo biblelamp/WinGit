@@ -88,6 +88,32 @@ class RepositoriesPaneTest {
     }
 
     @Test
+    void closeClearsOpenedRepositoryButKeepsItListed() throws Exception {
+        Path repo = createRepo("closing");
+        RepositoryList list = RepositoryList.load(tempDir.resolve("close.txt"));
+        list.add(repo);
+
+        AtomicReference<RepositoriesPane> pane = new AtomicReference<>();
+        AtomicReference<CloseRepositoryAction> close = new AtomicReference<>();
+        List<Optional<Path>> opened = new ArrayList<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            close.set(new CloseRepositoryAction(pane.get()));
+            pane.get().addOpenListener(opened::add);
+        });
+        assertThat(close.get().isEnabled()).isFalse();
+
+        SwingUtilities.invokeAndWait(() -> pane.get().open(repo));
+        assertThat(close.get().isEnabled()).isTrue();
+
+        SwingUtilities.invokeAndWait(() -> close.get().actionPerformed(null));
+        assertThat(opened).containsExactly(Optional.of(repo), Optional.empty());
+        assertThat(pane.get().openedRepository()).isEmpty();
+        assertThat(close.get().isEnabled()).isFalse();
+        assertThat(list.paths()).containsExactly(repo);
+    }
+
+    @Test
     void repositoryIconsAreBundled() {
         assertThat(Icons.repository(false).hasFound()).isTrue();
         assertThat(Icons.repository(true).hasFound()).isTrue();
