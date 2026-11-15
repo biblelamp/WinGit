@@ -11,12 +11,16 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JComponent;
+import javax.swing.JPopupMenu;
+import javax.swing.JTree;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -26,6 +30,8 @@ import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
 import cz.wingit.core.GitService;
+import cz.wingit.core.refs.LocalBranch;
+import cz.wingit.core.refs.RemoteBranches;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Components;
@@ -158,6 +164,131 @@ public final class BranchesPane extends TitledPane {
             @Override
             public void actionPerformed(ActionEvent e) {
                 switchToSelected();
+            }
+        });
+    }
+
+    /** The open repository, if any. */
+    public Optional<Path> repository() {
+        return Optional.ofNullable(workTree);
+    }
+
+    /** The selected remote-tracking branch (remote and branch name), if one is selected. */
+    Optional<BranchItem.Target> selectedRemoteBranch() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null) {
+            return Optional.empty();
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        if (user instanceof BranchItem item && item.target() != null && item.target().isRemote()) {
+            return Optional.of(item.target());
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * The remote branch that local branch {@code branch} tracks, if it still exists on the remote
+     * (as last fetched).
+     */
+    Optional<BranchItem.Target> upstreamOf(String branch) {
+        if (shown == null) {
+            return Optional.empty();
+        }
+        String upstream = shown.localBranches().stream().filter(b -> b.name().equals(branch))
+                .map(LocalBranch::upstream).filter(Objects::nonNull).findFirst().orElse(null);
+        if (upstream == null) {
+            return Optional.empty();
+        }
+        for (RemoteBranches remote : shown.remotes()) {
+            String prefix = remote.remote() + "/";
+            if (upstream.startsWith(prefix) && remote.branches().contains(upstream.substring(prefix.length()))) {
+                return Optional.of(new BranchItem.Target(remote.remote(), upstream.substring(prefix.length())));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Name of the selected local branch, also when it is the checked-out one. */
+    Optional<String> selectedAnyLocalBranch() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null) {
+            return Optional.empty();
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        if (user instanceof BranchItem item && item.key().startsWith(BranchTreeBuilder.LOCAL_BRANCH_KEY)) {
+            return Optional.of(item.key().substring(BranchTreeBuilder.LOCAL_BRANCH_KEY.length()));
+        }
+        return Optional.empty();
+    }
+
+    /** Branch names of {@code remote} as last fetched, empty if unknown. */
+    List<String> remoteBranchNames(String remote) {
+        if (shown == null) {
+            return List.of();
+        }
+        return shown.remotes().stream().filter(r -> r.remote().equals(remote))
+                .flatMap(r -> r.branches().stream()).toList();
+    }
+
+    /** Names of all local branches shown, empty while nothing is loaded. */
+    List<String> localBranchNames() {
+        return shown == null ? List.of() : shown.localBranches().stream().map(LocalBranch::name).toList();
+    }
+
+    /** Name of the selected local branch unless it is checked out (it cannot be deleted then). */
+    public Optional<String> selectedLocalBranch() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null) {
+            return Optional.empty();
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        if (user instanceof BranchItem item && item.target() != null && !item.target().isRemote() && !item.current()) {
+            return Optional.of(item.target().branch());
+        }
+        return Optional.empty();
+    }
+
+    /** Notified (on the EDT) when the selected node changes, also when the tree is reloaded. */
+    public void addSelectionListener(Runnable listener) {
+        tree.addTreeSelectionListener(e -> listener.run());
+        tree.addPropertyChangeListener(JTree.TREE_MODEL_PROPERTY, e -> listener.run());
+    }
+
+    /**
+     * Context menu with {@code actions} (right-click selects the node first); F2 runs {@code rename},
+     * the Delete key runs {@code delete}.
+     */
+    public void installContextActions(Action rename, Action delete, Action... actions) {
+        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteBranch");
+        tree.getActionMap().put("deleteBranch", delete);
+        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "renameBranch");
+        tree.getActionMap().put("renameBranch", rename);
+        JPopupMenu popup = new JPopupMenu();
+        for (Action action : actions) {
+            popup.add(action);
+        }
+        popup.add(rename);
+        popup.add(delete);
+        tree.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                maybeShowPopup(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                maybeShowPopup(e);
+            }
+
+            private void maybeShowPopup(MouseEvent e) {
+                if (!e.isPopupTrigger() || workTree == null) {
+                    return;
+                }
+                TreePath path = tree.getPathForLocation(e.getX(), e.getY());
+                if (path != null) {
+                    tree.setSelectionPath(path);
+                }
+                popup.show(tree, e.getX(), e.getY());
             }
         });
     }

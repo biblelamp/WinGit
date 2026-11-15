@@ -15,6 +15,7 @@ Toolbar icons in `ui/src/main/resources/cz/wingit/ui/icons/toolbar/` are taken f
 | stage.svg     | circle-plus             |
 | unstage.svg   | circle-minus            |
 | discard.svg   | undo-2                  |
+| delete.svg    | trash-2                 |
 | stash.svg     | archive                 |
 | history.svg   | history                 |
 

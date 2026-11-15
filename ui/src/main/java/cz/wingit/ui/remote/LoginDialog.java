@@ -1,10 +1,8 @@
 package cz.wingit.ui.remote;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -25,13 +23,12 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import cz.wingit.core.remote.Credentials;
 import cz.wingit.ui.Messages;
-import cz.wingit.ui.common.SeparatorBorder;
+import cz.wingit.ui.common.DialogHeader;
 
 /**
  * Modal dialog asking for user name and password (or token) of an HTTPS remote.
@@ -129,21 +126,11 @@ final class LoginDialog extends JDialog {
     }
 
     private JPanel createContent(String url, boolean rejected) {
-        JLabel title = new JLabel(Messages.format("login.header", displayUrl(url)));
-        title.setFont(title.getFont().deriveFont(Font.BOLD));
-        JLabel description = new JLabel(Messages.get(rejected ? "login.rejected" : "login.description"));
+        DialogHeader header = new DialogHeader(Messages.format("login.header", displayUrl(url)),
+                Messages.get("login.description"));
         if (rejected) {
-            Color error = UIManager.getColor("Component.error.focusedBorderColor");
-            if (error != null) {
-                description.setForeground(error);
-            }
+            header.showError(Messages.get("login.rejected"));
         }
-        JPanel header = new JPanel(new BorderLayout(0, 4));
-        header.setBackground(UIManager.getColor("TextField.background"));
-        header.setBorder(BorderFactory.createCompoundBorder(SeparatorBorder.bottom(0, 0),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        header.add(title, BorderLayout.NORTH);
-        header.add(description, BorderLayout.CENTER);
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createEmptyBorder(10, 12, 0, 12));

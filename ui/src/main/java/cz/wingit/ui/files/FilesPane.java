@@ -1,5 +1,8 @@
 package cz.wingit.ui.files;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -11,8 +14,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.concurrent.ExecutionException;
 
+import javax.swing.Action;
+import javax.swing.JComponent;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.RowFilter;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -190,13 +198,80 @@ public final class FilesPane extends TitledPane {
         }
     }
 
+    /** The repository shown, if any. */
+    public Optional<Path> repository() {
+        return Optional.ofNullable(current);
+    }
+
+    /** Notified (on the EDT) whenever the selected rows or their files change. */
+    public void addSelectionChangeListener(Runnable listener) {
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                listener.run();
+            }
+        });
+        // Later, not now: model listeners run before the table has caught up with the new rows,
+        // so reading the selection here would use rows that no longer exist.
+        model.addTableModelListener(e -> SwingUtilities.invokeLater(listener));
+    }
+
+    /**
+     * Context menu with {@code actions} ({@code null} = separator); a right-click on an unselected row
+     * selects it first. The Delete key runs {@code delete}.
+     */
+    public void installContextActions(Action delete, Action... actions) {
+        table.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteFiles");
+        table.getActionMap().put("deleteFiles", delete);
+        JPopupMenu popup = new JPopupMenu();
+        for (Action action : actions) {
+            if (action == null) {
+                popup.addSeparator();
+            } else {
+                popup.add(action);
+            }
+        }
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                maybeShowPopup(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                maybeShowPopup(e);
+            }
+
+            private void maybeShowPopup(MouseEvent e) {
+                if (!e.isPopupTrigger()) {
+                    return;
+                }
+                int row = table.rowAtPoint(e.getPoint());
+                if (row < 0) {
+                    return;
+                }
+                if (!table.isRowSelected(row)) {
+                    table.setRowSelectionInterval(row, row);
+                }
+                popup.show(table, e.getX(), e.getY());
+            }
+        });
+    }
+
     /** Files of the selected rows, in the order shown. Call on the EDT. */
     public List<FileChange> selectedChanges() {
         List<FileChange> selected = new ArrayList<>();
         for (int row : table.getSelectedRows()) {
-            selected.add(model.getChange(table.convertRowIndexToModel(row)));
+            int modelRow = row < table.getRowCount() ? table.convertRowIndexToModel(row) : -1;
+            if (modelRow >= 0 && modelRow < model.getRowCount()) {
+                selected.add(model.getChange(modelRow));
+            }
         }
         return selected;
+    }
+
+    /** Selects all visible rows (for tests). */
+    void selectAllRowsForTest() {
+        table.selectAll();
     }
 
     /** Selects a visible row (for tests). */

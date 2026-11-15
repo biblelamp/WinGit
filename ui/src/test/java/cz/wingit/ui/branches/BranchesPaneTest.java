@@ -105,6 +105,75 @@ class BranchesPaneTest {
         assertThat(service.currentBranch(repo)).contains("feature");
     }
 
+    @Test
+    void deleteIsOfferedOnlyForLocalBranchesThatAreNotCheckedOut() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            Files.writeString(repo.resolve("a.txt"), "a", StandardCharsets.UTF_8);
+            git.add().addFilepattern("a.txt").call();
+            git.commit().setMessage("init").setAuthor(IDENT).setCommitter(IDENT).setSign(false).call();
+            git.branchCreate().setName("feature").call();
+        }
+        DefaultGitService service = new DefaultGitService(new GitCli());
+
+        AtomicReference<BranchesPane> pane = new AtomicReference<>();
+        AtomicReference<DeleteBranchAction> delete = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new BranchesPane(service));
+            delete.set(new DeleteBranchAction(service, pane.get(), () -> { }));
+            pane.get().showRepository(Optional.of(repo));
+        });
+        assertThat(awaitRows(pane.get(), 6)).contains("feature");
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(delete.get().isEnabled()).isFalse();
+            pane.get().selectRowForTest("feature");
+            assertThat(pane.get().selectedLocalBranch()).contains("feature");
+            assertThat(delete.get().isEnabled()).isTrue();
+            pane.get().selectRowForTest("main"); // checked out
+            assertThat(pane.get().selectedLocalBranch()).isEmpty();
+            assertThat(delete.get().isEnabled()).isFalse();
+            assertThat(pane.get().selectedAnyLocalBranch()).contains("main"); // can still be renamed
+            assertThat(pane.get().localBranchNames()).containsExactlyInAnyOrder("feature", "main");
+        });
+    }
+
+    @Test
+    void remoteBranchesCanBeDeletedAndUpstreamIsKnown() throws Exception {
+        Path source = repo.resolve("source");
+        try (Git git = Git.init().setDirectory(source.toFile()).setInitialBranch("main").call()) {
+            Files.writeString(source.resolve("a.txt"), "a", StandardCharsets.UTF_8);
+            git.add().addFilepattern("a.txt").call();
+            git.commit().setMessage("init").setAuthor(IDENT).setCommitter(IDENT).setSign(false).call();
+            git.branchCreate().setName("feature").call();
+        }
+        Path clone = repo.resolve("clone");
+        DefaultGitService service = new DefaultGitService(new GitCli());
+        service.clone(source.toString(), clone, line -> { });
+
+        AtomicReference<BranchesPane> pane = new AtomicReference<>();
+        AtomicReference<DeleteBranchAction> delete = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new BranchesPane(service));
+            delete.set(new DeleteBranchAction(service, pane.get(), () -> { }));
+            pane.get().showRepository(Optional.of(clone));
+        });
+        // Local, main, Remotes (1), Tags, Stashes
+        assertThat(awaitRows(pane.get(), 5)).isNotEmpty();
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(pane.get().upstreamOf("main")).contains(new BranchItem.Target("origin", "main"));
+            assertThat(pane.get().upstreamOf("unknown")).isEmpty();
+            pane.get().expandRowForTest(2); // Remotes
+            pane.get().expandRowForTest(3); // origin
+            pane.get().selectRowForTest("feature");
+            assertThat(pane.get().selectedRemoteBranch()).contains(new BranchItem.Target("origin", "feature"));
+            assertThat(pane.get().selectedLocalBranch()).isEmpty();
+            assertThat(delete.get().isEnabled()).isTrue();
+            assertThat(new RenameBranchAction(service, pane.get(), () -> { }).isEnabled()).isTrue();
+            assertThat(pane.get().remoteBranchNames("origin")).containsExactlyInAnyOrder("feature", "main");
+        });
+    }
+
     private static List<String> awaitRows(BranchesPane pane, int expected) throws Exception {
         AtomicReference<List<String>> rows = new AtomicReference<>();
         long deadline = System.currentTimeMillis() + 10_000;

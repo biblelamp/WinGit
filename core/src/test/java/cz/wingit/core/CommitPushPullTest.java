@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import cz.wingit.core.cli.GitCli;
+import cz.wingit.core.remote.Credentials;
 import cz.wingit.core.status.ChangeType;
 import cz.wingit.core.status.FileChange;
 
@@ -92,6 +93,27 @@ class CommitPushPullTest {
     }
 
     @Test
+    void storeCredentialsRemembersUserNameForTheHost() throws Exception {
+        Path repo = createRepo("remember");
+        // No helper for this repository: the test must never write into the real credential store.
+        cli.run(repo, List.of("config", "--local", "credential.helper", ""));
+
+        git.storeCredentials(repo, "https://github.com/someone/project.git", new Credentials("octo", "token"));
+
+        assertThat(cli.run(repo, List.of("config", "--local", "credential.https://github.com.username"))
+                .stdout().strip()).isEqualTo("octo");
+    }
+
+    @Test
+    void credentialOriginKeepsSchemeHostAndPortOnly() {
+        assertThat(DefaultGitService.credentialOrigin("https://joe@GitHub.com/a/b.git")).isEqualTo("https://GitHub.com");
+        assertThat(DefaultGitService.credentialOrigin("https://git.example:8443/r.git"))
+                .isEqualTo("https://git.example:8443");
+        assertThat(DefaultGitService.credentialOrigin("git@github.com:a/b.git")).isNull();
+        assertThat(DefaultGitService.credentialOrigin("ssh://git@github.com/a/b.git")).isNull();
+    }
+
+    @Test
     void firstCommitInEmptyRepository() throws Exception {
         Path repo = createRepo("empty");
         write(repo, "readme.md", "# hi");
@@ -130,6 +152,72 @@ class CommitPushPullTest {
 
         assertThat(first.resolve("file.txt")).hasContent("v2");
         assertThat(headCommit(first).getShortMessage()).isEqualTo("v2");
+    }
+
+    @Test
+    void deleteRemoteBranchRemovesItOnServerOnly() throws Exception {
+        Path remote = tempDir.resolve("server.git");
+        cli.run(tempDir, List.of("init", "--bare", "-q", remote.toString()));
+        Path repo = createRepo("pusher");
+        cli.run(repo, List.of("remote", "add", "origin", remote.toString()));
+        write(repo, "f.txt", "1");
+        git.commit(repo, git.status(repo).changes(), "1");
+        git.push(repo, null, line -> { });
+        git.createBranch(repo, "feature", true);
+        git.push(repo, null, line -> { });
+        assertThat(cli.run(remote, List.of("branch", "--list", "feature")).stdout()).contains("feature");
+
+        git.deleteRemoteBranch(repo, "origin", "feature", null, line -> { });
+
+        assertThat(cli.run(remote, List.of("branch", "--list", "feature")).stdout()).isBlank();
+        assertThat(git.refs(repo).remotes().get(0).branches()).doesNotContain("feature");
+        assertThat(git.currentBranch(repo)).contains("feature"); // the local branch stays
+    }
+
+    @Test
+    void renameRemoteBranchMovesItAndKeepsLocalTracking() throws Exception {
+        Path remote = tempDir.resolve("rename.git");
+        cli.run(tempDir, List.of("init", "--bare", "-q", remote.toString()));
+        Path repo = createRepo("renamer");
+        cli.run(repo, List.of("remote", "add", "origin", remote.toString()));
+        write(repo, "f.txt", "1");
+        git.commit(repo, git.status(repo).changes(), "1");
+        git.push(repo, null, line -> { });
+        git.createBranch(repo, "old-name", true);
+        git.push(repo, null, line -> { });
+
+        git.renameRemoteBranch(repo, "origin", "old-name", "new-name", null, line -> { });
+
+        String serverBranches = cli.run(remote, List.of("branch", "--list")).stdout();
+        assertThat(serverBranches).contains("new-name").doesNotContain("old-name");
+        assertThat(git.refs(repo).localBranches()).anySatisfy(b -> {
+            assertThat(b.name()).isEqualTo("old-name"); // the local name is kept
+            assertThat(b.upstream()).isEqualTo("origin/new-name");
+        });
+    }
+
+    @Test
+    void renameRemoteBranchRefusesWhenServerBranchMoved() throws Exception {
+        Path remote = tempDir.resolve("moved.git");
+        cli.run(tempDir, List.of("init", "--bare", "-q", remote.toString()));
+        Path repo = createRepo("stale");
+        cli.run(repo, List.of("remote", "add", "origin", remote.toString()));
+        write(repo, "f.txt", "1");
+        git.commit(repo, git.status(repo).changes(), "1");
+        git.createBranch(repo, "topic", true);
+        git.push(repo, null, line -> { });
+        // someone else pushes to topic; this clone has not fetched it
+        Path other = tempDir.resolve("other");
+        git.clone(remote.toString(), other, line -> { });
+        configureIdentity(other);
+        git.switchToNewTrackingBranch(other, "origin", "topic");
+        write(other, "g.txt", "2");
+        git.commit(other, git.status(other).changes(), "2");
+        git.push(other, null, line -> { });
+
+        assertThatThrownBy(() -> git.renameRemoteBranch(repo, "origin", "topic", "renamed", null, line -> { }))
+                .isInstanceOf(GitCommandException.class);
+        assertThat(cli.run(remote, List.of("branch", "--list")).stdout()).contains("topic").doesNotContain("renamed");
     }
 
     @Test

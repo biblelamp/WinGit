@@ -127,6 +127,85 @@ class FilesPaneTest {
                 .isEqualTo("Conflict");
     }
 
+    @Test
+    void fileActionsFollowSelectionAndStageWorks() throws Exception {
+        PersonIdent ident = new PersonIdent("Test", "test@example.invalid");
+        try (Git git = Git.init().setDirectory(repo.toFile()).call()) {
+            write("readme.txt", "a\n");
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).setSign(false).call();
+        }
+        write("readme.txt", "changed\n");
+        DefaultGitService service = new DefaultGitService(new GitCli());
+
+        FilesPane[] pane = new FilesPane[1];
+        FileAction[] actions = new FileAction[4];
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0] = new FilesPane(service);
+            actions[0] = FileAction.stage(service, pane[0], pane[0]::refresh);
+            actions[1] = FileAction.unstage(service, pane[0], pane[0]::refresh);
+            actions[2] = FileAction.discard(service, pane[0], pane[0]::refresh);
+            actions[3] = FileAction.delete(service, pane[0], pane[0]::refresh);
+            pane[0].showRepository(Optional.of(repo));
+        });
+        awaitRows(pane[0], 1);
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(actions[0].isEnabled()).isFalse(); // nothing selected yet
+            pane[0].selectRowForTest(0);
+            assertThat(actions[0].isEnabled()).isTrue();  // unstaged change
+            assertThat(actions[1].isEnabled()).isFalse(); // nothing staged
+            assertThat(actions[2].isEnabled()).isTrue();
+            assertThat(actions[3].isEnabled()).isTrue();
+            actions[0].actionPerformed(null);
+        });
+
+        long deadline = System.currentTimeMillis() + 10_000;
+        boolean[] unstageEnabled = new boolean[1];
+        while (!unstageEnabled[0] && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+            SwingUtilities.invokeAndWait(() -> unstageEnabled[0] = actions[1].isEnabled());
+        }
+        assertThat(service.status(repo).changes())
+                .containsExactly(new FileChange("readme.txt", ChangeType.MODIFIED, null));
+        assertThat(unstageEnabled[0]).isTrue(); // refreshed row keeps its selection
+        SwingUtilities.invokeAndWait(() -> assertThat(actions[0].isEnabled()).isFalse());
+    }
+
+    @Test
+    void discardRefreshesTheList() throws Exception {
+        PersonIdent ident = new PersonIdent("Test", "test@example.invalid");
+        try (Git git = Git.init().setDirectory(repo.toFile()).call()) {
+            write("readme.txt", "a\n");
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).setSign(false).call();
+        }
+        write("readme.txt", "changed\n");
+        write("new.txt", "new\n");
+        DefaultGitService service = new DefaultGitService(new GitCli());
+
+        FilesPane[] pane = new FilesPane[1];
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0] = new FilesPane(service);
+            // actions listen to the selection: they must not break the refresh when rows disappear
+            FileAction.stage(service, pane[0], () -> { });
+            FileAction.discard(service, pane[0], () -> { });
+            pane[0].showRepository(Optional.of(repo));
+        });
+        awaitRows(pane[0], 2);
+
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0].selectAllRowsForTest();
+        });
+        service.discard(repo, service.status(repo).changes());
+        SwingUtilities.invokeAndWait(pane[0]::refresh);
+
+        awaitRows(pane[0], 0);
+        int[] rows = new int[1];
+        SwingUtilities.invokeAndWait(() -> rows[0] = pane[0].visibleRowCount());
+        assertThat(rows[0]).isZero();
+    }
+
     private static void awaitRows(FilesPane pane, int expected) throws Exception {
         AtomicInteger rows = new AtomicInteger();
         long deadline = System.currentTimeMillis() + 10_000;

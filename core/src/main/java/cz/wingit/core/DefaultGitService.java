@@ -1,6 +1,8 @@
 package cz.wingit.core;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -10,25 +12,31 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ConfigConstants;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryState;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevWalk;
 
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.diff.DiffReader;
 import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.log.LogReader;
+import cz.wingit.core.merge.MergeResult;
+import cz.wingit.core.refs.BranchNames;
 import cz.wingit.core.refs.RefsReader;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.remote.AskPass;
@@ -36,6 +44,7 @@ import cz.wingit.core.remote.AuthFailures;
 import cz.wingit.core.remote.Credentials;
 import cz.wingit.core.remote.RemoteTarget;
 import cz.wingit.core.repo.Repositories;
+import cz.wingit.core.status.ChangeType;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.core.status.RepositoryStatus;
 import cz.wingit.core.status.StatusMapper;
@@ -146,6 +155,107 @@ public final class DefaultGitService implements GitService {
     }
 
     @Override
+    public MergeResult merge(Path workTree, String ref, boolean noFastForward) {
+        if (ref.isEmpty() || ref.startsWith("-")) {
+            throw new IllegalArgumentException("Not a branch: " + ref);
+        }
+        ObjectId before = readRepository(workTree, DefaultGitService::headId);
+        try {
+            cli.run(workTree, List.of("merge", "--no-edit", noFastForward ? "--no-ff" : "--ff", ref));
+        } catch (GitCommandException e) {
+            if (!mergeInProgress(workTree)) {
+                throw e;
+            }
+            List<String> conflicts = status(workTree).changes().stream()
+                    .filter(c -> c.staged() == ChangeType.CONFLICTED || c.unstaged() == ChangeType.CONFLICTED)
+                    .map(FileChange::path).toList();
+            return new MergeResult(MergeResult.Outcome.CONFLICTS, conflicts);
+        }
+        return readRepository(workTree, repository -> {
+            ObjectId after = headId(repository);
+            if (after == null || after.equals(before)) {
+                return MergeResult.of(MergeResult.Outcome.UP_TO_DATE);
+            }
+            try (RevWalk walk = new RevWalk(repository)) {
+                return MergeResult.of(walk.parseCommit(after).getParentCount() > 1
+                        ? MergeResult.Outcome.MERGED : MergeResult.Outcome.FAST_FORWARD);
+            } catch (IOException e) {
+                throw new GitException("Cannot read the merge result: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @Override
+    public boolean mergeInProgress(Path workTree) {
+        return readRepository(workTree, repository -> {
+            RepositoryState state = repository.getRepositoryState();
+            return state == RepositoryState.MERGING || state == RepositoryState.MERGING_RESOLVED;
+        });
+    }
+
+    @Override
+    public Optional<String> mergeMessage(Path workTree) {
+        return readRepository(workTree, repository -> {
+            try {
+                String message = repository.readMergeCommitMsg();
+                return message == null || message.isBlank() ? Optional.<String>empty()
+                        : Optional.of(stripComments(message));
+            } catch (IOException e) {
+                return Optional.<String>empty();
+            }
+        });
+    }
+
+    /** Removes Git's "#" comment lines (e.g. the list of conflicts) from a prepared message. */
+    static String stripComments(String message) {
+        return message.lines().filter(line -> !line.startsWith("#"))
+                .collect(Collectors.joining("\n")).strip();
+    }
+
+    @Override
+    public void abortMerge(Path workTree) {
+        cli.run(workTree, List.of("merge", "--abort"));
+    }
+
+    private static ObjectId headId(Repository repository) {
+        try {
+            return repository.resolve(Constants.HEAD);
+        } catch (IOException e) {
+            throw new GitException("Cannot read HEAD: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void createBranch(Path workTree, String name, boolean checkout) {
+        if (!BranchNames.isValid(name)) {
+            throw new IllegalArgumentException("Not a valid branch name: " + name);
+        }
+        cli.run(workTree, checkout ? List.of("switch", "--create", name) : List.of("branch", "--", name));
+    }
+
+    @Override
+    public void renameBranch(Path workTree, String name, String newName) {
+        if (!BranchNames.isValid(newName)) {
+            throw new IllegalArgumentException("Not a valid branch name: " + newName);
+        }
+        // -M only for a case change ("feature" -> "Feature"), which Windows sees as the same ref file.
+        String option = name.equalsIgnoreCase(newName) && !name.equals(newName) ? "-M" : "-m";
+        cli.run(workTree, List.of("branch", option, "--", name, newName));
+    }
+
+    @Override
+    public void deleteBranch(Path workTree, String name, boolean force) {
+        try {
+            cli.run(workTree, List.of("branch", force ? "-D" : "-d", "--", name));
+        } catch (GitCommandException e) {
+            if (!force && e.stderr().contains("not fully merged")) {
+                throw new GitBranchNotMergedException(name, e);
+            }
+            throw e;
+        }
+    }
+
+    @Override
     public void switchBranch(Path workTree, String branch) {
         cli.run(workTree, List.of("switch", "--no-guess", branch));
     }
@@ -180,6 +290,55 @@ public final class DefaultGitService implements GitService {
                 deleteQuietly(absolute);
             }
             throw e;
+        }
+    }
+
+    @Override
+    public void stage(Path workTree, List<FileChange> changes) {
+        List<String> paths = changes.stream().filter(c -> c.unstaged() != null).map(FileChange::path).toList();
+        if (!paths.isEmpty()) {
+            cli.run(workTree, List.of("--literal-pathspecs", "add", "--all",
+                    "--pathspec-from-file=-", "--pathspec-file-nul"), null, Map.of(), nulSeparated(paths));
+        }
+    }
+
+    @Override
+    public void unstage(Path workTree, List<FileChange> changes) {
+        List<String> paths = changes.stream().filter(c -> c.staged() != null).map(FileChange::path).toList();
+        if (!paths.isEmpty()) {
+            // 'reset' (unlike 'restore --staged') also works before the first commit.
+            cli.run(workTree, List.of("--literal-pathspecs", "reset", "-q",
+                    "--pathspec-from-file=-", "--pathspec-file-nul"), null, Map.of(), nulSeparated(paths));
+        }
+    }
+
+    @Override
+    public void discard(Path workTree, List<FileChange> changes) {
+        List<String> untracked = new ArrayList<>();
+        List<String> added = new ArrayList<>();
+        List<String> tracked = new ArrayList<>();
+        for (FileChange change : changes) {
+            if (change.staged() == null && change.unstaged() == ChangeType.UNTRACKED) {
+                untracked.add(change.path());
+            } else if (change.staged() == ChangeType.ADDED) {
+                added.add(change.path());
+            } else {
+                tracked.add(change.path());
+            }
+        }
+        if (!untracked.isEmpty()) {
+            List<String> args = new ArrayList<>(List.of("--literal-pathspecs", "clean", "-f", "-q", "--"));
+            args.addAll(untracked);
+            cli.run(workTree, args);
+        }
+        if (!added.isEmpty()) {
+            // New in the index, not in HEAD: remove from index and disk.
+            cli.run(workTree, List.of("--literal-pathspecs", "rm", "-f", "-q",
+                    "--pathspec-from-file=-", "--pathspec-file-nul"), null, Map.of(), nulSeparated(added));
+        }
+        if (!tracked.isEmpty()) {
+            cli.run(workTree, List.of("--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree",
+                    "--pathspec-from-file=-", "--pathspec-file-nul"), null, Map.of(), nulSeparated(tracked));
         }
     }
 
@@ -263,11 +422,90 @@ public final class DefaultGitService implements GitService {
     }
 
     @Override
+    public void deleteRemoteBranch(Path workTree, String remote, String branch, Credentials credentials,
+                                   Consumer<String> progress) {
+        String url = readRepository(workTree, repository -> RemoteTarget.pushUrl(repository, remote));
+        runRemote(workTree, List.of("push", "--progress", remote, "--delete", "refs/heads/" + branch),
+                url, credentials, progress);
+    }
+
+    @Override
+    public void renameRemoteBranch(Path workTree, String remote, String name, String newName,
+                                   Credentials credentials, Consumer<String> progress) {
+        if (!BranchNames.isValid(newName)) {
+            throw new IllegalArgumentException("Not a valid branch name: " + newName);
+        }
+        String[] urlAndId = readRepository(workTree, repository -> {
+            try {
+                ObjectId id = repository.resolve(Constants.R_REMOTES + remote + "/" + name);
+                if (id == null) {
+                    throw new GitException("Remote branch '" + remote + "/" + name + "' is not known; fetch first.");
+                }
+                return new String[] {RemoteTarget.pushUrl(repository, remote), id.name()};
+            } catch (IOException e) {
+                throw new GitException("Cannot read " + remote + "/" + name + ": " + e.getMessage(), e);
+            }
+        });
+        String oldRef = Constants.R_HEADS + name;
+        String newRef = Constants.R_HEADS + newName;
+        // The leases make the push fail (atomically, nothing changes) if the old branch moved on the
+        // server since the last fetch or the new name is already taken there.
+        runRemote(workTree, List.of("push", "--progress", "--atomic",
+                "--force-with-lease=" + oldRef + ":" + urlAndId[1],
+                "--force-with-lease=" + newRef + ":",
+                remote, urlAndId[1] + ":" + newRef, ":" + oldRef), urlAndId[0], credentials, progress);
+        retrack(workTree, remote, oldRef, newRef);
+    }
+
+    /** Points local branches tracking {@code remote}/{@code oldRef} at {@code newRef}. */
+    private void retrack(Path workTree, String remote, String oldRef, String newRef) {
+        List<String> tracking = readRepository(workTree, repository -> {
+            StoredConfig config = repository.getConfig();
+            List<String> result = new ArrayList<>();
+            for (String branch : config.getSubsections(ConfigConstants.CONFIG_BRANCH_SECTION)) {
+                if (remote.equals(config.getString(ConfigConstants.CONFIG_BRANCH_SECTION, branch,
+                        ConfigConstants.CONFIG_KEY_REMOTE))
+                        && oldRef.equals(config.getString(ConfigConstants.CONFIG_BRANCH_SECTION, branch,
+                        ConfigConstants.CONFIG_KEY_MERGE))) {
+                    result.add(branch);
+                }
+            }
+            return result;
+        });
+        for (String branch : tracking) {
+            cli.run(workTree, List.of("config", "--local", "branch." + branch + ".merge", newRef));
+        }
+    }
+
+    @Override
     public void storeCredentials(Path workTree, String url, Credentials credentials) {
         String input = "url=" + singleLine(url) + "\n"
                 + "username=" + singleLine(credentials.username()) + "\n"
                 + "password=" + singleLine(credentials.password()) + "\n\n";
+        // The user name first: it also helps when the helper already holds the password but has
+        // several accounts for this host and cannot choose one without asking.
+        String origin = credentialOrigin(url);
+        if (origin != null) {
+            cli.run(workTree, List.of("config", "--local", "credential." + origin + ".username",
+                    credentials.username()));
+        }
         cli.run(workTree, List.of("credential", "approve"), null, Map.of(), input);
+    }
+
+    /** {@code https://host[:port]} of an HTTP(S) URL (without user and path), or {@code null}. */
+    static String credentialOrigin(String url) {
+        try {
+            URI uri = new URI(url);
+            String scheme = uri.getScheme();
+            if (uri.getHost() == null || scheme == null
+                    || !(scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("http"))) {
+                return null;
+            }
+            return scheme.toLowerCase(Locale.ROOT) + "://" + uri.getHost()
+                    + (uri.getPort() >= 0 ? ":" + uri.getPort() : "");
+        } catch (URISyntaxException e) {
+            return null;
+        }
     }
 
     private void runRemote(Path workTree, List<String> args, String url, Credentials credentials,

@@ -51,6 +51,23 @@ public record RemoteTarget(String branch, String remote, String remoteRef, Strin
         return target;
     }
 
+    /**
+     * URL Git pushes to for {@code remote} ({@code pushurl}, else {@code url}).
+     *
+     * @throws GitException if the remote has no URL
+     */
+    public static String pushUrl(Repository repository, String remote) {
+        StoredConfig config = repository.getConfig();
+        String url = config.getString(ConfigConstants.CONFIG_REMOTE_SECTION, remote, "pushurl");
+        if (url == null) {
+            url = config.getString(ConfigConstants.CONFIG_REMOTE_SECTION, remote, ConfigConstants.CONFIG_KEY_URL);
+        }
+        if (url == null) {
+            throw new GitException("Remote '" + remote + "' has no URL configured.");
+        }
+        return url;
+    }
+
     private static RemoteTarget resolve(Repository repository, boolean push) {
         String branch = currentBranch(repository);
         StoredConfig config = repository.getConfig();

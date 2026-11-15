@@ -82,9 +82,10 @@ final class CommitDialog extends JDialog {
 
     /**
      * @param recentMessages messages of previous commits offered for reuse, newest first
+     * @param initialMessage message to start with (e.g. the one Git prepared for a merge), or {@code null}
      */
     CommitDialog(Window owner, GitService git, Path workTree, List<FileChange> changes,
-                 Collection<FileChange> preselected, List<String> recentMessages) {
+                 Collection<FileChange> preselected, List<String> recentMessages, String initialMessage) {
         super(owner, Messages.get("commit.title"), ModalityType.APPLICATION_MODAL);
         this.git = git;
         this.workTree = workTree;
@@ -94,6 +95,10 @@ final class CommitDialog extends JDialog {
         configureTable();
         configureMessage();
         configureDate();
+        if (initialMessage != null) {
+            messageArea.setText(initialMessage);
+            messageArea.setCaretPosition(0);
+        }
         setContentPane(createContent());
 
         allBox.addActionListener(e -> {
@@ -131,9 +136,10 @@ final class CommitDialog extends JDialog {
 
     /** Shows the dialog; returns how it ended if a commit was made. */
     static Optional<Result> show(Component parent, GitService git, Path workTree, List<FileChange> changes,
-                                 Collection<FileChange> preselected, List<String> recentMessages) {
+                                 Collection<FileChange> preselected, List<String> recentMessages,
+                                 String initialMessage) {
         CommitDialog dialog = new CommitDialog(SwingUtilities.getWindowAncestor(parent), git, workTree,
-                changes, preselected, recentMessages);
+                changes, preselected, recentMessages, initialMessage);
         dialog.setVisible(true);
         return Optional.ofNullable(dialog.result);
     }

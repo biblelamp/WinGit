@@ -21,11 +21,14 @@ public final class MainToolBar extends JToolBar {
 
     private static final long serialVersionUID = 1L;
 
-    /** Button ids; each maps to {@code toolbar.<id>} text and {@code icons/toolbar/<id>.svg}. */
+    /**
+     * Button ids; each maps to {@code toolbar.<id>} text, {@code toolbar.<id>.tooltip} and
+     * {@code icons/toolbar/<id>.svg}.
+     */
     static final String[][] GROUPS = {
             {"fetch", "pull", "push"},
             {"commit", "merge"},
-            {"stage", "unstage", "discard"},
+            {"stage", "unstage", "discard", "delete"},
             {"stash", "history"},
     };
 
@@ -46,10 +49,10 @@ public final class MainToolBar extends JToolBar {
         JButton button = new JButton();
         if (action != null) {
             button.setAction(action);
-            button.setToolTipText(action.getValue(Action.NAME) + acceleratorHint(action));
         } else {
             button.setEnabled(false);
         }
+        button.setToolTipText(tooltip(id, action));
         // Short toolbar label and icon instead of the menu text ("Commit...").
         button.setText(Messages.get("toolbar." + id));
         button.setIcon(Icons.toolbar(id));
@@ -57,6 +60,12 @@ public final class MainToolBar extends JToolBar {
         button.setHorizontalTextPosition(SwingConstants.CENTER);
         button.setFocusable(false);
         return button;
+    }
+
+    /** What the button does, its shortcut, or that it is not available yet. */
+    static String tooltip(String id, Action action) {
+        String text = Messages.get("toolbar." + id + ".tooltip");
+        return action == null ? Messages.format("toolbar.notAvailable", text) : text + acceleratorHint(action);
     }
 
     private static String acceleratorHint(Action action) {

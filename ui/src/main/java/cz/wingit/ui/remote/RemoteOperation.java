@@ -38,7 +38,7 @@ import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Dialogs;
 
 /**
- * Runs a push or pull with a modal progress dialog. When the remote asks for credentials that
+ * Runs a remote operation (push, pull, deleting a branch on the server, ...) with a modal progress dialog. When the remote asks for credentials that
  * Git cannot supply (no credential manager, rejected or expired credentials), the user is asked
  * to sign in and the operation is retried with what they entered.
  */
@@ -64,6 +64,16 @@ public final class RemoteOperation {
         }
     }
 
+    /** One attempt of a remote operation; called on a worker thread. */
+    @FunctionalInterface
+    public interface Call {
+        /**
+         * @param credentials entered by the user, or {@code null} for saved ones
+         * @param progress    receives Git progress lines
+         */
+        void run(Credentials credentials, Consumer<String> progress);
+    }
+
     private static final Pattern PERCENT = Pattern.compile("(\\d{1,3})%");
 
     private final GitService git;
@@ -81,11 +91,27 @@ public final class RemoteOperation {
      * @return {@code true} if the operation succeeded
      */
     public boolean run(Kind kind, Path workTree) {
+        return run(kind.title(), kind.errorTitle(), workTree, (credentials, progress) -> {
+            if (kind == Kind.PUSH) {
+                git.push(workTree, credentials, progress);
+            } else {
+                git.pull(workTree, credentials, progress);
+            }
+        });
+    }
+
+    /**
+     * Runs {@code call} with progress, sign-in and retry; shows errors titled {@code errorTitle}.
+     * Call on the EDT.
+     *
+     * @return {@code true} if the operation succeeded
+     */
+    public boolean run(String title, String errorTitle, Path workTree, Call call) {
         Credentials credentials = null;
         boolean remember = false;
         String url = null;
         while (true) {
-            Outcome outcome = runOnce(kind, workTree, credentials, remember, url);
+            Outcome outcome = runOnce(title, workTree, call, credentials, remember, url);
             if (outcome.authFailure() != null) {
                 url = outcome.authFailure().url();
                 String username = credentials != null ? credentials.username() : LoginDialog.usernameFromUrl(url);
@@ -98,32 +124,44 @@ public final class RemoteOperation {
                 continue;
             }
             if (outcome.error() != null) {
-                Dialogs.showError(parent, kind.errorTitle(), outcome.error());
+                Dialogs.showError(parent, errorTitle, outcome.error());
+            }
+            if (outcome.succeeded() && outcome.storeError() != null) {
+                Dialogs.showError(parent, Messages.get("remote.store.error.title"),
+                        Messages.format("remote.store.error.message", Dialogs.describe(outcome.storeError())));
             }
             return outcome.succeeded();
         }
     }
 
-    private record Outcome(boolean succeeded, GitAuthenticationException authFailure, Throwable error) {
+    /** @param storeError why remembering the credentials failed (the operation itself may have worked) */
+    private record Outcome(boolean succeeded, GitAuthenticationException authFailure, Throwable error,
+                           Throwable storeError) {
+
+        Outcome(boolean succeeded, GitAuthenticationException authFailure, Throwable error) {
+            this(succeeded, authFailure, error, null);
+        }
+
+        Outcome withStoreError(Throwable newStoreError) {
+            return new Outcome(succeeded, authFailure, error, newStoreError);
+        }
     }
 
-    private Outcome runOnce(Kind kind, Path workTree, Credentials credentials, boolean remember, String url) {
-        ProgressDialog dialog = new ProgressDialog(SwingUtilities.getWindowAncestor(parent), kind.title());
+    private Outcome runOnce(String title, Path workTree, Call call, Credentials credentials, boolean remember,
+                            String url) {
+        ProgressDialog dialog = new ProgressDialog(SwingUtilities.getWindowAncestor(parent), title);
         Outcome[] outcome = {new Outcome(false, null, null)};
+        Throwable[] storeError = {null};
         SwingWorker<Void, String> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() {
                 Consumer<String> progress = this::publish;
-                if (kind == Kind.PUSH) {
-                    git.push(workTree, credentials, progress);
-                } else {
-                    git.pull(workTree, credentials, progress);
-                }
+                call.run(credentials, progress);
                 if (credentials != null && remember && url != null) {
                     try {
                         git.storeCredentials(workTree, url, credentials);
                     } catch (RuntimeException e) {
-                        // The operation itself succeeded; the user just signs in again next time.
+                        storeError[0] = e; // the operation itself succeeded; reported afterwards
                     }
                 }
                 return null;
@@ -136,7 +174,7 @@ public final class RemoteOperation {
 
             @Override
             protected void done() {
-                outcome[0] = outcome(this);
+                outcome[0] = outcome(this).withStoreError(storeError[0]);
                 dialog.dispose();
             }
         };

@@ -20,8 +20,13 @@ import cz.wingit.core.GitService;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.branches.DeleteBranchAction;
+import cz.wingit.ui.branches.MergeAction;
+import cz.wingit.ui.branches.NewBranchAction;
+import cz.wingit.ui.branches.RenameBranchAction;
 import cz.wingit.ui.commit.CommitAction;
 import cz.wingit.ui.diff.DiffPane;
+import cz.wingit.ui.files.FileAction;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
 import cz.wingit.ui.remote.RemoteAction;
@@ -64,11 +69,23 @@ public final class MainWindow extends JFrame {
         Action commit = new CommitAction(git, repositoriesPane, filesPane::selectedChanges, refresh);
         Action pull = RemoteAction.pull(git, repositoriesPane, refresh);
         Action push = RemoteAction.push(git, repositoriesPane, refresh);
+        Action stage = FileAction.stage(git, filesPane, refresh);
+        Action unstage = FileAction.unstage(git, filesPane, refresh);
+        Action discard = FileAction.discard(git, filesPane, refresh);
+        Action deleteFiles = FileAction.delete(git, filesPane, refresh);
+        Action newBranch = new NewBranchAction(git, repositoriesPane, refresh);
+        Action deleteBranch = new DeleteBranchAction(git, branchesPane, refresh);
+        Action renameBranch = new RenameBranchAction(git, branchesPane, refresh);
+        Action merge = MergeAction.merge(git, repositoriesPane, branchesPane, refresh);
+        Action abortMerge = MergeAction.abort(git, repositoriesPane, refresh);
+        branchesPane.installContextActions(renameBranch, deleteBranch, newBranch, merge);
         setJMenuBar(new MainMenuBar(
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
                 new CloseRepositoryAction(repositoriesPane),
-                removeRepository, commit, pull, push));
+                removeRepository, commit, pull, push, newBranch, renameBranch, deleteBranch, merge, abortMerge,
+                stage, unstage, discard, deleteFiles));
+        filesPane.installContextActions(deleteFiles, stage, unstage, null, discard, deleteFiles);
         // Other repositories are not watched; re-check them when the user comes back to the window.
         addWindowFocusListener(new WindowAdapter() {
             @Override
@@ -83,7 +100,8 @@ public final class MainWindow extends JFrame {
             historyPane.showRepository(opened);
             autoRefresh.watch(opened);
         });
-        setContentPane(createContent(Map.of("commit", commit, "pull", pull, "push", push),
+        setContentPane(createContent(Map.of("commit", commit, "merge", merge, "pull", pull, "push", push,
+                        "stage", stage, "unstage", unstage, "discard", discard, "delete", deleteFiles),
                 repositoriesPane, branchesPane, filesPane, diffPane, historyPane));
 
         setMinimumSize(new Dimension(640, 400));

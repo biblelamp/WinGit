@@ -38,7 +38,7 @@ public final class CommitAction extends AbstractAction {
     private static final int RECENT_MESSAGES = 15;
 
     /** What the dialog needs, read together in the background. */
-    private record DialogData(List<FileChange> changes, List<String> recentMessages) {
+    private record DialogData(List<FileChange> changes, List<String> recentMessages, String mergeMessage) {
     }
 
     /**
@@ -77,7 +77,13 @@ public final class CommitAction extends AbstractAction {
                 } catch (RuntimeException e) {
                     messages = List.of(); // only a convenience; the dialog works without it
                 }
-                return new DialogData(changes, messages);
+                String mergeMessage = null;
+                try {
+                    mergeMessage = changes.isEmpty() ? null : git.mergeMessage(repo).orElse(null);
+                } catch (RuntimeException e) {
+                    // no prepared message; the user writes one
+                }
+                return new DialogData(changes, messages, mergeMessage);
             }
 
             @Override
@@ -85,7 +91,7 @@ public final class CommitAction extends AbstractAction {
                 busy = false;
                 try {
                     DialogData data = get();
-                    showDialog(repo, data.changes(), preselected, data.recentMessages());
+                    showDialog(repo, data.changes(), preselected, data.recentMessages(), data.mergeMessage());
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException ex) {
@@ -96,7 +102,7 @@ public final class CommitAction extends AbstractAction {
     }
 
     private void showDialog(Path repo, List<FileChange> changes, List<FileChange> preselected,
-                            List<String> recentMessages) {
+                            List<String> recentMessages, String mergeMessage) {
         if (!pane.openedRepository().equals(Optional.of(repo))) {
             return; // another repository was opened meanwhile
         }
@@ -104,7 +110,8 @@ public final class CommitAction extends AbstractAction {
             Dialogs.showInfo(pane, Messages.get("commit.nothing.title"), Messages.get("commit.nothing.message"));
             return;
         }
-        Optional<CommitDialog.Result> result = CommitDialog.show(pane, git, repo, changes, preselected, recentMessages);
+        Optional<CommitDialog.Result> result = CommitDialog.show(pane, git, repo, changes, preselected, recentMessages,
+                mergeMessage);
         if (result.isEmpty()) {
             return;
         }

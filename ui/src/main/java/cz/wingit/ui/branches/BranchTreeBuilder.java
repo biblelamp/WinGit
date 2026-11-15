@@ -16,6 +16,8 @@ final class BranchTreeBuilder {
 
     static final String LOCAL = "local";
     static final String REMOTES = "remotes";
+    /** Key prefix of local branch nodes, followed by the branch name. */
+    static final String LOCAL_BRANCH_KEY = "branch:";
     static final String TAGS = "tags";
     static final String STASHES = "stashes";
 
@@ -31,7 +33,7 @@ final class BranchTreeBuilder {
             local.add(leaf("detached", Messages.format("branches.detached", refs.detachedAt()), null, true, null));
         }
         for (LocalBranch branch : refs.localBranches()) {
-            local.add(leaf("branch:" + branch.name(), branch.name(), trackingDetail(branch), branch.current(),
+            local.add(leaf(LOCAL_BRANCH_KEY + branch.name(), branch.name(), trackingDetail(branch), branch.current(),
                     branch.current() ? null : BranchItem.Target.local(branch.name())));
         }
         root.add(local);

@@ -28,8 +28,13 @@ import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.branches.DeleteBranchAction;
+import cz.wingit.ui.branches.MergeAction;
+import cz.wingit.ui.branches.NewBranchAction;
+import cz.wingit.ui.branches.RenameBranchAction;
 import cz.wingit.ui.commit.CommitAction;
 import cz.wingit.ui.diff.DiffPane;
+import cz.wingit.ui.files.FileAction;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
 import cz.wingit.ui.remote.RemoteAction;
@@ -76,7 +81,9 @@ class MainWindowContentTest {
         AbstractButton pushButton = findButton(toolBar, "Push");
         AbstractButton mergeButton = findButton(toolBar, "Merge");
         assertThat(pushButton.getIcon()).isNotNull();
-        assertThat(pushButton.getToolTipText()).isEqualTo("Push (Ctrl+Shift+K)");
+        assertThat(pushButton.getToolTipText())
+                .isEqualTo("Upload the commits of the current branch to the remote (Ctrl+Shift+K)");
+        assertThat(mergeButton.getToolTipText()).isEqualTo("Merge another branch into the current one – not available yet");
         assertThat(pushButton.isEnabled()).isFalse(); // no repository open yet
 
         push.setEnabled(true);
@@ -95,15 +102,44 @@ class MainWindowContentTest {
                 new RemoveRepositoryAction(repositoriesPane),
                 new CommitAction(git, repositoriesPane, filesPane::selectedChanges, () -> { }),
                 RemoteAction.pull(git, repositoriesPane, () -> { }),
-                RemoteAction.push(git, repositoriesPane, () -> { }));
+                RemoteAction.push(git, repositoriesPane, () -> { }),
+                new NewBranchAction(git, repositoriesPane, () -> { }),
+                new RenameBranchAction(git, new BranchesPane(git), () -> { }),
+                new DeleteBranchAction(git, new BranchesPane(git), () -> { }),
+                MergeAction.merge(git, repositoriesPane, new BranchesPane(git), () -> { }),
+                MergeAction.abort(git, repositoriesPane, () -> { }),
+                FileAction.stage(git, filesPane, () -> { }),
+                FileAction.unstage(git, filesPane, () -> { }),
+                FileAction.discard(git, filesPane, () -> { }),
+                FileAction.delete(git, filesPane, () -> { }));
 
-        assertThat(menuBar.getMenuCount()).isEqualTo(3);
+        assertThat(menuBar.getMenuCount()).isEqualTo(4);
+        JMenu branch = menuBar.getMenu(2);
+        assertThat(branch.getText()).isEqualTo("Branch");
+        assertThat(branch.getItem(0).getText()).isEqualTo("New Branch…");
+        assertThat(branch.getItem(0).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl B"));
+        assertThat(branch.getItem(0).isEnabled()).isFalse();
+        assertThat(branch.getItem(1).getText()).isEqualTo("Rename Branch…");
+        assertThat(branch.getItem(1).isEnabled()).isFalse(); // no branch selected
+        assertThat(branch.getItem(2).getText()).isEqualTo("Delete Branch…");
+        assertThat(branch.getItem(2).isEnabled()).isFalse();
+        assertThat(branch.getItem(3)).isNull(); // separator
+        assertThat(branch.getItem(4).getText()).isEqualTo("Merge…");
+        assertThat(branch.getItem(4).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift M"));
+        assertThat(branch.getItem(4).isEnabled()).isFalse(); // no repository open
+        assertThat(branch.getItem(5).getText()).isEqualTo("Abort Merge…");
         JMenu local = menuBar.getMenu(1);
         assertThat(local.getText()).isEqualTo("Local");
         assertThat(local.getItem(0).getText()).isEqualTo("Commit…");
         assertThat(local.getItem(0).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl K"));
         assertThat(local.getItem(0).isEnabled()).isFalse();
-        JMenu remote = menuBar.getMenu(2);
+        assertThat(local.getItem(1)).isNull(); // separator
+        assertThat(local.getItem(2).getText()).isEqualTo("Stage");
+        assertThat(local.getItem(3).getText()).isEqualTo("Unstage");
+        assertThat(local.getItem(4).getText()).isEqualTo("Discard Changes…");
+        assertThat(local.getItem(5).getText()).isEqualTo("Delete…");
+        assertThat(local.getItem(2).isEnabled()).isFalse(); // nothing selected
+        JMenu remote = menuBar.getMenu(3);
         assertThat(remote.getText()).isEqualTo("Remote");
         assertThat(remote.getItem(0).getText()).isEqualTo("Pull");
         assertThat(remote.getItem(0).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl T"));

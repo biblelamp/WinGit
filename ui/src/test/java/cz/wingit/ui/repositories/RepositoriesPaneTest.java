@@ -8,12 +8,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.SwingUtilities;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -45,7 +47,7 @@ class RepositoriesPaneTest {
         list.add(dirty);
 
         AtomicReference<RepositoriesPane> pane = new AtomicReference<>();
-        SwingUtilities.invokeAndWait(() -> pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list)));
+        SwingUtilities.invokeAndWait(() -> pane.set(track(new RepositoriesPane(new DefaultGitService(new GitCli()), list))));
 
         List<RepositoryEntry> entries = awaitLoaded(pane.get());
         assertThat(entries).extracting(RepositoryEntry::changed).containsExactly(false, true);
@@ -69,7 +71,7 @@ class RepositoriesPaneTest {
         AtomicReference<RepositoriesPane> pane = new AtomicReference<>();
         List<Optional<Path>> opened = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            pane.set(track(new RepositoriesPane(new DefaultGitService(new GitCli()), list)));
             pane.get().addOpenListener(opened::add);
         });
 
@@ -97,7 +99,7 @@ class RepositoriesPaneTest {
         AtomicReference<CloseRepositoryAction> close = new AtomicReference<>();
         List<Optional<Path>> opened = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            pane.set(track(new RepositoriesPane(new DefaultGitService(new GitCli()), list)));
             close.set(new CloseRepositoryAction(pane.get()));
             pane.get().addOpenListener(opened::add);
         });
@@ -123,7 +125,7 @@ class RepositoriesPaneTest {
         AtomicReference<RepositoriesPane> pane = new AtomicReference<>();
         List<Optional<Path>> opened = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            pane.set(track(new RepositoriesPane(new DefaultGitService(new GitCli()), list)));
             pane.get().open(existing);
             pane.get().addOpenListener(opened::add);
             pane.get().addRepository(added);
@@ -146,7 +148,7 @@ class RepositoriesPaneTest {
         List<Path> asked = new ArrayList<>();
         List<Optional<Path>> opened = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            pane.set(track(new RepositoriesPane(new DefaultGitService(new GitCli()), list)));
             pane.get().addOpenListener(opened::add);
         });
 
@@ -188,12 +190,27 @@ class RepositoriesPaneTest {
         assertThat(Icons.repositoryMissing().hasFound()).isTrue();
     }
 
+    /** Panes created by a test; their background reads must end before the temp folder is deleted. */
+    private final List<RepositoriesPane> panes = new CopyOnWriteArrayList<>();
+
+    private RepositoriesPane track(RepositoriesPane pane) {
+        panes.add(pane);
+        return pane;
+    }
+
+    @AfterEach
+    void awaitBackgroundReads() throws Exception {
+        for (RepositoriesPane pane : panes) {
+            awaitLoaded(pane);
+        }
+    }
+
     private static List<RepositoryEntry> awaitLoaded(RepositoriesPane pane) throws Exception {
         AtomicReference<List<RepositoryEntry>> entries = new AtomicReference<>();
         long deadline = System.currentTimeMillis() + 10_000;
         do {
             SwingUtilities.invokeAndWait(() -> entries.set(pane.entries()));
-            if (entries.get().stream().allMatch(e -> e.changed() != null || e.missing())) {
+            if (entries.get().stream().allMatch(e -> e.changed() != null && e.unpushed() != null || e.missing())) {
                 return entries.get();
             }
             Thread.sleep(50);
