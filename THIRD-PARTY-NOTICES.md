@@ -24,6 +24,7 @@ Repository list icons in `ui/src/main/resources/cz/wingit/ui/icons/repositories/
 |-------------------------|---------------|
 | repository.svg          | folder-git-2  |
 | repository-changed.svg  | folder-git-2  |
+| repository-missing.svg  | folder-x      |
 
 File status icons in `ui/src/main/resources/cz/wingit/ui/icons/files/` (same version):
 

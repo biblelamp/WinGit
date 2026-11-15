@@ -7,10 +7,12 @@ import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 import javax.swing.JFrame;
+import javax.swing.Action;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
 
@@ -18,9 +20,11 @@ import cz.wingit.core.GitService;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.commit.CommitAction;
 import cz.wingit.ui.diff.DiffPane;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
+import cz.wingit.ui.remote.RemoteAction;
 import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
@@ -43,24 +47,28 @@ public final class MainWindow extends JFrame {
         repositoriesPane = new RepositoriesPane(git, repositories);
         RemoveRepositoryAction removeRepository = new RemoveRepositoryAction(repositoriesPane);
         repositoriesPane.installRemoveAction(removeRepository);
-        setJMenuBar(new MainMenuBar(
-                new AddRepositoryAction(git, repositoriesPane),
-                new CloneAction(git, repositoriesPane),
-                new CloseRepositoryAction(repositoriesPane),
-                removeRepository));
         FilesPane filesPane = new FilesPane(git);
         BranchesPane branchesPane = new BranchesPane(git);
         HistoryPane historyPane = new HistoryPane(git);
         DiffPane diffPane = new DiffPane(git);
         filesPane.addFileSelectionListener(diffPane::showFile);
         filesPane.addStatusListener((path, status) -> repositoriesPane.updateChanged(path, !status.isClean()));
-        AutoRefresh autoRefresh = new AutoRefresh(git, () -> {
+        Runnable refresh = () -> {
             filesPane.refresh();
             branchesPane.refresh();
             historyPane.refresh();
             diffPane.refresh();
             repositoriesPane.openedRepository().ifPresent(repositoriesPane::refreshBranch);
-        });
+        };
+        AutoRefresh autoRefresh = new AutoRefresh(git, refresh);
+        Action commit = new CommitAction(git, repositoriesPane, filesPane::selectedChanges, refresh);
+        Action pull = RemoteAction.pull(git, repositoriesPane, refresh);
+        Action push = RemoteAction.push(git, repositoriesPane, refresh);
+        setJMenuBar(new MainMenuBar(
+                new AddRepositoryAction(git, repositoriesPane),
+                new CloneAction(git, repositoriesPane),
+                new CloseRepositoryAction(repositoriesPane),
+                removeRepository, commit, pull, push));
         // Other repositories are not watched; re-check them when the user comes back to the window.
         addWindowFocusListener(new WindowAdapter() {
             @Override
@@ -75,7 +83,8 @@ public final class MainWindow extends JFrame {
             historyPane.showRepository(opened);
             autoRefresh.watch(opened);
         });
-        setContentPane(createContent(repositoriesPane, branchesPane, filesPane, diffPane, historyPane));
+        setContentPane(createContent(Map.of("commit", commit, "pull", pull, "push", push),
+                repositoriesPane, branchesPane, filesPane, diffPane, historyPane));
 
         setMinimumSize(new Dimension(640, 400));
         setSize(fitToScreen(1280, 820));
@@ -95,10 +104,11 @@ public final class MainWindow extends JFrame {
         repositoriesPane.open(workTree);
     }
 
-    static JPanel createContent(RepositoriesPane repositoriesPane, BranchesPane branchesPane, FilesPane filesPane,
-                                DiffPane diffPane, HistoryPane historyPane) {
+    static JPanel createContent(Map<String, Action> toolbarActions, RepositoriesPane repositoriesPane,
+                                BranchesPane branchesPane, FilesPane filesPane, DiffPane diffPane,
+                                HistoryPane historyPane) {
         JPanel root = new JPanel(new BorderLayout());
-        root.add(new MainToolBar(), BorderLayout.NORTH);
+        root.add(new MainToolBar(toolbarActions), BorderLayout.NORTH);
         root.add(new MainContent(repositoriesPane, branchesPane, filesPane, diffPane, historyPane), BorderLayout.CENTER);
         root.add(new StatusBar(), BorderLayout.SOUTH);
         return root;

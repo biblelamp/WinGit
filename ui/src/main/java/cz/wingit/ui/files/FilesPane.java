@@ -190,6 +190,15 @@ public final class FilesPane extends TitledPane {
         }
     }
 
+    /** Files of the selected rows, in the order shown. Call on the EDT. */
+    public List<FileChange> selectedChanges() {
+        List<FileChange> selected = new ArrayList<>();
+        for (int row : table.getSelectedRows()) {
+            selected.add(model.getChange(table.convertRowIndexToModel(row)));
+        }
+        return selected;
+    }
+
     /** Selects a visible row (for tests). */
     void selectRowForTest(int row) {
         table.setRowSelectionInterval(row, row);

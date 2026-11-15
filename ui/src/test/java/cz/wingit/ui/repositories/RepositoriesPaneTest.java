@@ -114,9 +114,78 @@ class RepositoriesPaneTest {
     }
 
     @Test
+    void addedRepositoryIsSelectedAndOpened() throws Exception {
+        Path existing = createRepo("existing");
+        Path added = createRepo("added");
+        RepositoryList list = RepositoryList.load(tempDir.resolve("add.txt"));
+        list.add(existing);
+
+        AtomicReference<RepositoriesPane> pane = new AtomicReference<>();
+        List<Optional<Path>> opened = new ArrayList<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            pane.get().open(existing);
+            pane.get().addOpenListener(opened::add);
+            pane.get().addRepository(added);
+        });
+
+        assertThat(opened).containsExactly(Optional.of(added));
+        assertThat(pane.get().selectedRepository()).contains(added);
+        assertThat(pane.get().openedRepository()).contains(added);
+    }
+
+    @Test
+    void missingFolderIsMarkedAndOfferedForRemoval() throws Exception {
+        Path present = createRepo("present");
+        Path gone = tempDir.resolve("gone");
+        RepositoryList list = RepositoryList.load(tempDir.resolve("missing.txt"));
+        list.add(present);
+        list.add(gone);
+
+        AtomicReference<RepositoriesPane> pane = new AtomicReference<>();
+        List<Path> asked = new ArrayList<>();
+        List<Optional<Path>> opened = new ArrayList<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new RepositoriesPane(new DefaultGitService(new GitCli()), list));
+            pane.get().addOpenListener(opened::add);
+        });
+
+        List<RepositoryEntry> entries = awaitLoaded(pane.get());
+        assertThat(entries).extracting(RepositoryEntry::missing).containsExactly(true, false); // sorted: gone, present
+        assertThat(entries.get(0).branch()).isNull();
+
+        // Restoring the last session does not open it and does not ask.
+        AtomicReference<Boolean> restored = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.get().setConfirmRemoveMissing(path -> {
+                asked.add(path);
+                return false;
+            });
+            restored.set(pane.get().open(gone));
+        });
+        assertThat(restored.get()).isFalse();
+        assertThat(asked).isEmpty();
+
+        // Opening by double-click / Enter asks; "No" keeps it in the list, still not opened.
+        SwingUtilities.invokeAndWait(() -> pane.get().openSelected());
+        assertThat(asked).containsExactly(gone);
+        assertThat(list.paths()).contains(gone);
+        assertThat(opened).isEmpty();
+
+        // "Yes" removes it from the list.
+        SwingUtilities.invokeAndWait(() -> {
+            pane.get().setConfirmRemoveMissing(path -> true);
+            pane.get().openSelected();
+        });
+        assertThat(list.paths()).containsExactly(present);
+        assertThat(opened).isEmpty();
+    }
+
+    @Test
     void repositoryIconsAreBundled() {
         assertThat(Icons.repository(false).hasFound()).isTrue();
         assertThat(Icons.repository(true).hasFound()).isTrue();
+        assertThat(Icons.repositoryMissing().hasFound()).isTrue();
     }
 
     private static List<RepositoryEntry> awaitLoaded(RepositoriesPane pane) throws Exception {
@@ -124,7 +193,7 @@ class RepositoriesPaneTest {
         long deadline = System.currentTimeMillis() + 10_000;
         do {
             SwingUtilities.invokeAndWait(() -> entries.set(pane.entries()));
-            if (entries.get().stream().allMatch(e -> e.changed() != null)) {
+            if (entries.get().stream().allMatch(e -> e.changed() != null || e.missing())) {
                 return entries.get();
             }
             Thread.sleep(50);

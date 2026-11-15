@@ -12,9 +12,11 @@ import java.util.List;
  * @param author     author name
  * @param authorTime when the change was authored
  * @param refs       branches/tags pointing at this commit, in display order
+ * @param unpushed   the commit is on no remote-tracking branch yet (only local); always {@code false}
+ *                   in a repository without remote-tracking branches, where "pushed" has no meaning
  */
 public record CommitInfo(String id, List<String> parents, String message, String author, Instant authorTime,
-                         List<RefLabel> refs) {
+                         List<RefLabel> refs, boolean unpushed) {
 
     public CommitInfo {
         parents = List.copyOf(parents);

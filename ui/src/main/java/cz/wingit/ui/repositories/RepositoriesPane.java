@@ -5,6 +5,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -52,6 +54,7 @@ public final class RepositoriesPane extends TitledPane {
     private final transient Map<Path, Long> changedStamps = new HashMap<>();
     private boolean fullRefreshRunning;
     private transient Path opened;
+    private transient Predicate<Path> confirmRemoveMissing = this::askRemoveMissing;
     private final transient List<Consumer<Optional<Path>>> openListeners = new ArrayList<>();
 
     public RepositoriesPane(GitService git, RepositoryList repositories) {
@@ -70,7 +73,7 @@ public final class RepositoriesPane extends TitledPane {
         reload(null);
     }
 
-    /** Adds a repository to the persistent list and selects it. Call on the EDT. */
+    /** Adds a repository to the persistent list, selects and opens it. Call on the EDT. */
     public void addRepository(Path workTree) {
         try {
             repositories.add(workTree);
@@ -79,6 +82,7 @@ public final class RepositoriesPane extends TitledPane {
             return;
         }
         reload(workTree);
+        open(workTree); // a just added, created or cloned repository is opened right away
     }
 
     /**
@@ -113,15 +117,49 @@ public final class RepositoriesPane extends TitledPane {
         return entry != null ? Optional.of(entry.path()) : Optional.empty();
     }
 
-    /** Opens the selected repository (same as double-click / Enter). Call on the EDT. */
+    /**
+     * Opens the selected repository (same as double-click / Enter). If its folder no longer exists,
+     * it is marked as missing and the user is offered to remove it from the list. Call on the EDT.
+     */
     public void openSelected() {
-        selectedRepository().ifPresent(this::setOpened);
+        int index = list.getSelectedIndex();
+        if (index < 0) {
+            return;
+        }
+        Path path = model.get(index).path();
+        if (Files.isDirectory(path)) {
+            setOpened(path);
+            return;
+        }
+        markMissing(index);
+        if (confirmRemoveMissing.test(path)) {
+            removeRepository(path);
+        }
+    }
+
+    /** Replaces the "remove missing repository?" question (for tests). */
+    void setConfirmRemoveMissing(Predicate<Path> confirm) {
+        confirmRemoveMissing = confirm;
+    }
+
+    private boolean askRemoveMissing(Path path) {
+        String name = path.getFileName() != null ? path.getFileName().toString() : path.toString();
+        return Dialogs.confirm(SwingUtilities.getWindowAncestor(this), Messages.get("missingRepo.title"),
+                Messages.format("missingRepo.message", name, path));
+    }
+
+    private void markMissing(int index) {
+        RepositoryEntry entry = model.get(index);
+        if (!entry.missing()) {
+            model.set(index, entry.withMissing(true));
+        }
     }
 
     /**
      * Selects and opens {@code workTree} if it is in the list (e.g. to restore the last session).
+     * A repository whose folder is gone is only selected and marked as missing, without asking.
      *
-     * @return {@code false} if the repository is not in the list
+     * @return {@code false} if the repository is not in the list or its folder is missing
      */
     public boolean open(Path workTree) {
         int index = indexOf(workTree);
@@ -130,7 +168,12 @@ public final class RepositoriesPane extends TitledPane {
         }
         list.setSelectedIndex(index);
         list.ensureIndexIsVisible(index);
-        setOpened(model.get(index).path());
+        Path path = model.get(index).path();
+        if (!Files.isDirectory(path)) {
+            markMissing(index);
+            return false;
+        }
+        setOpened(path);
         return true;
     }
 
@@ -250,7 +293,7 @@ public final class RepositoriesPane extends TitledPane {
     private void reload(Path toSelect) {
         model.clear();
         for (Path path : repositories.paths()) {
-            model.addElement(new RepositoryEntry(path, null, null));
+            model.addElement(RepositoryEntry.unknown(path));
             if (toSelect != null && RepositoryList.samePath(path, toSelect)) {
                 list.setSelectedIndex(model.size() - 1);
                 list.ensureIndexIsVisible(model.size() - 1);
@@ -301,9 +344,12 @@ public final class RepositoriesPane extends TitledPane {
         return -1;
     }
 
-    /** Branch and "has changes" of one repository; {@code null} parts are unknown. */
-    private record Info(String branch, Boolean changed) {
+    /** Branch, "has changes" and unpushed commits of one repository; {@code null} parts are unknown. */
+    private record Info(String branch, Boolean changed, boolean missing, Integer unpushed) {
     }
+
+    /** Unpushed commits are counted up to this number (shown as "999+" beyond). */
+    static final int MAX_UNPUSHED = 1000;
 
     /** Reads branch (and optionally "has changes") of {@code paths} in the background and applies it. */
     private void loadInfo(List<Path> paths, boolean withStatus) {
@@ -316,6 +362,10 @@ public final class RepositoriesPane extends TitledPane {
             protected Map<Path, Info> doInBackground() {
                 Map<Path, Info> result = new HashMap<>();
                 for (Path path : paths) {
+                    if (!Files.isDirectory(path)) {
+                        result.put(path, new Info(null, null, true, null));
+                        continue;
+                    }
                     String branch = git.currentBranch(path).orElse(null);
                     Boolean changed = null;
                     if (withStatus) {
@@ -325,7 +375,13 @@ public final class RepositoriesPane extends TitledPane {
                             // unreadable (e.g. folder missing): leave the flag unknown
                         }
                     }
-                    result.put(path, new Info(branch, changed));
+                    Integer unpushed = null;
+                    try {
+                        unpushed = git.unpushedCount(path, MAX_UNPUSHED);
+                    } catch (GitException e) {
+                        // unreadable: leave unknown
+                    }
+                    result.put(path, new Info(branch, changed, false, unpushed));
                 }
                 return result;
             }
@@ -353,9 +409,12 @@ public final class RepositoriesPane extends TitledPane {
             if (info == null) {
                 continue;
             }
-            RepositoryEntry updated = entry;
+            RepositoryEntry updated = entry.withMissing(info.missing());
             if (info.branch() != null) {
                 updated = updated.withBranch(info.branch());
+            }
+            if (info.unpushed() != null) {
+                updated = updated.withUnpushed(info.unpushed());
             }
             if (info.changed() != null && started >= changedStamps.getOrDefault(entry.path(), Long.MIN_VALUE)) {
                 changedStamps.put(entry.path(), started);

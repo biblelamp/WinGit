@@ -37,4 +37,9 @@ public final class Icons {
         String name = changed ? "repository-changed" : "repository";
         return new FlatSVGIcon(BASE + "repositories/" + name + ".svg", LIST_SIZE, LIST_SIZE);
     }
+
+    /** Repository list icon for a repository whose folder no longer exists. */
+    public static FlatSVGIcon repositoryMissing() {
+        return new FlatSVGIcon(BASE + "repositories/repository-missing.svg", LIST_SIZE, LIST_SIZE);
+    }
 }

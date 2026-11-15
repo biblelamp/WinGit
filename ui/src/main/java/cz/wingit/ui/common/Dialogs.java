@@ -31,6 +31,10 @@ public final class Dialogs {
         showError(parent, title, describe(error));
     }
 
+    public static void showInfo(Component parent, String title, String message) {
+        JOptionPane.showMessageDialog(parent, messageComponent(message), title, JOptionPane.INFORMATION_MESSAGE);
+    }
+
     public static boolean confirm(Component parent, String title, String message) {
         return JOptionPane.showConfirmDialog(parent, message, title, JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION;

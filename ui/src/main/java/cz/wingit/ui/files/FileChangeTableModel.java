@@ -12,7 +12,7 @@ import cz.wingit.ui.Messages;
 /**
  * Rows of the Files table: name, status text, folder (shown with Windows separators).
  */
-final class FileChangeTableModel extends AbstractTableModel {
+public final class FileChangeTableModel extends AbstractTableModel {
 
     private static final long serialVersionUID = 1L;
 
@@ -77,7 +77,7 @@ final class FileChangeTableModel extends AbstractTableModel {
     }
 
     /** E.g. "Modified", "Added (staged)", "Modified (staged), Deleted", "Conflict". */
-    static String statusText(FileChange change) {
+    public static String statusText(FileChange change) {
         if (change.staged() == null) {
             return typeText(change.unstaged());
         }

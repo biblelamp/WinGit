@@ -53,6 +53,9 @@ public final class HistoryPane extends TitledPane {
         table.setIntercellSpacing(new Dimension(0, 0));
         table.getColumnModel().getColumn(CommitTableModel.AUTHOR).setPreferredWidth(UIScale.scale(180));
         table.getColumnModel().getColumn(CommitTableModel.DATE).setPreferredWidth(UIScale.scale(160));
+        CommitTextRenderer textRenderer = new CommitTextRenderer(model);
+        table.getColumnModel().getColumn(CommitTableModel.AUTHOR).setCellRenderer(textRenderer);
+        table.getColumnModel().getColumn(CommitTableModel.DATE).setCellRenderer(textRenderer);
         showRepository(Optional.empty());
     }
 

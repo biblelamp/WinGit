@@ -2,12 +2,17 @@ package cz.wingit.ui.main;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.awt.Component;
+import java.awt.Container;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import javax.swing.AbstractButton;
+import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
@@ -23,9 +28,11 @@ import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.branches.BranchesPane;
+import cz.wingit.ui.commit.CommitAction;
 import cz.wingit.ui.diff.DiffPane;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
+import cz.wingit.ui.remote.RemoteAction;
 import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
@@ -56,20 +63,54 @@ class MainWindowContentTest {
 
     @Test
     void contentBuildsWithAllPanes() {
-        JPanel content = MainWindow.createContent(repositoriesPane, new BranchesPane(git), new FilesPane(git),
-                new DiffPane(git), new HistoryPane(git));
+        JPanel content = MainWindow.createContent(Map.of(), repositoriesPane, new BranchesPane(git),
+                new FilesPane(git), new DiffPane(git), new HistoryPane(git));
         assertThat(content.getComponentCount()).isEqualTo(3);
     }
 
     @Test
-    void menuHasOnlyRepositoryMenuWithWorkingItems() {
+    void toolbarButtonsFollowTheirActions() {
+        RemoteAction push = RemoteAction.push(git, repositoriesPane, () -> { });
+        MainToolBar toolBar = new MainToolBar(Map.of("push", push));
+
+        AbstractButton pushButton = findButton(toolBar, "Push");
+        AbstractButton mergeButton = findButton(toolBar, "Merge");
+        assertThat(pushButton.getIcon()).isNotNull();
+        assertThat(pushButton.getToolTipText()).isEqualTo("Push (Ctrl+Shift+K)");
+        assertThat(pushButton.isEnabled()).isFalse(); // no repository open yet
+
+        push.setEnabled(true);
+        assertThat(pushButton.isEnabled()).isTrue();
+        assertThat(pushButton.getText()).isEqualTo("Push");
+        assertThat(mergeButton.isEnabled()).isFalse(); // not implemented yet
+    }
+
+    @Test
+    void menuHasRepositoryLocalAndRemoteMenus() {
+        FilesPane filesPane = new FilesPane(git);
         MainMenuBar menuBar = new MainMenuBar(
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
                 new CloseRepositoryAction(repositoriesPane),
-                new RemoveRepositoryAction(repositoriesPane));
+                new RemoveRepositoryAction(repositoriesPane),
+                new CommitAction(git, repositoriesPane, filesPane::selectedChanges, () -> { }),
+                RemoteAction.pull(git, repositoriesPane, () -> { }),
+                RemoteAction.push(git, repositoriesPane, () -> { }));
 
-        assertThat(menuBar.getMenuCount()).isEqualTo(1);
+        assertThat(menuBar.getMenuCount()).isEqualTo(3);
+        JMenu local = menuBar.getMenu(1);
+        assertThat(local.getText()).isEqualTo("Local");
+        assertThat(local.getItem(0).getText()).isEqualTo("Commit…");
+        assertThat(local.getItem(0).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl K"));
+        assertThat(local.getItem(0).isEnabled()).isFalse();
+        JMenu remote = menuBar.getMenu(2);
+        assertThat(remote.getText()).isEqualTo("Remote");
+        assertThat(remote.getItem(0).getText()).isEqualTo("Pull");
+        assertThat(remote.getItem(0).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl T"));
+        assertThat(remote.getItem(1).getText()).isEqualTo("Push");
+        assertThat(remote.getItem(1).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift K"));
+        assertThat(remote.getItem(1).isEnabled()).isFalse();
+
         JMenu repository = menuBar.getMenu(0);
         assertThat(repository.getText()).isEqualTo("Repository");
         assertThat(repository.getItem(0).getText()).isEqualTo("Add or Create…");
@@ -129,7 +170,8 @@ class MainWindowContentTest {
         List<Optional<Path>> opened = new ArrayList<>();
         pane.addOpenListener(opened::add);
 
-        pane.addRepository(first); // selects only
+        findList(pane).setSelectedIndex(0); // a single click selects only
+        assertThat(pane.selectedRepository()).contains(first);
         assertThat(opened).isEmpty();
         assertThat(pane.openedRepository()).isEmpty();
 
@@ -140,5 +182,29 @@ class MainWindowContentTest {
         pane.removeRepository(first); // removing the opened repository closes it
         assertThat(opened).containsExactly(Optional.of(first), Optional.empty());
         assertThat(pane.openedRepository()).isEmpty();
+    }
+
+    private static AbstractButton findButton(Container root, String text) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof AbstractButton button && text.equals(button.getText())) {
+                return button;
+            }
+        }
+        throw new AssertionError("no button " + text);
+    }
+
+    private static JList<?> findList(Container root) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JList<?> found) {
+                return found;
+            }
+            if (child instanceof Container container) {
+                JList<?> nested = findList(container);
+                if (nested != null) {
+                    return nested;
+                }
+            }
+        }
+        return null;
     }
 }

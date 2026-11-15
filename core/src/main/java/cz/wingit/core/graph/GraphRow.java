@@ -17,7 +17,15 @@ public record GraphRow(int lane, List<Segment> upper, List<Segment> lower, int l
         lower = List.copyOf(lower);
     }
 
-    /** A straight line between two lanes across one half of a row. */
-    public record Segment(int from, int to) {
+    /**
+     * A straight line between two lanes across one half of a row.
+     *
+     * @param unpushed the line belongs to an edge from an unpushed commit to its parent
+     */
+    public record Segment(int from, int to, boolean unpushed) {
+
+        public Segment(int from, int to) {
+            this(from, to, false);
+        }
     }
 }

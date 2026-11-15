@@ -24,11 +24,12 @@ import com.formdev.flatlaf.util.UIScale;
 import cz.wingit.core.graph.GraphRow;
 import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.log.RefLabel;
+import cz.wingit.ui.Messages;
 
 /**
  * Message cell: a regular table label (so the message text is rendered exactly like the other
  * columns, incl. system ClearType settings and "..." truncation) whose icon paints the commit graph
- * and the branch/tag labels.
+ * and the branch/tag labels. Commits that are not pushed yet are shown in bold.
  */
 final class GraphMessageRenderer extends DefaultTableCellRenderer {
 
@@ -40,6 +41,12 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
             new Color(0x8E6CC8), new Color(0x1E9C93), new Color(0xB8952B), new Color(0x6B7BD0),
     };
     private static final int MAX_LANES = 12;
+    /**
+     * Nodes and lines of commits that are not pushed yet ("outgoing"), drawn as a hollow ring with
+     * dashed lines. Neutral gray: none of the lane colors is gray, so it is not mistaken for a branch
+     * line (or for a merge, whose ring has the lane color); reads as "not published yet".
+     */
+    static final Color UNPUSHED_COLOR = new Color(0x8C8C8C);
 
     private final CommitTableModel model;
     private final GraphIcon icon = new GraphIcon();
@@ -56,11 +63,13 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
         CommitInfo commit = model.getCommit(modelRow);
         // no padding: graph lines must touch the row edges to connect with the neighbours
         setBorder(BorderFactory.createEmptyBorder());
+        setFont(CommitTextRenderer.fontFor(commit, table.getFont()));
         icon.set(commit, model.getGraphRow(modelRow), model.maxLaneCount(), table.getRowHeight(row),
                 getBackground(), getForeground(), getFont(), this);
         setIcon(icon);
         setIconTextGap(UIScale.scale(4));
-        setToolTipText(commit.shortId() + "  " + commit.message());
+        String tooltip = commit.shortId() + "  " + commit.message();
+        setToolTipText(commit.unpushed() ? tooltip + "  " + Messages.get("history.unpushed.suffix") : tooltip);
         return this;
     }
 
@@ -144,20 +153,25 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
 
         private void paintGraph(Graphics2D g2, int x, int y) {
             double mid = y + height / 2.0;
-            g2.setStroke(new BasicStroke(UIScale.scale(1.6f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            BasicStroke solid = new BasicStroke(UIScale.scale(1.6f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+            // Dashes start at the row edge (phase 0), so the pattern continues across rows.
+            BasicStroke dashed = new BasicStroke(UIScale.scale(1.6f), BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
+                    10f, new float[] {UIScale.scale(3f), UIScale.scale(3f)}, 0f);
             for (GraphRow.Segment s : graph.upper()) {
-                g2.setColor(laneColor(s.from()));
+                g2.setColor(s.unpushed() ? UNPUSHED_COLOR : laneColor(s.from()));
+                g2.setStroke(s.unpushed() ? dashed : solid);
                 g2.draw(new Line2D.Double(laneX(x, s.from()), y, laneX(x, s.to()), mid));
             }
             for (GraphRow.Segment s : graph.lower()) {
-                g2.setColor(laneColor(s.to()));
+                g2.setColor(s.unpushed() ? UNPUSHED_COLOR : laneColor(s.to()));
+                g2.setStroke(s.unpushed() ? dashed : solid);
                 g2.draw(new Line2D.Double(laneX(x, s.from()), mid, laneX(x, s.to()), y + height));
             }
             double r = UIScale.scale(4.5f);
             double cx = laneX(x, graph.lane());
             Ellipse2D node = new Ellipse2D.Double(cx - r, mid - r, 2 * r, 2 * r);
-            Color color = laneColor(graph.lane());
-            if (commit.isMerge()) {
+            Color color = commit.unpushed() ? UNPUSHED_COLOR : laneColor(graph.lane());
+            if (commit.isMerge() || commit.unpushed()) {
                 g2.setColor(background);
                 g2.fill(node);
                 g2.setColor(color);

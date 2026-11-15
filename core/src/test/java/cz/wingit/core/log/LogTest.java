@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.TimeZone;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -81,9 +83,53 @@ class LogTest {
     }
 
     @Test
+    void commitsNotOnAnyRemoteBranchAreUnpushed() throws Exception {
+        PersonIdent ident = new PersonIdent("Test", "test@example.invalid");
+        try (Git jgit = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            String[] ids = new String[3];
+            for (int i = 0; i < 3; i++) {
+                Files.writeString(repo.resolve("a.txt"), "v" + i, StandardCharsets.UTF_8);
+                jgit.add().addFilepattern("a.txt").call();
+                ids[i] = jgit.commit().setMessage("c" + i).setAuthor(ident).setCommitter(ident).setSign(false)
+                        .call().getName();
+            }
+            // no remote-tracking branches: "pushed" has no meaning, nothing is marked
+            assertThat(git.recentCommits(repo, 10)).noneMatch(CommitInfo::unpushed);
+            assertThat(git.unpushedCount(repo, 100)).isZero();
+
+            RefUpdate update = jgit.getRepository().updateRef("refs/remotes/origin/main");
+            update.setNewObjectId(ObjectId.fromString(ids[0]));
+            update.forceUpdate();
+
+            List<CommitInfo> commits = git.recentCommits(repo, 10);
+            assertThat(commits).extracting(CommitInfo::message).containsExactly("c2", "c1", "c0");
+            assertThat(commits).extracting(CommitInfo::unpushed).containsExactly(true, true, false);
+            assertThat(git.unpushedCount(repo, 100)).isEqualTo(2);
+            assertThat(git.unpushedCount(repo, 1)).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void recentMessagesAreFullDistinctAndSkipMerges() throws Exception {
+        PersonIdent ident = new PersonIdent("Test", "test@example.invalid");
+        try (Git jgit = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            String[] messages = {"first", "fix typo", "Add login\n\nWith a body.\n", "fix typo"};
+            for (int i = 0; i < messages.length; i++) {
+                Files.writeString(repo.resolve("a.txt"), "v" + i, StandardCharsets.UTF_8);
+                jgit.add().addFilepattern("a.txt").call();
+                jgit.commit().setMessage(messages[i]).setAuthor(ident).setCommitter(ident).setSign(false).call();
+            }
+
+            assertThat(git.recentMessages(repo, 10)).containsExactly("fix typo", "Add login\n\nWith a body.", "first");
+            assertThat(git.recentMessages(repo, 2)).containsExactly("fix typo", "Add login\n\nWith a body.");
+        }
+    }
+
+    @Test
     void emptyRepositoryHasNoHistory() throws Exception {
         try (Git jgit = Git.init().setDirectory(repo.toFile()).call()) {
             assertThat(git.recentCommits(repo, 50)).isEmpty();
+            assertThat(git.recentMessages(repo, 10)).isEmpty();
         }
     }
 }

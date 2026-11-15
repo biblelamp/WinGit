@@ -22,7 +22,7 @@ public final class MainMenuBar extends JMenuBar {
     private static final long serialVersionUID = 1L;
 
     public MainMenuBar(Action addOrCreateRepository, Action cloneRepository, Action closeRepository,
-                       Action removeRepository) {
+                       Action removeRepository, Action commit, Action pull, Action push) {
         JMenu repository = new JMenu(Messages.get("menu.repository"));
         repository.setMnemonic(KeyEvent.VK_R);
         repository.add(addOrCreateRepository);
@@ -33,6 +33,17 @@ public final class MainMenuBar extends JMenuBar {
         repository.addSeparator();
         repository.add(exitItem());
         add(repository);
+
+        JMenu local = new JMenu(Messages.get("menu.local"));
+        local.setMnemonic(KeyEvent.VK_L);
+        local.add(commit);
+        add(local);
+
+        JMenu remote = new JMenu(Messages.get("menu.remote"));
+        remote.setMnemonic(KeyEvent.VK_M);
+        remote.add(pull);
+        remote.add(push);
+        add(remote);
     }
 
     private JMenuItem exitItem() {

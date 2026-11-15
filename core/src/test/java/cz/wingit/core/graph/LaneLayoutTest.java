@@ -64,8 +64,29 @@ class LaneLayoutTest {
         assertThat(rows.get(0).laneCount()).isEqualTo(2);
     }
 
+    @Test
+    void edgesFromUnpushedCommitsAreFlaggedUpToTheParent() {
+        // u2 -> u1 -> p (pushed) -> r; side branch tip x (pushed) passes the unpushed rows
+        List<GraphRow> rows = LaneLayout.layout(List.of(
+                unpushed("u2", "u1"), c("x", "r"), unpushed("u1", "p"), c("p", "r"), c("r")));
+
+        assertThat(rows.get(0).lower()).containsExactly(new Segment(0, 0, true));
+        assertThat(rows.get(1).upper()).containsExactly(new Segment(0, 0, true));
+        assertThat(rows.get(1).lower()).containsExactly(new Segment(0, 0, true), new Segment(1, 1, false));
+        assertThat(rows.get(2).upper()).containsExactly(new Segment(0, 0, true), new Segment(1, 1, false));
+        assertThat(rows.get(2).lower()).containsExactly(new Segment(0, 0, true), new Segment(1, 1, false));
+        // the edge u1 -> p ends in p's node; below p nothing is outgoing any more
+        assertThat(rows.get(3).upper()).containsExactly(new Segment(0, 0, true), new Segment(1, 1, false));
+        assertThat(rows.get(3).lower()).noneMatch(Segment::unpushed);
+        assertThat(rows.get(4).upper()).noneMatch(Segment::unpushed);
+    }
+
+    private static CommitInfo unpushed(String id, String... parents) {
+        return new CommitInfo(id, Arrays.asList(parents), id, "Test", Instant.EPOCH, List.of(), true);
+    }
+
     private static CommitInfo c(String id, String... parents) {
-        return new CommitInfo(id, Arrays.asList(parents), id, "Test", Instant.EPOCH, List.of());
+        return new CommitInfo(id, Arrays.asList(parents), id, "Test", Instant.EPOCH, List.of(), false);
     }
 
     private static Segment s(int from, int to) {
