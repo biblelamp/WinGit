@@ -84,6 +84,15 @@ mvn -q -pl app -am -Ppackage package   # jpackage installer (Windows, needs WiX 
 mvn -q -pl app -am -Picons -DskipTests package   # regenerate app/src/jpackage/wingit.ico from ui/.../icons/app/wingit.svg
 ```
 
+CI (GitHub Actions, `.github/workflows/`): `ci.yml` runs `mvn verify` on pushes to main
+and on PRs; `release.yml` builds the MSI and a portable ZIP — a pushed tag `vX.Y.Z`
+(or `vX.Y.Z-suffix` for a pre-release) publishes a GitHub Release, a manual run only
+uploads the files as a workflow artifact. The jpackage version comes from the tag
+(`-Djpackage.appVersion`), not from the POM.
+
+Project page: static HTML in `site/` (EN at the root, `ru/`, `cs/`; keep all three in sync),
+published to GitHub Pages by `pages.yml`, which copies the app icon SVG into `assets/`.
+
 Tests that need a repo create a temporary one (`@TempDir` + `git init`);
 never touch the developer's real repositories.
 

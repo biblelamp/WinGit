@@ -1,16 +1,12 @@
-<!-- WinGit application icon: a window with the "wG" monogram (window + Git). Original artwork, Apache-2.0. -->
+<!-- WinGit application icon: a window with a "G" (Git). Original artwork, Apache-2.0. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <!-- window frame with title bar -->
   <rect x="12" y="20" width="232" height="216" rx="28" fill="#1F5FBF"/>
   <rect x="36" y="36" width="72" height="12" rx="6" fill="#A9C8FF"/>
   <!-- content area -->
   <rect x="30" y="62" width="196" height="156" rx="14" fill="#FFFFFF"/>
-  <!-- monogram: lowercase "w" and capital "G" drawn as strokes; the G bar ends in a commit -->
-  <g transform="translate(25.6 40) scale(0.8)">
-    <polyline points="32,112 51,186 70,132 89,186 108,112" fill="none" stroke="#1F5FBF"
-              stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M208.8 97.2 A52 52 0 1 0 224 134 H182" fill="none" stroke="#1F5FBF"
-          stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="178" cy="134" r="18" fill="#F08A24"/>
-  </g>
+  <!-- capital "G" drawn as a stroke, centered in the content area; its bar ends in a commit -->
+  <path d="M161.9 106.1 A48 48 0 1 0 176 140 H138" fill="none" stroke="#1F5FBF"
+        stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="133" cy="140" r="16" fill="#F08A24"/>
 </svg>

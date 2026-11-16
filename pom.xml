@@ -6,11 +6,11 @@
 
     <groupId>cz.wingit</groupId>
     <artifactId>wingit-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.3.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>WinGit</name>
-    <description>Open-source Git GUI client for Windows</description>
+    <description>Open-source desktop Git GUI client</description>
 
     <licenses>
         <license>
