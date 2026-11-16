@@ -1,2 +1,3 @@
-# No extra options: an app image has no license page; LICENSE and
-# THIRD-PARTY-NOTICES.md are copied into its app directory.
+# No license page: an app image has none; LICENSE and THIRD-PARTY-NOTICES.md are
+# copied into its app directory. Paths are relative to the app module.
+--icon src/jpackage/wingit.ico

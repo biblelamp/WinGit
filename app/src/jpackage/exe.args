@@ -4,3 +4,4 @@
 --win-dir-chooser
 --win-menu
 --win-shortcut
+--icon src/jpackage/wingit.ico

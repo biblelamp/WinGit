@@ -16,6 +16,8 @@ import javax.swing.Action;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
 
+import com.formdev.flatlaf.extras.FlatSVGUtils;
+
 import cz.wingit.core.GitService;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Messages;
@@ -47,6 +49,7 @@ public final class MainWindow extends JFrame {
 
     public MainWindow(GitService git, RepositoryList repositories) {
         super(Messages.get("mainWindow.title"));
+        setIconImages(FlatSVGUtils.createWindowIconImages("/cz/wingit/ui/icons/app/wingit.svg"));
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         repositoriesPane = new RepositoriesPane(git, repositories);

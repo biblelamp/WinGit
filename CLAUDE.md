@@ -1,9 +1,13 @@
-# WinGit — open-source Git GUI client for Windows
+# WinGit — open-source desktop Git GUI client
 
 ## Goal
 
-Desktop Git client for Windows with a familiar multi-pane workflow (repositories,
+Desktop Git client with a familiar multi-pane workflow (repositories,
 files, log graph, diff, branches) similar to established commercial Git GUIs.
+
+Platforms: Windows is the primary target today; Linux and macOS builds are
+planned (automated CI builds for all three). Keep code portable: no hard
+Windows-only assumptions outside clearly isolated platform-specific code.
 
 **Hard rule:** do NOT copy assets, icons, texts, names or exact visuals of any
 proprietary product (SmartGit etc.). Layout ideas and workflows are fine;
@@ -22,7 +26,8 @@ License: Apache-2.0.
 - Git write/network operations: native `git` CLI (bundled MinGit or system git)
 - Diff: java-diff-utils
 - Tests: JUnit 5, AssertJ
-- Packaging: jpackage (MSI/EXE with embedded runtime)
+- Packaging: jpackage with embedded runtime (Windows MSI/EXE now;
+  Linux DEB/RPM and macOS DMG/PKG planned)
 
 ## Modules
 
@@ -76,6 +81,7 @@ mvn -q verify                       # build + tests
 mvn -q -pl core test                # core tests only
 mvn -q -pl app -am compile exec:java    # run the app (builds core/ui in the reactor)
 mvn -q -pl app -am -Ppackage package   # jpackage installer (Windows, needs WiX 3; -Djpackage.type=app-image without it)
+mvn -q -pl app -am -Picons -DskipTests package   # regenerate app/src/jpackage/wingit.ico from ui/.../icons/app/wingit.svg
 ```
 
 Tests that need a repo create a temporary one (`@TempDir` + `git init`);

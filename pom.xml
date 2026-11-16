@@ -127,7 +127,7 @@
     </dependencies>
 
     <build>
-        <!-- Every module jar carries the project license and third-party notices in META-INF.
+        <!-- Every module jar carries the project license, third-party notices and licenses/ in META-INF.
              Declaring resources here replaces the default, so src/main/resources is listed too. -->
         <resources>
             <resource>
@@ -139,6 +139,7 @@
                 <includes>
                     <include>LICENSE</include>
                     <include>THIRD-PARTY-NOTICES.md</include>
+                    <include>licenses/**</include>
                 </includes>
             </resource>
         </resources>
