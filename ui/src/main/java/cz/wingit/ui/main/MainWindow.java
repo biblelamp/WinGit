@@ -37,6 +37,8 @@ import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
+import cz.wingit.ui.tags.NewTagAction;
+import cz.wingit.ui.tags.SelectedTagAction;
 
 /**
  * Top-level application window: menu, toolbar, panes, status bar.
@@ -82,12 +84,18 @@ public final class MainWindow extends JFrame {
         Action merge = MergeAction.merge(git, repositoriesPane, branchesPane, refresh);
         Action abortMerge = MergeAction.abort(git, repositoriesPane, refresh);
         branchesPane.installContextActions(renameBranch, deleteBranch, newBranch, merge);
+        Action newTag = NewTagAction.onHead(git, repositoriesPane, refresh);
+        Action pushTag = SelectedTagAction.push(git, branchesPane, refresh);
+        Action deleteTag = SelectedTagAction.delete(git, branchesPane, refresh);
+        branchesPane.installTagActions(deleteTag, newTag, pushTag);
+        historyPane.installContextActions(
+                NewTagAction.onCommit(git, repositoriesPane, historyPane::selectedCommit, refresh));
         setJMenuBar(new MainMenuBar(
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
                 new CloseRepositoryAction(repositoriesPane),
                 removeRepository, commit, pull, push, newBranch, renameBranch, deleteBranch, merge, abortMerge,
-                stage, unstage, discard, deleteFiles));
+                newTag, pushTag, deleteTag, stage, unstage, discard, deleteFiles));
         filesPane.installContextActions(deleteFiles, stage, unstage, null, discard, deleteFiles);
         // Other repositories are not watched; re-check them when the user comes back to the window.
         addWindowFocusListener(new WindowAdapter() {

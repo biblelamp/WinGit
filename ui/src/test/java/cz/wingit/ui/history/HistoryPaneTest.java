@@ -66,6 +66,26 @@ class HistoryPaneTest {
     }
 
     @Test
+    void selectedCommitIsTheSelectedRow() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            commit(git, "First");
+            commit(git, "Second");
+        }
+        AtomicReference<HistoryPane> pane = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new HistoryPane(new DefaultGitService(new GitCli())));
+            pane.get().showRepository(Optional.of(repo));
+        });
+        await(pane.get(), m -> m.size() == 2);
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(pane.get().selectedCommit()).isEmpty();
+            pane.get().selectRowForTest(1);
+            assertThat(pane.get().selectedCommit()).map(c -> c.message()).contains("First");
+        });
+    }
+
+    @Test
     void datesAreRelativeForTodayAndYesterday() {
         Clock clock = Clock.fixed(Instant.parse("2026-11-14T12:00:00Z"), ZoneId.of("UTC"));
         CommitDates dates = new CommitDates(clock, Locale.UK);

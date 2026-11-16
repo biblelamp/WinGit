@@ -1,6 +1,7 @@
 package cz.wingit.core.remote;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 
 import org.eclipse.jgit.lib.ConfigConstants;
@@ -66,6 +67,32 @@ public record RemoteTarget(String branch, String remote, String remoteRef, Strin
             throw new GitException("Remote '" + remote + "' has no URL configured.");
         }
         return url;
+    }
+
+    /**
+     * The remote tags are pushed to: the remote of the current branch's upstream, else {@code origin}
+     * or the only remote. Empty if there is none (or several and none is obvious). Works with a
+     * detached HEAD too.
+     */
+    public static Optional<String> defaultRemote(Repository repository) {
+        StoredConfig config = repository.getConfig();
+        Set<String> remotes = config.getSubsections(ConfigConstants.CONFIG_REMOTE_SECTION);
+        try {
+            String branch = repository.getBranch();
+            if (branch != null && !ObjectId.isId(branch)) {
+                String remote = config.getString(ConfigConstants.CONFIG_BRANCH_SECTION, branch,
+                        ConfigConstants.CONFIG_KEY_REMOTE);
+                if (remote != null && remotes.contains(remote)) {
+                    return Optional.of(remote);
+                }
+            }
+        } catch (IOException e) {
+            // decide by the remotes alone
+        }
+        if (remotes.contains(DEFAULT_REMOTE)) {
+            return Optional.of(DEFAULT_REMOTE);
+        }
+        return remotes.size() == 1 ? Optional.of(remotes.iterator().next()) : Optional.empty();
     }
 
     private static RemoteTarget resolve(Repository repository, boolean push) {

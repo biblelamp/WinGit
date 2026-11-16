@@ -38,7 +38,8 @@ public final class CommitAction extends AbstractAction {
     private static final int RECENT_MESSAGES = 15;
 
     /** What the dialog needs, read together in the background. */
-    private record DialogData(List<FileChange> changes, List<String> recentMessages, String mergeMessage) {
+    private record DialogData(List<FileChange> changes, List<String> recentMessages, String mergeMessage,
+                              List<String> tags) {
     }
 
     /**
@@ -83,7 +84,13 @@ public final class CommitAction extends AbstractAction {
                 } catch (RuntimeException e) {
                     // no prepared message; the user writes one
                 }
-                return new DialogData(changes, messages, mergeMessage);
+                List<String> tags = List.of();
+                try {
+                    tags = changes.isEmpty() ? List.of() : git.refs(repo).tags();
+                } catch (RuntimeException e) {
+                    // the tag name is then only checked by Git
+                }
+                return new DialogData(changes, messages, mergeMessage, tags);
             }
 
             @Override
@@ -91,7 +98,7 @@ public final class CommitAction extends AbstractAction {
                 busy = false;
                 try {
                     DialogData data = get();
-                    showDialog(repo, data.changes(), preselected, data.recentMessages(), data.mergeMessage());
+                    showDialog(repo, data, preselected);
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException ex) {
@@ -101,17 +108,16 @@ public final class CommitAction extends AbstractAction {
         }.execute();
     }
 
-    private void showDialog(Path repo, List<FileChange> changes, List<FileChange> preselected,
-                            List<String> recentMessages, String mergeMessage) {
+    private void showDialog(Path repo, DialogData data, List<FileChange> preselected) {
         if (!pane.openedRepository().equals(Optional.of(repo))) {
             return; // another repository was opened meanwhile
         }
-        if (changes.isEmpty()) {
+        if (data.changes().isEmpty()) {
             Dialogs.showInfo(pane, Messages.get("commit.nothing.title"), Messages.get("commit.nothing.message"));
             return;
         }
-        Optional<CommitDialog.Result> result = CommitDialog.show(pane, git, repo, changes, preselected, recentMessages,
-                mergeMessage);
+        Optional<CommitDialog.Result> result = CommitDialog.show(pane, git, repo, data.changes(), preselected,
+                data.recentMessages(), data.mergeMessage(), data.tags());
         if (result.isEmpty()) {
             return;
         }

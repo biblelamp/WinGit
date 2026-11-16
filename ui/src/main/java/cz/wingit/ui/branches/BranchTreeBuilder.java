@@ -19,6 +19,8 @@ final class BranchTreeBuilder {
     /** Key prefix of local branch nodes, followed by the branch name. */
     static final String LOCAL_BRANCH_KEY = "branch:";
     static final String TAGS = "tags";
+    /** Key prefix of tag nodes, followed by the tag name. */
+    static final String TAG_KEY = "tag:";
     static final String STASHES = "stashes";
 
     private BranchTreeBuilder() {
@@ -51,7 +53,7 @@ final class BranchTreeBuilder {
 
         DefaultMutableTreeNode tags = group(TAGS, Messages.get("branches.tags"), refs.tags().size());
         for (String tag : refs.tags()) {
-            tags.add(leaf("tag:" + tag, tag, null, false, null));
+            tags.add(leaf(TAG_KEY + tag, tag, null, false, null));
         }
         root.add(tags);
 

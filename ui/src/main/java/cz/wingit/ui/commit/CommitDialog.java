@@ -1,9 +1,11 @@
 package cz.wingit.ui.commit;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -23,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
@@ -34,10 +37,12 @@ import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
@@ -45,12 +50,15 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 
 import cz.wingit.core.GitService;
+import cz.wingit.core.refs.TagNames;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Dialogs;
+import cz.wingit.ui.tags.TagNameCheck;
 
 /**
  * Modal dialog: choose changed files, write a message, then commit (optionally followed by a push).
+ * The new commit can get a backdated date and a tag.
  */
 final class CommitDialog extends JDialog {
 
@@ -71,6 +79,10 @@ final class CommitDialog extends JDialog {
     private final JTextArea messageArea = new JTextArea(6, 60);
     private final JCheckBox dateBox = new JCheckBox(Messages.get("commit.date"));
     private final JSpinner dateSpinner = new JSpinner(new SpinnerDateModel(new Date(), null, null, Calendar.MINUTE));
+    private final JCheckBox tagBox = new JCheckBox(Messages.get("commit.tag"));
+    private final JTextField tagField = new JTextField(16);
+    private final JLabel tagProblem = new JLabel();
+    private final transient List<String> existingTags;
     private final JButton commitButton = new JButton(Messages.get("commit.commit"));
     private final JButton commitPushButton = new JButton(Messages.get("commit.commitAndPush"));
     private final JButton cancelButton = new JButton(Messages.get("commit.cancel"));
@@ -83,18 +95,22 @@ final class CommitDialog extends JDialog {
     /**
      * @param recentMessages messages of previous commits offered for reuse, newest first
      * @param initialMessage message to start with (e.g. the one Git prepared for a merge), or {@code null}
+     * @param existingTags   tags of the repository, to check a new tag name and suggest the next version
      */
     CommitDialog(Window owner, GitService git, Path workTree, List<FileChange> changes,
-                 Collection<FileChange> preselected, List<String> recentMessages, String initialMessage) {
+                 Collection<FileChange> preselected, List<String> recentMessages, String initialMessage,
+                 List<String> existingTags) {
         super(owner, Messages.get("commit.title"), ModalityType.APPLICATION_MODAL);
         this.git = git;
         this.workTree = workTree;
         this.model = new CommitFileTableModel(changes, preselected);
         this.table = new JTable(model);
         this.recentButton = new RecentMessagesButton(recentMessages, this::useMessage);
+        this.existingTags = List.copyOf(existingTags);
         configureTable();
         configureMessage();
         configureDate();
+        configureTag();
         if (initialMessage != null) {
             messageArea.setText(initialMessage);
             messageArea.setCaretPosition(0);
@@ -137,9 +153,9 @@ final class CommitDialog extends JDialog {
     /** Shows the dialog; returns how it ended if a commit was made. */
     static Optional<Result> show(Component parent, GitService git, Path workTree, List<FileChange> changes,
                                  Collection<FileChange> preselected, List<String> recentMessages,
-                                 String initialMessage) {
+                                 String initialMessage, List<String> existingTags) {
         CommitDialog dialog = new CommitDialog(SwingUtilities.getWindowAncestor(parent), git, workTree,
-                changes, preselected, recentMessages, initialMessage);
+                changes, preselected, recentMessages, initialMessage, existingTags);
         dialog.setVisible(true);
         return Optional.ofNullable(dialog.result);
     }
@@ -166,7 +182,19 @@ final class CommitDialog extends JDialog {
         JPanel date = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         date.add(dateBox);
         date.add(dateSpinner);
-        message.add(date, BorderLayout.SOUTH);
+        JPanel tag = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        tag.add(tagBox);
+        tag.add(tagField);
+        tag.add(Box.createHorizontalStrut(UIScale.scale(8)));
+        tag.add(tagProblem);
+        // Same width for both check boxes, so the date and tag fields line up.
+        int optionWidth = Math.max(dateBox.getPreferredSize().width, tagBox.getPreferredSize().width);
+        dateBox.setPreferredSize(new Dimension(optionWidth, dateBox.getPreferredSize().height));
+        tagBox.setPreferredSize(new Dimension(optionWidth, tagBox.getPreferredSize().height));
+        JPanel options = new JPanel(new GridLayout(0, 1, 0, 4));
+        options.add(date);
+        options.add(tag);
+        message.add(options, BorderLayout.SOUTH);
 
         JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, files, message);
         split.setResizeWeight(0.6);
@@ -258,6 +286,51 @@ final class CommitDialog extends JDialog {
         });
     }
 
+    private void configureTag() {
+        tagBox.setToolTipText(Messages.get("commit.tag.tooltip"));
+        tagField.setToolTipText(Messages.get("commit.tag.tooltip"));
+        Color error = UIManager.getColor("Component.error.focusedBorderColor");
+        tagProblem.setForeground(error != null ? error : Color.RED);
+        tagBox.addActionListener(e -> {
+            if (tagBox.isSelected()) {
+                if (tagField.getText().isBlank()) {
+                    tagField.setText(TagNames.nextVersion(existingTags).orElse(""));
+                }
+                tagField.selectAll();
+                tagField.requestFocusInWindow();
+            }
+            updateState();
+        });
+        tagField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateState();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateState();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateState();
+            }
+        });
+    }
+
+    /** The tag to put on the new commit, or {@code null} for none. */
+    private String tagName() {
+        return tagBox.isSelected() ? tagField.getText().strip() : null;
+    }
+
+    /** {@code true} unless a tag is requested whose name is missing or cannot be used. */
+    private boolean tagReady() {
+        String problem = tagBox.isSelected() ? TagNameCheck.problem(tagField.getText().strip(), existingTags) : null;
+        tagProblem.setText(problem == null ? "" : problem);
+        return !tagBox.isSelected() || (problem == null && !tagField.getText().isBlank());
+    }
+
     /** The date to commit with, or {@code null} for "now". */
     private Instant commitDate() {
         if (!dateBox.isSelected()) {
@@ -281,7 +354,8 @@ final class CommitDialog extends JDialog {
         } finally {
             updatingAllBox = false;
         }
-        boolean ready = !running && selected > 0 && !messageArea.getText().isBlank();
+        boolean tagOk = tagReady(); // always evaluated: it also shows the problem with the name
+        boolean ready = !running && selected > 0 && !messageArea.getText().isBlank() && tagOk;
         commitButton.setEnabled(ready);
         commitPushButton.setEnabled(ready);
         table.setEnabled(!running);
@@ -290,6 +364,8 @@ final class CommitDialog extends JDialog {
         recentButton.setEnabled(!running && recentButton.popup().getComponentCount() > 0);
         dateBox.setEnabled(!running);
         dateSpinner.setEnabled(!running && dateBox.isSelected());
+        tagBox.setEnabled(!running);
+        tagField.setEnabled(!running && tagBox.isSelected());
         cancelButton.setEnabled(!running);
     }
 
@@ -303,12 +379,21 @@ final class CommitDialog extends JDialog {
         List<FileChange> changes = model.includedChanges();
         String message = messageArea.getText().strip() + "\n";
         Instant date = commitDate();
+        String tag = tagName();
         running = true;
         updateState();
-        new SwingWorker<Void, Void>() {
+        new SwingWorker<RuntimeException, Void>() {
+            /** Commits and tags; returns the tag failure (the commit is made then), {@code null} if none. */
             @Override
-            protected Void doInBackground() {
+            protected RuntimeException doInBackground() {
                 git.commit(workTree, changes, message, date);
+                if (tag != null) {
+                    try {
+                        git.createTag(workTree, tag, null, message.lines().findFirst().orElse(""));
+                    } catch (RuntimeException e) {
+                        return e;
+                    }
+                }
                 return null;
             }
 
@@ -316,8 +401,12 @@ final class CommitDialog extends JDialog {
             protected void done() {
                 running = false;
                 try {
-                    get();
+                    RuntimeException tagFailure = get();
                     result = thenPush ? Result.COMMITTED_PUSH_REQUESTED : Result.COMMITTED;
+                    if (tagFailure != null) {
+                        Dialogs.showError(CommitDialog.this, Messages.format("commit.tag.error.title", tag),
+                                Messages.format("commit.tag.error.message", Dialogs.describe(tagFailure)));
+                    }
                     dispose();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -351,6 +440,18 @@ final class CommitDialog extends JDialog {
 
     JSpinner dateSpinner() {
         return dateSpinner;
+    }
+
+    JCheckBox tagBox() {
+        return tagBox;
+    }
+
+    JTextField tagField() {
+        return tagField;
+    }
+
+    JLabel tagProblem() {
+        return tagProblem;
     }
 
     JButton commitButton() {

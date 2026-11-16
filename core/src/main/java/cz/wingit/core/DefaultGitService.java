@@ -39,6 +39,7 @@ import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.BranchNames;
 import cz.wingit.core.refs.RefsReader;
 import cz.wingit.core.refs.RepositoryRefs;
+import cz.wingit.core.refs.TagNames;
 import cz.wingit.core.remote.AskPass;
 import cz.wingit.core.remote.AuthFailures;
 import cz.wingit.core.remote.Credentials;
@@ -256,6 +257,48 @@ public final class DefaultGitService implements GitService {
     }
 
     @Override
+    public void createTag(Path workTree, String name, String commit, String message) {
+        if (!TagNames.isValid(name)) {
+            throw new IllegalArgumentException("Not a valid tag name: " + name);
+        }
+        if (commit != null && !commit.matches("[0-9a-fA-F]{4,64}")) {
+            throw new IllegalArgumentException("Not a commit id: " + commit);
+        }
+        List<String> args = new ArrayList<>(List.of("tag", "--annotate", "--cleanup=whitespace", "--file=-", name));
+        if (commit != null) {
+            args.add(commit);
+        }
+        String text = message == null || message.isBlank() ? name : message.strip();
+        cli.run(workTree, args, null, Map.of(), text + "\n");
+    }
+
+    @Override
+    public void deleteTag(Path workTree, String name) {
+        cli.run(workTree, List.of("tag", "--delete", name));
+    }
+
+    @Override
+    public Optional<String> defaultRemote(Path workTree) {
+        return readRepository(workTree, RemoteTarget::defaultRemote);
+    }
+
+    @Override
+    public void pushTag(Path workTree, String remote, String name, Credentials credentials,
+                        Consumer<String> progress) {
+        String url = readRepository(workTree, repository -> RemoteTarget.pushUrl(repository, remote));
+        String ref = Constants.R_TAGS + name;
+        runRemote(workTree, List.of("push", "--progress", remote, ref + ":" + ref), url, credentials, progress);
+    }
+
+    @Override
+    public void deleteRemoteTag(Path workTree, String remote, String name, Credentials credentials,
+                                Consumer<String> progress) {
+        String url = readRepository(workTree, repository -> RemoteTarget.pushUrl(repository, remote));
+        runRemote(workTree, List.of("push", "--progress", remote, "--delete", Constants.R_TAGS + name),
+                url, credentials, progress);
+    }
+
+    @Override
     public void switchBranch(Path workTree, String branch) {
         cli.run(workTree, List.of("switch", "--no-guess", branch));
     }
@@ -394,7 +437,7 @@ public final class DefaultGitService implements GitService {
     public void push(Path workTree, Credentials credentials, Consumer<String> progress) {
         RemoteTarget target = readRepository(workTree, RemoteTarget::forPush);
         String source = "refs/heads/" + target.branch();
-        List<String> args = new ArrayList<>(List.of("push", "--progress"));
+        List<String> args = new ArrayList<>(List.of("push", "--progress", "--follow-tags"));
         if (target.hasUpstream()) {
             args.addAll(List.of(target.remote(), source + ":" + target.remoteRef()));
         } else {

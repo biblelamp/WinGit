@@ -137,6 +137,48 @@ public interface GitService {
     void deleteBranch(Path workTree, String name, boolean force);
 
     /**
+     * Creates the annotated tag {@code name} with {@code message} on {@code commit}. Check the name
+     * with {@code TagNames} first.
+     *
+     * @param commit  full or abbreviated commit id, or {@code null} for the current commit (HEAD)
+     * @param message tag message; blank uses the tag name
+     * @throws GitCommandException if Git refuses (e.g. the tag exists, no commit yet, no identity)
+     */
+    void createTag(Path workTree, String name, String commit, String message);
+
+    /**
+     * Deletes the local tag {@code name}; the tag on the server is not touched.
+     *
+     * @throws GitCommandException if Git refuses (e.g. no such tag)
+     */
+    void deleteTag(Path workTree, String name);
+
+    /**
+     * The remote that tags are pushed to: the current branch's remote, else {@code origin} or the only
+     * remote. Empty if the repository has none (or several and none is obvious).
+     */
+    Optional<String> defaultRemote(Path workTree);
+
+    /**
+     * Pushes the tag {@code name} to {@code remote}.
+     *
+     * @param credentials as for {@link #push}
+     * @throws GitAuthenticationException if the remote needs (other) credentials
+     * @throws GitCommandException        if the server refuses (e.g. a different tag of that name exists)
+     */
+    void pushTag(Path workTree, String remote, String name, Credentials credentials, Consumer<String> progress);
+
+    /**
+     * Deletes the tag {@code name} on the server of {@code remote}; the local tag is not touched.
+     *
+     * @param credentials as for {@link #push}
+     * @throws GitAuthenticationException if the remote needs (other) credentials
+     * @throws GitCommandException        if the server refuses
+     */
+    void deleteRemoteTag(Path workTree, String remote, String name, Credentials credentials,
+                         Consumer<String> progress);
+
+    /**
      * Checks out the local branch {@code branch} ({@code git switch}). Fails, leaving everything
      * as it was, if local changes would be overwritten.
      *
@@ -211,7 +253,8 @@ public interface GitService {
 
     /**
      * Pushes the current branch to its upstream. A branch without upstream is pushed to
-     * {@code origin} (or the only remote) under the same name and starts tracking it.
+     * {@code origin} (or the only remote) under the same name and starts tracking it. Annotated tags
+     * on the pushed commits that the server does not have yet go along ({@code --follow-tags}).
      *
      * @param credentials user name and password entered by the user for this attempt, or
      *                    {@code null} to use saved credentials only (Git Credential Manager, SSH agent);

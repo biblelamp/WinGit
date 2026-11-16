@@ -21,6 +21,7 @@ import cz.wingit.core.DefaultGitService;
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.refs.LocalBranch;
 import cz.wingit.ui.Theme;
+import cz.wingit.ui.tags.SelectedTagAction;
 
 class BranchesPaneTest {
 
@@ -171,6 +172,45 @@ class BranchesPaneTest {
             assertThat(delete.get().isEnabled()).isTrue();
             assertThat(new RenameBranchAction(service, pane.get(), () -> { }).isEnabled()).isTrue();
             assertThat(pane.get().remoteBranchNames("origin")).containsExactlyInAnyOrder("feature", "main");
+        });
+    }
+
+    @Test
+    void tagActionsFollowTheSelectedTag() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            Files.writeString(repo.resolve("a.txt"), "a", StandardCharsets.UTF_8);
+            git.add().addFilepattern("a.txt").call();
+            git.commit().setMessage("init").setAuthor(IDENT).setCommitter(IDENT).setSign(false).call();
+            git.tag().setName("v1.0").setTagger(IDENT).setMessage("v1.0").setSigned(false).call();
+        }
+        DefaultGitService service = new DefaultGitService(new GitCli());
+
+        AtomicReference<BranchesPane> pane = new AtomicReference<>();
+        AtomicReference<SelectedTagAction> push = new AtomicReference<>();
+        AtomicReference<SelectedTagAction> delete = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new BranchesPane(service));
+            push.set(SelectedTagAction.push(service, pane.get(), () -> { }));
+            delete.set(SelectedTagAction.delete(service, pane.get(), () -> { }));
+            pane.get().installTagActions(delete.get(), push.get());
+            pane.get().showRepository(Optional.of(repo));
+        });
+        // Local, main, Remotes, Tags (1), Stashes
+        assertThat(awaitRows(pane.get(), 5)).contains("Tags (1)");
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(pane.get().selectedTag()).isEmpty();
+            assertThat(push.get().isEnabled()).isFalse();
+            assertThat(delete.get().isEnabled()).isFalse();
+            pane.get().expandRowForTest(3); // Tags
+            pane.get().selectRowForTest("v1.0");
+            assertThat(pane.get().selectedTag()).contains("v1.0");
+            assertThat(pane.get().selectedLocalBranch()).isEmpty();
+            assertThat(push.get().isEnabled()).isTrue();
+            assertThat(delete.get().isEnabled()).isTrue();
+            pane.get().selectRowForTest("main");
+            assertThat(pane.get().selectedTag()).isEmpty();
+            assertThat(delete.get().isEnabled()).isFalse();
         });
     }
 

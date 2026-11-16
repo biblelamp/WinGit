@@ -43,6 +43,8 @@ import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
+import cz.wingit.ui.tags.NewTagAction;
+import cz.wingit.ui.tags.SelectedTagAction;
 
 /**
  * Builds the main-window components headlessly: catches missing resource keys
@@ -108,6 +110,9 @@ class MainWindowContentTest {
                 new DeleteBranchAction(git, new BranchesPane(git), () -> { }),
                 MergeAction.merge(git, repositoriesPane, new BranchesPane(git), () -> { }),
                 MergeAction.abort(git, repositoriesPane, () -> { }),
+                NewTagAction.onHead(git, repositoriesPane, () -> { }),
+                SelectedTagAction.push(git, new BranchesPane(git), () -> { }),
+                SelectedTagAction.delete(git, new BranchesPane(git), () -> { }),
                 FileAction.stage(git, filesPane, () -> { }),
                 FileAction.unstage(git, filesPane, () -> { }),
                 FileAction.discard(git, filesPane, () -> { }),
@@ -128,6 +133,14 @@ class MainWindowContentTest {
         assertThat(branch.getItem(4).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift M"));
         assertThat(branch.getItem(4).isEnabled()).isFalse(); // no repository open
         assertThat(branch.getItem(5).getText()).isEqualTo("Abort Merge…");
+        assertThat(branch.getItem(6)).isNull(); // separator
+        assertThat(branch.getItem(7).getText()).isEqualTo("New Tag…");
+        assertThat(branch.getItem(7).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift T"));
+        assertThat(branch.getItem(7).isEnabled()).isFalse(); // no repository open
+        assertThat(branch.getItem(8).getText()).isEqualTo("Push Tag");
+        assertThat(branch.getItem(8).isEnabled()).isFalse(); // no tag selected
+        assertThat(branch.getItem(9).getText()).isEqualTo("Delete Tag…");
+        assertThat(branch.getItem(9).isEnabled()).isFalse();
         JMenu local = menuBar.getMenu(1);
         assertThat(local.getText()).isEqualTo("Local");
         assertThat(local.getItem(0).getText()).isEqualTo("Commit…");

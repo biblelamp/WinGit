@@ -1,9 +1,14 @@
 package cz.wingit.ui.history;
 
 import java.awt.Dimension;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+
+import javax.swing.Action;
+import javax.swing.JPopupMenu;
 
 import com.formdev.flatlaf.util.UIScale;
 
@@ -75,6 +80,48 @@ public final class HistoryPane extends TitledPane {
     /** Re-reads the commits without clearing the table first. Call on the EDT. */
     public void refresh() {
         loader.refresh();
+    }
+
+    /** The selected commit, if a row is selected. */
+    public Optional<CommitInfo> selectedCommit() {
+        int row = table.getSelectedRow();
+        return row >= 0 && row < model.getRowCount() ? Optional.of(model.getCommit(row)) : Optional.empty();
+    }
+
+    /** Context menu of commit rows with {@code actions}; right-click selects the row first. */
+    public void installContextActions(Action... actions) {
+        JPopupMenu popup = new JPopupMenu();
+        for (Action action : actions) {
+            popup.add(action);
+        }
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                maybeShowPopup(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                maybeShowPopup(e);
+            }
+
+            private void maybeShowPopup(MouseEvent e) {
+                if (!e.isPopupTrigger()) {
+                    return;
+                }
+                int row = table.rowAtPoint(e.getPoint());
+                if (row < 0) {
+                    return;
+                }
+                table.setRowSelectionInterval(row, row);
+                popup.show(table, e.getX(), e.getY());
+            }
+        });
+    }
+
+    /** Selects a row (for tests). */
+    void selectRowForTest(int row) {
+        table.setRowSelectionInterval(row, row);
     }
 
     /** Messages of the shown rows (for tests). */

@@ -57,6 +57,10 @@ public final class BranchesPane extends TitledPane {
     private transient RepositoryRefs shown;
     private transient Path workTree;
     private boolean switching;
+    private JPopupMenu branchPopup;
+    private JPopupMenu tagPopup;
+    private transient Action branchDelete;
+    private transient Action tagDelete;
 
     public BranchesPane(GitService git) {
         this(git, new PlaceholderTree(emptyModel()));
@@ -71,6 +75,7 @@ public final class BranchesPane extends TitledPane {
         tree.setShowsRootHandles(true);
         tree.setCellRenderer(new BranchCellRenderer());
         installSwitchGestures();
+        installContextGestures();
         showRepository(Optional.empty());
     }
 
@@ -235,6 +240,30 @@ public final class BranchesPane extends TitledPane {
         return shown == null ? List.of() : shown.localBranches().stream().map(LocalBranch::name).toList();
     }
 
+    /** Name of the selected tag, if a tag is selected. */
+    public Optional<String> selectedTag() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null) {
+            return Optional.empty();
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        if (user instanceof BranchItem item && item.key().startsWith(BranchTreeBuilder.TAG_KEY)) {
+            return Optional.of(item.key().substring(BranchTreeBuilder.TAG_KEY.length()));
+        }
+        return Optional.empty();
+    }
+
+    /** {@code true} if the Tags group or a tag is selected (its context menu offers the tag actions). */
+    private boolean tagNodeSelected() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null) {
+            return false;
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        return user instanceof BranchItem item
+                && (item.key().equals(BranchTreeBuilder.TAGS) || item.key().startsWith(BranchTreeBuilder.TAG_KEY));
+    }
+
     /** Name of the selected local branch unless it is checked out (it cannot be deleted then). */
     public Optional<String> selectedLocalBranch() {
         TreePath selection = tree.getSelectionPath();
@@ -255,20 +284,47 @@ public final class BranchesPane extends TitledPane {
     }
 
     /**
-     * Context menu with {@code actions} (right-click selects the node first); F2 runs {@code rename},
-     * the Delete key runs {@code delete}.
+     * Context menu of branch nodes with {@code actions} (right-click selects the node first); F2 runs
+     * {@code rename}, the Delete key runs {@code delete}.
      */
     public void installContextActions(Action rename, Action delete, Action... actions) {
-        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteBranch");
-        tree.getActionMap().put("deleteBranch", delete);
         tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "renameBranch");
         tree.getActionMap().put("renameBranch", rename);
-        JPopupMenu popup = new JPopupMenu();
+        branchDelete = delete;
+        branchPopup = new JPopupMenu();
         for (Action action : actions) {
-            popup.add(action);
+            branchPopup.add(action);
         }
-        popup.add(rename);
-        popup.add(delete);
+        branchPopup.add(rename);
+        branchPopup.add(delete);
+    }
+
+    /**
+     * Context menu of the Tags group and tags with {@code actions}; the Delete key on a tag runs
+     * {@code delete}.
+     */
+    public void installTagActions(Action delete, Action... actions) {
+        tagDelete = delete;
+        tagPopup = new JPopupMenu();
+        for (Action action : actions) {
+            tagPopup.add(action);
+        }
+        tagPopup.add(delete);
+    }
+
+    private void installContextGestures() {
+        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteSelected");
+        tree.getActionMap().put("deleteSelected", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Action action = selectedTag().isPresent() ? tagDelete : branchDelete;
+                if (action != null && action.isEnabled()) {
+                    action.actionPerformed(e);
+                }
+            }
+        });
         tree.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -288,7 +344,10 @@ public final class BranchesPane extends TitledPane {
                 if (path != null) {
                     tree.setSelectionPath(path);
                 }
-                popup.show(tree, e.getX(), e.getY());
+                JPopupMenu popup = tagNodeSelected() ? tagPopup : branchPopup;
+                if (popup != null) {
+                    popup.show(tree, e.getX(), e.getY());
+                }
             }
         });
     }
