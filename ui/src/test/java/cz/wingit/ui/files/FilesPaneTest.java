@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.SwingUtilities;
 
@@ -80,6 +81,39 @@ class FilesPaneTest {
     }
 
     @Test
+    void fileSelectedInTheLastSessionIsSelectedAgainAfterLoading() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).call()) {
+            // empty repository: every file is untracked
+        }
+        write("a.txt", "a\n");
+        write("dir/b.txt", "b\n");
+
+        FilesPane[] pane = new FilesPane[1];
+        List<Optional<FileChange>> selections = new ArrayList<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0] = new FilesPane(new DefaultGitService(new GitCli()));
+            pane[0].addFileSelectionListener(selections::add);
+            pane[0].showRepository(Optional.of(repo));
+            pane[0].selectWhenLoaded("dir/b.txt");
+        });
+        awaitRows(pane[0], 2);
+
+        AtomicReference<Optional<FileChange>> selected = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> selected.set(pane[0].selectedFile()));
+        assertThat(selected.get()).map(FileChange::path).contains("dir/b.txt");
+        assertThat(selections).last().isEqualTo(selected.get()); // the diff follows
+
+        // a file without changes any more is simply not selected
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0].showRepository(Optional.of(repo));
+            pane[0].selectWhenLoaded("gone.txt");
+        });
+        awaitRows(pane[0], 2);
+        SwingUtilities.invokeAndWait(() -> selected.set(pane[0].selectedFile()));
+        assertThat(selected.get()).isEmpty();
+    }
+
+    @Test
     void refreshPicksUpNewChangesWithoutClearing() throws Exception {
         try (Git git = Git.init().setDirectory(repo.toFile()).call()) {
             // empty repository: every file is untracked
@@ -125,6 +159,15 @@ class FilesPaneTest {
                 .isEqualTo("Modified (staged), Deleted");
         assertThat(FileChangeTableModel.statusText(new FileChange("a", null, ChangeType.CONFLICTED)))
                 .isEqualTo("Conflict");
+        assertThat(FileChangeTableModel.statusText(FileChange.renamed("old/a", "new/a", ChangeType.MODIFIED)))
+                .isEqualTo("Renamed (staged), Modified");
+    }
+
+    @Test
+    void renamedFileShowsItsOriginalPathInTooltip() {
+        assertThat(FileNameCellRenderer.tooltip(FileChange.renamed("old/a.txt", "new/a.txt", null)))
+                .isEqualTo("Renamed from " + "old/a.txt".replace('/', java.io.File.separatorChar));
+        assertThat(FileNameCellRenderer.tooltip(new FileChange("a.txt", null, ChangeType.MODIFIED))).isNull();
     }
 
     @Test

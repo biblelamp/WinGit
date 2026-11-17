@@ -12,6 +12,7 @@ import javax.swing.SwingWorker;
 import cz.wingit.core.GitService;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Dialogs;
+import cz.wingit.ui.common.RenameDialog;
 import cz.wingit.ui.remote.RemoteOperation;
 
 /**
@@ -64,8 +65,8 @@ public final class RenameBranchAction extends AbstractAction {
     }
 
     private void renameRemoteOnly(Path repo, BranchItem.Target target) {
-        Optional<RenameBranchDialog.Result> entered = RenameBranchDialog.show(pane, target.branch(),
-                pane.remoteBranchNames(target.remote()),
+        Optional<RenameDialog.Result> entered = RenameDialog.show(pane, Messages.get("renameBranch.title"),
+                target.branch(), pane.remoteBranchNames(target.remote()), NewBranchDialog::problem,
                 Messages.format("renameBranch.remote.header", target.remote(), target.branch()),
                 Messages.get("renameBranch.remote.description"), null);
         if (entered.isPresent() && confirmServer(target, entered.get().newName())) {
@@ -76,8 +77,8 @@ public final class RenameBranchAction extends AbstractAction {
 
     private void renameLocal(Path repo, String oldName) {
         Optional<BranchItem.Target> upstream = pane.upstreamOf(oldName);
-        Optional<RenameBranchDialog.Result> entered = RenameBranchDialog.show(pane, oldName, pane.localBranchNames(),
-                Messages.format("renameBranch.header", oldName), Messages.get("renameBranch.description"),
+        Optional<RenameDialog.Result> entered = RenameDialog.show(pane, Messages.get("renameBranch.title"), oldName,
+                pane.localBranchNames(), NewBranchDialog::problem, Messages.format("renameBranch.header", oldName), Messages.get("renameBranch.description"),
                 upstream.map(u -> Messages.format("renameBranch.alsoRemote", u.remote(), u.branch())).orElse(null));
         if (entered.isEmpty()) {
             return;

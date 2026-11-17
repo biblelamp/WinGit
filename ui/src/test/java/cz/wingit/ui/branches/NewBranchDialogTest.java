@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import cz.wingit.ui.common.RenameDialog;
+
 class NewBranchDialogTest {
 
     private final List<String> existing = List.of("main", "feature/login");
@@ -25,7 +27,7 @@ class NewBranchDialogTest {
 
     @Test
     void renameIgnoresTheBranchItselfSoCaseChangesAreAllowed() {
-        List<String> others = RenameBranchDialog.otherBranches("feature/login", existing);
+        List<String> others = RenameDialog.others("feature/login", existing);
         assertThat(others).containsExactly("main");
         assertThat(NewBranchDialog.problem("Feature/Login", others)).isNull();
         assertThat(NewBranchDialog.problem("MAIN", others)).isNotNull();

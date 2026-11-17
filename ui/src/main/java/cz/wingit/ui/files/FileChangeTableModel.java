@@ -96,6 +96,8 @@ public final class FileChangeTableModel extends AbstractTableModel {
                 return Messages.get("files.status.modified");
             case DELETED:
                 return Messages.get("files.status.deleted");
+            case RENAMED:
+                return Messages.get("files.status.renamed");
             case UNTRACKED:
                 return Messages.get("files.status.untracked");
             case CONFLICTED:

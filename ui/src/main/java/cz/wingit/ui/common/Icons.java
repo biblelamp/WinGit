@@ -28,7 +28,9 @@ public final class Icons {
 
     /** File status icon {@code icons/files/<type>.svg}, e.g. {@code modified.svg}. */
     public static FlatSVGIcon fileStatus(ChangeType type) {
-        String name = type.name().toLowerCase(Locale.ROOT);
+        // A rename has no icon of its own yet: the file was changed, so it shares the "modified" one.
+        ChangeType shown = type == ChangeType.RENAMED ? ChangeType.MODIFIED : type;
+        String name = shown.name().toLowerCase(Locale.ROOT);
         return new FlatSVGIcon(BASE + "files/" + name + ".svg", LIST_SIZE, LIST_SIZE);
     }
 

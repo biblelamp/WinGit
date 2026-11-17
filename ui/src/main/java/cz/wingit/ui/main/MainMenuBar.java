@@ -24,7 +24,8 @@ public final class MainMenuBar extends JMenuBar {
     public MainMenuBar(Action addOrCreateRepository, Action cloneRepository, Action closeRepository,
                        Action removeRepository, Action commit, Action pull, Action push, Action newBranch,
                        Action renameBranch, Action deleteBranch, Action merge, Action abortMerge,
-                       Action newTag, Action pushTag, Action deleteTag, Action... fileActions) {
+                       Action newTag, Action pushTag, Action renameTag, Action deleteTag,
+                       Action... fileActions) {
         JMenu repository = new JMenu(Messages.get("menu.repository"));
         repository.setMnemonic(KeyEvent.VK_R);
         repository.add(addOrCreateRepository);
@@ -58,6 +59,7 @@ public final class MainMenuBar extends JMenuBar {
         branch.addSeparator();
         branch.add(newTag);
         branch.add(pushTag);
+        branch.add(renameTag);
         branch.add(deleteTag);
         add(branch);
 

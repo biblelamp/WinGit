@@ -1,4 +1,4 @@
-package cz.wingit.ui.branches;
+package cz.wingit.ui.common;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -8,6 +8,7 @@ import java.awt.event.KeyEvent;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -23,39 +24,43 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import cz.wingit.ui.Messages;
-import cz.wingit.ui.common.DialogHeader;
 
 /**
- * Modal dialog asking for the new name of a branch (local or on the server), checked while typing
- * like a new branch name (the branch's own name does not count as taken, so a change of letter case
- * is allowed). Optionally offers a check box, e.g. to rename the tracked server branch as well.
+ * Modal dialog asking for the new name of a branch or tag, checked while typing like a new name
+ * (the item's own name does not count as taken, so a change of letter case is allowed). Optionally
+ * offers a check box, e.g. to rename it on the server as well.
  */
-final class RenameBranchDialog extends JDialog {
+public final class RenameDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;
 
     /** What the user entered; {@code option} is the check box state ({@code false} without one). */
-    record Result(String newName, boolean option) {
+    public record Result(String newName, boolean option) {
     }
 
     private final transient String oldName;
     private final transient List<String> others;
+    private final transient BiFunction<String, Collection<String>, String> check;
     private final DialogHeader header;
     private final JTextField nameField = new JTextField(28);
-    private final JButton renameButton = new JButton(Messages.get("renameBranch.rename"));
+    private final JButton renameButton = new JButton(Messages.get("rename.rename"));
     private final JCheckBox optionBox;
     private transient Result result;
 
     /**
+     * @param existing    names a new name must not clash with (the old name may be among them)
+     * @param check       why a typed name cannot be used ({@code null} if it can), given the other names
      * @param headerText  dialog banner title
      * @param description banner description
      * @param optionText  label of an extra check box, or {@code null} for none
      */
-    RenameBranchDialog(Window owner, String oldName, Collection<String> existingBranches, String headerText,
-                       String description, String optionText) {
-        super(owner, Messages.get("renameBranch.title"), ModalityType.APPLICATION_MODAL);
+    RenameDialog(Window owner, String title, String oldName, Collection<String> existing,
+                 BiFunction<String, Collection<String>, String> check, String headerText, String description,
+                 String optionText) {
+        super(owner, title, ModalityType.APPLICATION_MODAL);
         this.oldName = oldName;
-        this.others = otherBranches(oldName, existingBranches);
+        this.others = others(oldName, existing);
+        this.check = check;
         this.header = new DialogHeader(headerText, description);
         this.optionBox = optionText == null ? null : new JCheckBox(optionText);
         setContentPane(createContent());
@@ -90,22 +95,26 @@ final class RenameBranchDialog extends JDialog {
         setLocationRelativeTo(owner);
     }
 
-    /** Shows the dialog; returns the new name (and check box state) unless cancelled or unchanged. */
-    static Optional<Result> show(Component parent, String oldName, Collection<String> existingBranches,
-                                 String headerText, String description, String optionText) {
-        RenameBranchDialog dialog = new RenameBranchDialog(SwingUtilities.getWindowAncestor(parent), oldName,
-                existingBranches, headerText, description, optionText);
+    /**
+     * Shows the dialog; returns the new name (and check box state) unless cancelled or unchanged.
+     * See the constructor for the parameters.
+     */
+    public static Optional<Result> show(Component parent, String title, String oldName, Collection<String> existing,
+                                        BiFunction<String, Collection<String>, String> check, String headerText,
+                                        String description, String optionText) {
+        RenameDialog dialog = new RenameDialog(SwingUtilities.getWindowAncestor(parent), title, oldName,
+                existing, check, headerText, description, optionText);
         dialog.setVisible(true);
         return Optional.ofNullable(dialog.result);
     }
 
-    /** Branch names a new name must not clash with: all except the renamed branch itself. */
-    static List<String> otherBranches(String oldName, Collection<String> existing) {
+    /** Names a new name must not clash with: all except the renamed item itself. */
+    public static List<String> others(String oldName, Collection<String> existing) {
         return existing.stream().filter(name -> !name.equals(oldName)).toList();
     }
 
     private JPanel createContent() {
-        JLabel label = new JLabel(Messages.get("newBranch.name"));
+        JLabel label = new JLabel(Messages.get("rename.name"));
         label.setLabelFor(nameField);
         JPanel form = new JPanel(new BorderLayout(6, 0));
         form.setBorder(BorderFactory.createEmptyBorder(12, 12, 0, 12));
@@ -118,7 +127,7 @@ final class RenameBranchDialog extends JDialog {
             form.add(option, BorderLayout.SOUTH);
         }
 
-        JButton cancel = new JButton(Messages.get("newBranch.cancel"));
+        JButton cancel = new JButton(Messages.get("rename.cancel"));
         cancel.addActionListener(e -> dispose());
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         buttons.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -134,7 +143,7 @@ final class RenameBranchDialog extends JDialog {
 
     private void validateName() {
         String name = nameField.getText().strip();
-        String problem = NewBranchDialog.problem(name, others);
+        String problem = check.apply(name, others);
         if (problem == null) {
             header.showDescription();
         } else {

@@ -1,6 +1,7 @@
 package cz.wingit.ui.files;
 
 import java.awt.Component;
+import java.io.File;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -12,11 +13,13 @@ import com.formdev.flatlaf.util.UIScale;
 
 import cz.wingit.core.status.ChangeType;
 import cz.wingit.core.status.FileChange;
+import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Icons;
 
 /**
  * Name column: file name with an icon for its status. The working tree change wins over the
- * staged one, since that is what the file on disk looks like now.
+ * staged one, since that is what the file on disk looks like now. A renamed file shows its
+ * original path in the tooltip.
  */
 final class FileNameCellRenderer extends DefaultTableCellRenderer {
 
@@ -43,7 +46,13 @@ final class FileNameCellRenderer extends DefaultTableCellRenderer {
         FileChange change = model.getChange(table.convertRowIndexToModel(row));
         setIcon(ICONS.get(iconType(change)));
         setIconTextGap(UIScale.scale(6));
+        setToolTipText(tooltip(change));
         return this;
+    }
+
+    static String tooltip(FileChange change) {
+        return change.originalPath() == null ? null
+                : Messages.format("files.tooltip.renamed", change.originalPath().replace('/', File.separatorChar));
     }
 
     static ChangeType iconType(FileChange change) {

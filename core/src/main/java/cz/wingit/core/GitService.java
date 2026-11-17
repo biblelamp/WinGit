@@ -154,6 +154,28 @@ public interface GitService {
     void deleteTag(Path workTree, String name);
 
     /**
+     * Renames the local tag {@code name} to {@code newName}. Git cannot rename a tag, so a copy is made
+     * and the old tag deleted: an annotated tag keeps its commit, message, tagger and date (a GPG
+     * signature cannot be copied and is dropped), a lightweight tag stays lightweight. A change of
+     * letter case only works too. The tag on the server is not touched.
+     *
+     * @throws GitCommandException if Git refuses (e.g. a tag {@code newName} exists)
+     */
+    void renameTag(Path workTree, String name, String newName);
+
+    /**
+     * Brings the rename of a tag to the server of {@code remote}: pushes the local tag {@code newName}
+     * (rename locally first) and, in the same atomic push, deletes {@code name} there if the server
+     * has it. Nothing changes if a tag {@code newName} already exists on the server.
+     *
+     * @param credentials as for {@link #push}
+     * @throws GitAuthenticationException if the remote needs (other) credentials
+     * @throws GitCommandException        if the server refuses (exists, protected, no atomic push)
+     */
+    void renameRemoteTag(Path workTree, String remote, String name, String newName, Credentials credentials,
+                         Consumer<String> progress);
+
+    /**
      * The remote that tags are pushed to: the current branch's remote, else {@code origin} or the only
      * remote. Empty if the repository has none (or several and none is obvious).
      */

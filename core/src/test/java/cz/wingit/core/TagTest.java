@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
@@ -116,6 +117,93 @@ class TagTest {
         assertThat(git.defaultRemote(repo)).contains("upstream");
         cli.run(repo, List.of("remote", "add", "fork", "https://example.invalid/f.git"));
         assertThat(git.defaultRemote(repo)).isEmpty(); // two remotes, none obvious
+    }
+
+    @Test
+    void renameKeepsAnnotatedTagContentAndRenamingBackRestoresIt() throws Exception {
+        Path repo = createRepo("rename");
+        String first = commit(repo, "a.txt", "first");
+        commit(repo, "b.txt", "second");
+        // a tag by someone else, made earlier, on an older commit
+        cli.run(repo, List.of("-c", "user.name=Alice", "-c", "user.email=alice@example.invalid", "tag", "-a",
+                "-m", "Release one\n\nNotes", "v1", first), null,
+                Map.of("GIT_COMMITTER_DATE", "1700000000 +0130"), null);
+        String original = tagId(repo, "v1");
+
+        git.renameTag(repo, "v1", "release-1");
+
+        assertThat(git.refs(repo).tags()).containsExactly("release-1");
+        RevTag renamed = tag(repo, "release-1");
+        assertThat(renamed.getTagName()).isEqualTo("release-1");
+        assertThat(renamed.getObject().name()).isEqualTo(first);
+        assertThat(renamed.getFullMessage()).isEqualTo("Release one\n\nNotes\n");
+        assertThat(renamed.getTaggerIdent().getName()).isEqualTo("Alice");
+        assertThat(renamed.getTaggerIdent().getWhenAsInstant().getEpochSecond()).isEqualTo(1700000000L);
+
+        git.renameTag(repo, "release-1", "v1");
+        assertThat(tagId(repo, "v1")).isEqualTo(original); // identical tag object again
+    }
+
+    @Test
+    void renameKeepsLightweightTagsLightweightAndAllowsCaseChange() throws Exception {
+        Path repo = createRepo("light");
+        String head = commit(repo, "a.txt", "first");
+        cli.run(repo, List.of("tag", "light"));
+
+        git.renameTag(repo, "light", "Light");
+
+        assertThat(git.refs(repo).tags()).containsExactly("Light");
+        assertThat(tagId(repo, "Light")).isEqualTo(head); // still points straight at the commit
+    }
+
+    @Test
+    void renameToExistingNameFailsAndKeepsTheTag() throws Exception {
+        Path repo = createRepo("taken");
+        commit(repo, "a.txt", "first");
+        git.createTag(repo, "a", null, null);
+        git.createTag(repo, "b", null, null);
+
+        assertThatThrownBy(() -> git.renameTag(repo, "a", "b")).isInstanceOf(GitCommandException.class);
+        assertThatThrownBy(() -> git.renameTag(repo, "a", "bad name")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(git.refs(repo).tags()).containsExactly("a", "b");
+    }
+
+    @Test
+    void renameRemoteTagReplacesItOnServerAndRefusesTakenNames() throws Exception {
+        Path remote = tempDir.resolve("rename-server.git");
+        cli.run(tempDir, List.of("init", "--bare", "-q", remote.toString()));
+        Path repo = createRepo("rename-local");
+        cli.run(repo, List.of("remote", "add", "origin", remote.toString()));
+        commit(repo, "a.txt", "first");
+        git.createTag(repo, "old", null, null);
+        git.createTag(repo, "taken", null, null);
+        git.createTag(repo, "local-only", null, null);
+        git.push(repo, null, line -> { });
+        cli.run(repo, List.of("push", "-q", "origin", "refs/tags/old", "refs/tags/taken"));
+        cli.run(repo, List.of("push", "-q", "origin", ":refs/tags/local-only"));
+        assertThat(serverTags(remote)).containsExactlyInAnyOrder("old", "taken");
+
+        git.renameTag(repo, "old", "new");
+        git.renameRemoteTag(repo, "origin", "old", "new", null, line -> { });
+        assertThat(serverTags(remote)).containsExactlyInAnyOrder("new", "taken");
+
+        // not on the server yet: the new name is simply pushed
+        git.renameTag(repo, "local-only", "pushed");
+        git.renameRemoteTag(repo, "origin", "local-only", "pushed", null, line -> { });
+        assertThat(serverTags(remote)).containsExactlyInAnyOrder("new", "taken", "pushed");
+
+        // the new name exists on the server: nothing changes there
+        cli.run(repo, List.of("tag", "--delete", "taken"));
+        git.renameTag(repo, "new", "taken");
+        assertThatThrownBy(() -> git.renameRemoteTag(repo, "origin", "new", "taken", null, line -> { }))
+                .isInstanceOf(GitCommandException.class);
+        assertThat(serverTags(remote)).containsExactlyInAnyOrder("new", "taken", "pushed");
+    }
+
+    private static String tagId(Path repo, String name) throws Exception {
+        try (Git jgit = Git.open(repo.toFile())) {
+            return jgit.getRepository().exactRef("refs/tags/" + name).getObjectId().name();
+        }
     }
 
     private List<String> serverTags(Path remote) throws Exception {

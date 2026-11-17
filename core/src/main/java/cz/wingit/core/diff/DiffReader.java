@@ -54,7 +54,10 @@ public final class DiffReader {
             leftSource = Source.HEAD;
             rightSource = Source.INDEX;
         }
-        FileVersion left = version(repository, change.path(), leftSource);
+        // A staged rename compares the original file in HEAD with the moved one.
+        String leftPath = leftSource == Source.HEAD && change.originalPath() != null
+                ? change.originalPath() : change.path();
+        FileVersion left = version(repository, leftPath, leftSource);
         FileVersion right = version(repository, change.path(), rightSource);
         boolean comparable = !left.binary() && !right.binary() && !left.tooLarge() && !right.tooLarge();
         List<DiffRow> rows = comparable

@@ -60,7 +60,9 @@ public final class BranchesPane extends TitledPane {
     private JPopupMenu branchPopup;
     private JPopupMenu tagPopup;
     private transient Action branchDelete;
+    private transient Action branchRename;
     private transient Action tagDelete;
+    private transient Action tagRename;
 
     public BranchesPane(GitService git) {
         this(git, new PlaceholderTree(emptyModel()));
@@ -288,8 +290,7 @@ public final class BranchesPane extends TitledPane {
      * {@code rename}, the Delete key runs {@code delete}.
      */
     public void installContextActions(Action rename, Action delete, Action... actions) {
-        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "renameBranch");
-        tree.getActionMap().put("renameBranch", rename);
+        branchRename = rename;
         branchDelete = delete;
         branchPopup = new JPopupMenu();
         for (Action action : actions) {
@@ -300,31 +301,40 @@ public final class BranchesPane extends TitledPane {
     }
 
     /**
-     * Context menu of the Tags group and tags with {@code actions}; the Delete key on a tag runs
-     * {@code delete}.
+     * Context menu of the Tags group and tags with {@code actions}; on a tag F2 runs {@code rename} and
+     * the Delete key runs {@code delete}.
      */
-    public void installTagActions(Action delete, Action... actions) {
+    public void installTagActions(Action rename, Action delete, Action... actions) {
+        tagRename = rename;
         tagDelete = delete;
         tagPopup = new JPopupMenu();
         for (Action action : actions) {
             tagPopup.add(action);
         }
+        tagPopup.add(rename);
         tagPopup.add(delete);
     }
 
-    private void installContextGestures() {
-        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteSelected");
-        tree.getActionMap().put("deleteSelected", new AbstractAction() {
+    /** Key binding that runs the tag or the branch variant of an action, whichever fits the selection. */
+    private void bindKey(int key, String name, boolean rename) {
+        tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(key, 0), name);
+        tree.getActionMap().put(name, new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                Action action = selectedTag().isPresent() ? tagDelete : branchDelete;
+                boolean tag = selectedTag().isPresent();
+                Action action = rename ? (tag ? tagRename : branchRename) : (tag ? tagDelete : branchDelete);
                 if (action != null && action.isEnabled()) {
                     action.actionPerformed(e);
                 }
             }
         });
+    }
+
+    private void installContextGestures() {
+        bindKey(KeyEvent.VK_DELETE, "deleteSelected", false);
+        bindKey(KeyEvent.VK_F2, "renameSelected", true);
         tree.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {

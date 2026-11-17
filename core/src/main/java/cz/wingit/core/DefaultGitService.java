@@ -21,16 +21,22 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ConfigConstants;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryState;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 
 import cz.wingit.core.cli.GitCli;
+import cz.wingit.core.cli.GitResult;
 import cz.wingit.core.diff.DiffReader;
 import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
@@ -48,6 +54,7 @@ import cz.wingit.core.repo.Repositories;
 import cz.wingit.core.status.ChangeType;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.core.status.RepositoryStatus;
+import cz.wingit.core.status.StagedRenames;
 import cz.wingit.core.status.StatusMapper;
 import cz.wingit.core.watch.RepositoryWatch;
 import cz.wingit.core.watch.RepositoryWatcher;
@@ -95,7 +102,8 @@ public final class DefaultGitService implements GitService {
     @Override
     public RepositoryStatus status(Path workTree) {
         try (Git git = Git.open(workTree.toFile())) {
-            return StatusMapper.from(git.status().call());
+            Status status = git.status().call();
+            return StatusMapper.from(status, StagedRenames.find(git.getRepository(), status));
         } catch (IOException | GitAPIException e) {
             throw new GitException("Cannot read status of " + workTree + ": " + e.getMessage(), e);
         }
@@ -278,6 +286,81 @@ public final class DefaultGitService implements GitService {
     }
 
     @Override
+    public void renameTag(Path workTree, String name, String newName) {
+        if (!TagNames.isValid(newName)) {
+            throw new IllegalArgumentException("Not a valid tag name: " + newName);
+        }
+        TagCopy copy = readRepository(workTree, repository -> TagCopy.read(repository, name));
+        if (name.equalsIgnoreCase(newName)) {
+            // Windows keeps "v1" and "V1" in one ref file: delete first, restore the old tag if needed.
+            cli.run(workTree, List.of("tag", "--delete", name));
+            try {
+                createCopy(workTree, copy, newName);
+            } catch (RuntimeException e) {
+                createCopy(workTree, copy, name);
+                throw e;
+            }
+            return;
+        }
+        createCopy(workTree, copy, newName);
+        cli.run(workTree, List.of("tag", "--delete", name));
+    }
+
+    /** What makes up a tag, so it can be recreated under another name. */
+    private record TagCopy(String target, String message, PersonIdent tagger) {
+
+        static TagCopy read(Repository repository, String name) {
+            try (RevWalk walk = new RevWalk(repository)) {
+                Ref ref = repository.exactRef(Constants.R_TAGS + name);
+                if (ref == null) {
+                    throw new GitException("Tag '" + name + "' does not exist.");
+                }
+                RevObject object = walk.parseAny(ref.getObjectId());
+                if (object instanceof RevTag tag) {
+                    return new TagCopy(tag.getObject().name(), tag.getFullMessage(), tag.getTaggerIdent());
+                }
+                return new TagCopy(object.name(), null, null); // lightweight
+            } catch (IOException e) {
+                throw new GitException("Cannot read tag '" + name + "': " + e.getMessage(), e);
+            }
+        }
+    }
+
+    private void createCopy(Path workTree, TagCopy copy, String name) {
+        if (copy.message() == null) {
+            cli.run(workTree, List.of("tag", name, copy.target()));
+            return;
+        }
+        Map<String, String> environment = Map.of();
+        if (copy.tagger() != null) {
+            // Git takes the tagger from the committer identity.
+            PersonIdent tagger = copy.tagger();
+            environment = Map.of("GIT_COMMITTER_NAME", tagger.getName(),
+                    "GIT_COMMITTER_EMAIL", tagger.getEmailAddress(),
+                    "GIT_COMMITTER_DATE", gitDate(tagger.getWhenAsInstant(), tagger.getZoneId()));
+        }
+        cli.run(workTree, List.of("tag", "--annotate", "--cleanup=verbatim", "--file=-", name, copy.target()),
+                null, environment, copy.message());
+    }
+
+    @Override
+    public void renameRemoteTag(Path workTree, String remote, String name, String newName,
+                                Credentials credentials, Consumer<String> progress) {
+        String url = readRepository(workTree, repository -> RemoteTarget.pushUrl(repository, remote));
+        String oldRef = Constants.R_TAGS + name;
+        String newRef = Constants.R_TAGS + newName;
+        boolean onServer = !runRemote(workTree, List.of("ls-remote", "--tags", remote, oldRef), url, credentials,
+                progress).stdout().isBlank();
+        List<String> args = new ArrayList<>(List.of("push", "--progress", "--atomic",
+                // fails (nothing changes) if the new name is already taken on the server
+                "--force-with-lease=" + newRef + ":", remote, newRef + ":" + newRef));
+        if (onServer) {
+            args.add(":" + oldRef);
+        }
+        runRemote(workTree, args, url, credentials, progress);
+    }
+
+    @Override
     public Optional<String> defaultRemote(Path workTree) {
         return readRepository(workTree, RemoteTarget::defaultRemote);
     }
@@ -347,7 +430,9 @@ public final class DefaultGitService implements GitService {
 
     @Override
     public void unstage(Path workTree, List<FileChange> changes) {
-        List<String> paths = changes.stream().filter(c -> c.staged() != null).map(FileChange::path).toList();
+        // A rename is undone in the index only together with its original path.
+        List<String> paths = changes.stream().filter(c -> c.staged() != null)
+                .flatMap(c -> c.paths().stream()).toList();
         if (!paths.isEmpty()) {
             // 'reset' (unlike 'restore --staged') also works before the first commit.
             cli.run(workTree, List.of("--literal-pathspecs", "reset", "-q",
@@ -365,6 +450,10 @@ public final class DefaultGitService implements GitService {
                 untracked.add(change.path());
             } else if (change.staged() == ChangeType.ADDED) {
                 added.add(change.path());
+            } else if (change.staged() == ChangeType.RENAMED) {
+                // Undo the move: drop the new path, bring the original back from HEAD.
+                added.add(change.path());
+                tracked.add(change.originalPath());
             } else {
                 tracked.add(change.path());
             }
@@ -398,7 +487,7 @@ public final class DefaultGitService implements GitService {
         List<String> toAdd = new ArrayList<>();
         List<String> paths = new ArrayList<>();
         for (FileChange change : changes) {
-            paths.add(change.path());
+            paths.addAll(change.paths()); // a rename is committed together with the deletion of its original
             if (change.unstaged() != null) {
                 toAdd.add(change.path());
             }
@@ -551,13 +640,13 @@ public final class DefaultGitService implements GitService {
         }
     }
 
-    private void runRemote(Path workTree, List<String> args, String url, Credentials credentials,
-                           Consumer<String> progress) {
+    private GitResult runRemote(Path workTree, List<String> args, String url, Credentials credentials,
+                                Consumer<String> progress) {
         List<String> command = credentials == null ? args : AskPass.withOptions(args);
         Map<String, String> environment = credentials == null
                 ? AskPass.storedOnlyEnvironment() : AskPass.environment(credentials);
         try {
-            cli.run(workTree, command, progress, environment, null);
+            return cli.run(workTree, command, progress, environment, null);
         } catch (GitCommandException e) {
             if (AuthFailures.isAuthenticationFailure(e.stderr())) {
                 throw new GitAuthenticationException(url, e.stderr(), e);

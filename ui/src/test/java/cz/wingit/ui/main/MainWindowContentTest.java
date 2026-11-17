@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Rectangle;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,9 +72,52 @@ class MainWindowContentTest {
 
     @Test
     void contentBuildsWithAllPanes() {
-        JPanel content = MainWindow.createContent(Map.of(), repositoriesPane, new BranchesPane(git),
-                new FilesPane(git), new DiffPane(git), new HistoryPane(git));
+        JPanel content = MainWindow.createContent(Map.of(), mainContent());
         assertThat(content.getComponentCount()).isEqualTo(3);
+    }
+
+    @Test
+    void dividersAreRestoredOnceTheSplitHasASize() throws Exception {
+        MainContent content = mainContent();
+        content.restoreDividers(Map.of(
+                "main", new WindowLayout.Divider(345, 1000),
+                "unknown", new WindowLayout.Divider(99, 500)));
+        content.setSize(1000, 700);
+        content.doLayout();
+        SwingUtilities.invokeAndWait(() -> { }); // deliver the resize events posted by the layout
+
+        Map<String, WindowLayout.Divider> dividers = content.dividers();
+        assertThat(dividers).containsOnlyKeys("main", "left", "right", "lower");
+        assertThat(dividers.get("main")).isEqualTo(new WindowLayout.Divider(345, 1000));
+    }
+
+    @Test
+    void dividerFollowsResizeWeightFromSavedSize() {
+        WindowLayout.Divider saved = new WindowLayout.Divider(400, 800);
+
+        assertThat(MainContent.location(saved, 800, 0.5)).isEqualTo(400);
+        assertThat(MainContent.location(saved, 1000, 0.5)).isEqualTo(500);
+        assertThat(MainContent.location(saved, 1000, 0.0)).isEqualTo(400);
+        assertThat(MainContent.location(saved, 600, 0.35)).isEqualTo(330);
+        assertThat(MainContent.location(new WindowLayout.Divider(400, 0), 1000, 0.5)).isEqualTo(400);
+    }
+
+    @Test
+    void savedPositionMustBeOnSomeScreen() {
+        List<Rectangle> screens = List.of(new Rectangle(0, 0, 1920, 1080), new Rectangle(1920, 0, 1280, 1024));
+
+        assertThat(MainWindow.isOnScreen(new Rectangle(100, 100, 800, 600), screens)).isTrue();
+        assertThat(MainWindow.isOnScreen(new Rectangle(2000, 50, 800, 600), screens)).isTrue();
+        // Second monitor disconnected / window dragged off the edges.
+        assertThat(MainWindow.isOnScreen(new Rectangle(3300, 50, 800, 600), screens)).isFalse();
+        assertThat(MainWindow.isOnScreen(new Rectangle(100, -500, 800, 600), screens)).isFalse();
+        assertThat(MainWindow.isOnScreen(new Rectangle(-750, 100, 800, 600), screens)).isFalse();
+        assertThat(MainWindow.isOnScreen(new Rectangle(100, 100, 0, 600), screens)).isFalse();
+    }
+
+    private MainContent mainContent() {
+        return new MainContent(repositoriesPane, new BranchesPane(git), new FilesPane(git), new DiffPane(git),
+                new HistoryPane(git));
     }
 
     @Test
@@ -112,6 +157,7 @@ class MainWindowContentTest {
                 MergeAction.abort(git, repositoriesPane, () -> { }),
                 NewTagAction.onHead(git, repositoriesPane, () -> { }),
                 SelectedTagAction.push(git, new BranchesPane(git), () -> { }),
+                SelectedTagAction.rename(git, new BranchesPane(git), () -> { }),
                 SelectedTagAction.delete(git, new BranchesPane(git), () -> { }),
                 FileAction.stage(git, filesPane, () -> { }),
                 FileAction.unstage(git, filesPane, () -> { }),
@@ -139,8 +185,10 @@ class MainWindowContentTest {
         assertThat(branch.getItem(7).isEnabled()).isFalse(); // no repository open
         assertThat(branch.getItem(8).getText()).isEqualTo("Push Tag");
         assertThat(branch.getItem(8).isEnabled()).isFalse(); // no tag selected
-        assertThat(branch.getItem(9).getText()).isEqualTo("Delete Tag…");
+        assertThat(branch.getItem(9).getText()).isEqualTo("Rename Tag…");
         assertThat(branch.getItem(9).isEnabled()).isFalse();
+        assertThat(branch.getItem(10).getText()).isEqualTo("Delete Tag…");
+        assertThat(branch.getItem(10).isEnabled()).isFalse();
         JMenu local = menuBar.getMenu(1);
         assertThat(local.getText()).isEqualTo("Local");
         assertThat(local.getItem(0).getText()).isEqualTo("Commit…");

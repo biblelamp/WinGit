@@ -187,12 +187,14 @@ class BranchesPaneTest {
 
         AtomicReference<BranchesPane> pane = new AtomicReference<>();
         AtomicReference<SelectedTagAction> push = new AtomicReference<>();
+        AtomicReference<SelectedTagAction> rename = new AtomicReference<>();
         AtomicReference<SelectedTagAction> delete = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> {
             pane.set(new BranchesPane(service));
             push.set(SelectedTagAction.push(service, pane.get(), () -> { }));
+            rename.set(SelectedTagAction.rename(service, pane.get(), () -> { }));
             delete.set(SelectedTagAction.delete(service, pane.get(), () -> { }));
-            pane.get().installTagActions(delete.get(), push.get());
+            pane.get().installTagActions(rename.get(), delete.get(), push.get());
             pane.get().showRepository(Optional.of(repo));
         });
         // Local, main, Remotes, Tags (1), Stashes
@@ -207,6 +209,7 @@ class BranchesPaneTest {
             assertThat(pane.get().selectedTag()).contains("v1.0");
             assertThat(pane.get().selectedLocalBranch()).isEmpty();
             assertThat(push.get().isEnabled()).isTrue();
+            assertThat(rename.get().isEnabled()).isTrue();
             assertThat(delete.get().isEnabled()).isTrue();
             pane.get().selectRowForTest("main");
             assertThat(pane.get().selectedTag()).isEmpty();

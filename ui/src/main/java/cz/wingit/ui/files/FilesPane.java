@@ -58,6 +58,8 @@ public final class FilesPane extends TitledPane {
     private transient Optional<FileChange> notifiedSelection = Optional.empty();
     private boolean replacingRows;
     private int generation;
+    /** File to select once the status of the shown repository has been read, or {@code null}. */
+    private String pendingSelection;
 
     public FilesPane(GitService git) {
         this(git, new FileChangeTableModel());
@@ -82,6 +84,7 @@ public final class FilesPane extends TitledPane {
     /** Shows the status of {@code workTree}, or a hint when nothing is selected. Call on the EDT. */
     public void showRepository(Optional<Path> workTree) {
         current = workTree.orElse(null);
+        pendingSelection = null;
         model.setChanges(List.of());
         if (current == null) {
             cancelLoader();
@@ -90,6 +93,21 @@ public final class FilesPane extends TitledPane {
         }
         table.setPlaceholder(Messages.get("files.placeholder.loading"));
         load(current);
+    }
+
+    /**
+     * Selects {@code path} (repository-relative, {@code /}-separated) when the status being read for the
+     * shown repository arrives, e.g. the file selected in the last session. Nothing happens if the file has
+     * no changes any more. Call on the EDT, after {@link #showRepository}.
+     */
+    public void selectWhenLoaded(String path) {
+        pendingSelection = path;
+    }
+
+    /** The single selected file, if exactly one row is selected. Call on the EDT. */
+    public Optional<FileChange> selectedFile() {
+        List<FileChange> selected = selectedChanges();
+        return selected.size() == 1 ? Optional.of(selected.get(0)) : Optional.empty();
     }
 
     /**
@@ -146,6 +164,7 @@ public final class FilesPane extends TitledPane {
                 try {
                     RepositoryStatus status = get();
                     update(status.changes());
+                    selectPending();
                     statusListeners.forEach(listener -> listener.accept(path, status));
                     table.setPlaceholder(Messages.get(status.isClean()
                             ? "files.placeholder.clean" : "files.placeholder.filtered"));
@@ -185,6 +204,21 @@ public final class FilesPane extends TitledPane {
             replacingRows = false;
         }
         notifySelection();
+    }
+
+    private void selectPending() {
+        String path = pendingSelection;
+        pendingSelection = null;
+        if (path == null || !table.getSelectionModel().isSelectionEmpty()) {
+            return; // the user already picked something while the status was being read
+        }
+        for (int row = 0; row < table.getRowCount(); row++) {
+            if (model.getChange(table.convertRowIndexToModel(row)).path().equals(path)) {
+                table.setRowSelectionInterval(row, row);
+                table.scrollRectToVisible(table.getCellRect(row, 0, true));
+                return;
+            }
+        }
     }
 
     private void notifySelection() {
