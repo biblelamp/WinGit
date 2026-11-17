@@ -9,13 +9,12 @@ import cz.wingit.core.refs.Stash;
 import cz.wingit.ui.Messages;
 
 /**
- * Builds the tree: Local (with a detached HEAD entry if any), Remotes / remote, Tags, Stashes.
- * Groups show their item count.
+ * Builds the tree: Local (with a detached HEAD entry if any), one group per remote (with its URL),
+ * Tags, Stashes. Groups show their item count.
  */
 final class BranchTreeBuilder {
 
     static final String LOCAL = "local";
-    static final String REMOTES = "remotes";
     /** Key prefix of local branch nodes, followed by the branch name. */
     static final String LOCAL_BRANCH_KEY = "branch:";
     static final String TAGS = "tags";
@@ -40,20 +39,21 @@ final class BranchTreeBuilder {
         }
         root.add(local);
 
-        DefaultMutableTreeNode remotes = group(REMOTES, Messages.get("branches.remote"), refs.remotes().size());
+        // Remotes sit directly at the top level: usually there is just "origin", and an extra
+        // "Remotes" level would only cost a click.
         for (RemoteBranches remote : refs.remotes()) {
-            DefaultMutableTreeNode node = group("remote:" + remote.remote(), remote.remote(), remote.branches().size());
+            DefaultMutableTreeNode node = group("remote:" + remote.remote(), remote.remote(), remote.branches().size(),
+                    remote.url());
             for (String branch : remote.branches()) {
                 node.add(leaf("remote-branch:" + remote.remote() + "/" + branch, branch, null, false,
                         new BranchItem.Target(remote.remote(), branch)));
             }
-            remotes.add(node);
+            root.add(node);
         }
-        root.add(remotes);
 
         DefaultMutableTreeNode tags = group(TAGS, Messages.get("branches.tags"), refs.tags().size());
         for (String tag : refs.tags()) {
-            tags.add(leaf(TAG_KEY + tag, tag, null, false, null));
+            tags.add(leaf(TAG_KEY + tag, tag, tagDetail(refs.tagSubjects().get(tag)), false, null));
         }
         root.add(tags);
 
@@ -63,6 +63,11 @@ final class BranchTreeBuilder {
         }
         root.add(stashes);
         return root;
+    }
+
+    /** Commit subject shown after a tag name, like {@code - fix login}; {@code null} if unknown or blank. */
+    static String tagDetail(String subject) {
+        return subject == null || subject.isBlank() ? null : "- " + subject.strip();
     }
 
     /** E.g. {@code origin/main \u21912 \u21931}; {@code null} without upstream. */
@@ -81,8 +86,13 @@ final class BranchTreeBuilder {
     }
 
     private static DefaultMutableTreeNode group(String key, String name, int count) {
+        return group(key, name, count, null);
+    }
+
+    /** @param detail dimmed text after the label (e.g. a remote's URL), or {@code null} */
+    private static DefaultMutableTreeNode group(String key, String name, int count, String detail) {
         String label = Messages.format("branches.group", name, String.valueOf(count));
-        return new DefaultMutableTreeNode(new BranchItem(key, label, null, false, null));
+        return new DefaultMutableTreeNode(new BranchItem(key, label, detail, false, null));
     }
 
     private static DefaultMutableTreeNode leaf(String key, String label, String detail, boolean current,

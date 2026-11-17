@@ -6,7 +6,7 @@
 
     <groupId>cz.wingit</groupId>
     <artifactId>wingit-parent</artifactId>
-    <version>0.3.1-SNAPSHOT</version>
+    <version>0.3.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>WinGit</name>
@@ -30,14 +30,14 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <jgit.version>7.1.0.202411261347-r</jgit.version>
+        <jgit.version>7.8.1.202611041320-r</jgit.version>
         <flatlaf.version>3.5.4</flatlaf.version>
         <rsyntaxtextarea.version>3.5.3</rsyntaxtextarea.version>
         <java-diff-utils.version>4.15</java-diff-utils.version>
         <junit.version>5.11.3</junit.version>
         <assertj.version>3.26.3</assertj.version>
         <!-- must match the slf4j-api line used by JGit -->
-        <slf4j.version>1.7.36</slf4j.version>
+        <slf4j.version>2.0.18</slf4j.version>
 
         <compiler-plugin.version>3.13.0</compiler-plugin.version>
         <surefire-plugin.version>3.5.2</surefire-plugin.version>

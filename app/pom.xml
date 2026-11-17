@@ -7,7 +7,7 @@
     <parent>
         <groupId>cz.wingit</groupId>
         <artifactId>wingit-parent</artifactId>
-        <version>0.3.1-SNAPSHOT</version>
+        <version>0.3.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>wingit-app</artifactId>
@@ -20,7 +20,7 @@
         <!-- jpackage: numeric version only (no -SNAPSHOT); type msi/exe needs WiX 3 on PATH,
              app-image works without it -->
         <jpackage.type>msi</jpackage.type>
-        <jpackage.appVersion>0.3.1</jpackage.appVersion>
+        <jpackage.appVersion>0.3.2</jpackage.appVersion>
         <jpackage.input>${project.build.directory}/jpackage-input</jpackage.input>
     </properties>
 

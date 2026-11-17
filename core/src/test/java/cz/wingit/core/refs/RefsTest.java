@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -56,9 +57,28 @@ class RefsTest {
                 new LocalBranch("main", "origin/main", 1, 1, true));
         assertThat(refs.detachedAt()).isNull();
         assertThat(refs.remotes()).containsExactly(
-                new RemoteBranches("origin", List.of("main", "release/1.0")));
+                new RemoteBranches("origin", List.of("main", "release/1.0"), server.toUri().toString()));
         assertThat(refs.tags()).containsExactly("v1.0");
         assertThat(refs.stashes()).containsExactly(new Stash(0, "work in progress"));
+    }
+
+    @Test
+    void tagsCarryTheSubjectOfTheirCommit() throws Exception {
+        Path repo = tempDir.resolve("tags");
+        try (Git jgit = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            commit(jgit, repo, "a.txt", "first release\n\nwith details");
+            jgit.tag().setName("v1").setTagger(IDENT).setMessage("annotation, not shown").setSigned(false).call();
+            commit(jgit, repo, "a.txt", "small fixes");
+            jgit.tag().setName("light").setAnnotated(false).call();
+            jgit.tag().setName("tree").setObjectId(new org.eclipse.jgit.revwalk.RevWalk(jgit.getRepository())
+                    .parseTree(jgit.getRepository().resolve("HEAD^{tree}"))).setAnnotated(false).call();
+
+            RepositoryRefs refs = git.refs(repo);
+
+            assertThat(refs.tags()).containsExactly("light", "tree", "v1");
+            assertThat(refs.tagSubjects()).containsOnly(
+                    Map.entry("v1", "first release"), Map.entry("light", "small fixes"));
+        }
     }
 
     @Test

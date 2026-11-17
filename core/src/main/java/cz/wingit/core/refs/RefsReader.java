@@ -3,6 +3,7 @@ package cz.wingit.core.refs;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -15,7 +16,10 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefDatabase;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevWalk;
 
 /**
  * Reads {@link RepositoryRefs} with JGit. Names are sorted case-insensitively.
@@ -50,7 +54,7 @@ public final class RefsReader {
         String detachedAt = head != null && ObjectId.isId(head) ? head.substring(0, ABBREV_LENGTH) : null;
 
         return new RepositoryRefs(local, detachedAt, remoteBranches(repository, refs), tags(refs),
-                stashes(git));
+                stashes(git), tagSubjects(repository, refs));
     }
 
     private static List<RemoteBranches> remoteBranches(Repository repository, RefDatabase refs) throws IOException {
@@ -75,7 +79,8 @@ public final class RefsReader {
         List<RemoteBranches> result = new ArrayList<>();
         byRemote.forEach((remote, branches) -> {
             branches.sort(BY_NAME);
-            result.add(new RemoteBranches(remote, branches));
+            result.add(new RemoteBranches(remote, branches,
+                    repository.getConfig().getString("remote", remote, "url")));
         });
         return result;
     }
@@ -102,6 +107,25 @@ public final class RefsReader {
         }
         tags.sort(BY_NAME);
         return tags;
+    }
+
+    /** Subject of the commit each tag points to (through annotated tags); tags of trees/blobs are left out. */
+    private static Map<String, String> tagSubjects(Repository repository, RefDatabase refs) throws IOException {
+        Map<String, String> subjects = new HashMap<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            for (Ref ref : refs.getRefsByPrefix(Constants.R_TAGS)) {
+                try {
+                    RevObject target = walk.peel(walk.parseAny(ref.getObjectId()));
+                    if (target instanceof RevCommit commit) {
+                        walk.parseBody(commit);
+                        subjects.put(Repository.shortenRefName(ref.getName()), commit.getShortMessage());
+                    }
+                } catch (MissingObjectException e) {
+                    // broken tag (e.g. object pruned): show the name only
+                }
+            }
+        }
+        return subjects;
     }
 
     private static List<Stash> stashes(Git git) throws GitAPIException {

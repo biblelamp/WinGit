@@ -11,14 +11,14 @@ Bundled in the installer (runtime dependencies of the `app` module):
 
 | Library | Version | License | License text |
 |---------|---------|---------|--------------|
-| [JGit](https://www.eclipse.org/jgit/) (`org.eclipse.jgit`) | 7.1.0.202411261347-r | EDL 1.0 (BSD-3-Clause); bundled SHA-1 UbcCheck: MIT | [LICENSE-jgit.txt](licenses/LICENSE-jgit.txt) |
+| [JGit](https://www.eclipse.org/jgit/) (`org.eclipse.jgit`) | 7.8.1.202611041320-r | EDL 1.0 (BSD-3-Clause); bundled SHA-1 UbcCheck: MIT | [LICENSE-jgit.txt](licenses/LICENSE-jgit.txt) |
 | [JavaEWAH](https://github.com/lemire/javaewah) (JGit dependency) | 1.2.3 | Apache-2.0 | [LICENSE](LICENSE) |
-| [Apache Commons Codec](https://commons.apache.org/proper/commons-codec/) (JGit dependency) | 1.17.1 | Apache-2.0 | [LICENSE](LICENSE), notice: [NOTICE-commons-codec.txt](licenses/NOTICE-commons-codec.txt) |
+| [Apache Commons Codec](https://commons.apache.org/proper/commons-codec/) (JGit dependency) | 1.22.1 | Apache-2.0 | [LICENSE](LICENSE), notice: [NOTICE-commons-codec.txt](licenses/NOTICE-commons-codec.txt) |
 | [FlatLaf](https://www.formdev.com/flatlaf/) (`flatlaf`, `flatlaf-extras`) | 3.5.4 | Apache-2.0 | [LICENSE](LICENSE) |
 | [JSVG](https://github.com/weisJ/jsvg) (FlatLaf Extras dependency) | 1.4.0 | MIT | [LICENSE-jsvg.txt](licenses/LICENSE-jsvg.txt) |
 | [RSyntaxTextArea](https://github.com/bobbylight/RSyntaxTextArea) | 3.5.3 | BSD-3-Clause | [LICENSE-rsyntaxtextarea.txt](licenses/LICENSE-rsyntaxtextarea.txt) |
 | [java-diff-utils](https://github.com/java-diff-utils/java-diff-utils) | 4.15 | Apache-2.0 | [LICENSE](LICENSE) |
-| [SLF4J](https://www.slf4j.org) (`slf4j-api`, `slf4j-simple`) | 1.7.36 | MIT | [LICENSE-slf4j.txt](licenses/LICENSE-slf4j.txt) |
+| [SLF4J](https://www.slf4j.org) (`slf4j-api`, `slf4j-simple`) | 2.0.18 | MIT | [LICENSE-slf4j.txt](licenses/LICENSE-slf4j.txt) |
 
 Test-only dependencies (JUnit 5, AssertJ) are not distributed.
 

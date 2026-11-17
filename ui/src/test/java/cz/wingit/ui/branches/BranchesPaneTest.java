@@ -53,19 +53,20 @@ class BranchesPaneTest {
             pane.get().showRepository(Optional.of(repo));
         });
 
-        assertThat(awaitRows(pane.get(), 6)).containsExactly(
-                "Local (2)", "feature", "main", "Remotes (0)", "Tags (1)", "Stashes (1)");
+        // no remote, so no remote group
+        assertThat(awaitRows(pane.get(), 5)).containsExactly(
+                "Local (2)", "feature", "main", "Tags (1)", "Stashes (1)");
 
-        // expand Tags (row 4), add a tag, refresh: Tags stays expanded and shows both
-        SwingUtilities.invokeAndWait(() -> pane.get().expandRowForTest(4));
+        // expand Tags (row 3), add a tag, refresh: Tags stays expanded and shows both
+        SwingUtilities.invokeAndWait(() -> pane.get().expandRowForTest(3));
         try (Git git = Git.open(repo.toFile())) {
             git.tag().setName("v2").setTagger(IDENT).setMessage("v2").setSigned(false).call();
         }
         SwingUtilities.invokeAndWait(() -> pane.get().refresh());
 
         // Stashes was not expanded, so it stays collapsed
-        assertThat(awaitRows(pane.get(), 8)).containsExactly(
-                "Local (2)", "feature", "main", "Remotes (0)", "Tags (2)", "v1", "v2", "Stashes (1)");
+        assertThat(awaitRows(pane.get(), 7)).containsExactly(
+                "Local (2)", "feature", "main", "Tags (2)", "v1 - init", "v2 - init", "Stashes (1)");
     }
 
     @Test
@@ -158,14 +159,13 @@ class BranchesPaneTest {
             delete.set(new DeleteBranchAction(service, pane.get(), () -> { }));
             pane.get().showRepository(Optional.of(clone));
         });
-        // Local, main, Remotes (1), Tags, Stashes
-        assertThat(awaitRows(pane.get(), 5)).isNotEmpty();
+        // Local, main, origin (with its URL) right at the top level, Tags, Stashes
+        assertThat(awaitRows(pane.get(), 5)).element(2).asString().startsWith("origin (2) ");
 
         SwingUtilities.invokeAndWait(() -> {
             assertThat(pane.get().upstreamOf("main")).contains(new BranchItem.Target("origin", "main"));
             assertThat(pane.get().upstreamOf("unknown")).isEmpty();
-            pane.get().expandRowForTest(2); // Remotes
-            pane.get().expandRowForTest(3); // origin
+            pane.get().expandRowForTest(2); // origin
             pane.get().selectRowForTest("feature");
             assertThat(pane.get().selectedRemoteBranch()).contains(new BranchItem.Target("origin", "feature"));
             assertThat(pane.get().selectedLocalBranch()).isEmpty();
@@ -197,14 +197,14 @@ class BranchesPaneTest {
             pane.get().installTagActions(rename.get(), delete.get(), push.get());
             pane.get().showRepository(Optional.of(repo));
         });
-        // Local, main, Remotes, Tags (1), Stashes
-        assertThat(awaitRows(pane.get(), 5)).contains("Tags (1)");
+        // Local, main, Tags (1), Stashes
+        assertThat(awaitRows(pane.get(), 4)).contains("Tags (1)");
 
         SwingUtilities.invokeAndWait(() -> {
             assertThat(pane.get().selectedTag()).isEmpty();
             assertThat(push.get().isEnabled()).isFalse();
             assertThat(delete.get().isEnabled()).isFalse();
-            pane.get().expandRowForTest(3); // Tags
+            pane.get().expandRowForTest(2); // Tags
             pane.get().selectRowForTest("v1.0");
             assertThat(pane.get().selectedTag()).contains("v1.0");
             assertThat(pane.get().selectedLocalBranch()).isEmpty();
