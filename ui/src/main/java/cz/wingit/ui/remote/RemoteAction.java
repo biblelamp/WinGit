@@ -12,7 +12,7 @@ import cz.wingit.ui.Messages;
 import cz.wingit.ui.repositories.RepositoriesPane;
 
 /**
- * "Pull" / "Push" for the opened repository. Enabled only while a repository is open.
+ * "Fetch" / "Pull" / "Push" for the opened repository. Enabled only while a repository is open.
  */
 public final class RemoteAction extends AbstractAction {
 
@@ -26,6 +26,14 @@ public final class RemoteAction extends AbstractAction {
     /**
      * @param afterwards runs on the EDT when the operation finished (also after a failure), e.g. to refresh
      */
+    public static RemoteAction fetch(GitService git, RepositoriesPane pane, Runnable afterwards) {
+        RemoteAction action = new RemoteAction(git, pane, RemoteOperation.Kind.FETCH, afterwards,
+                Messages.get("menu.remote.fetch"));
+        action.putValue(MNEMONIC_KEY, KeyEvent.VK_F);
+        return action;
+    }
+
+    /** See {@link #fetch}. */
     public static RemoteAction pull(GitService git, RepositoriesPane pane, Runnable afterwards) {
         RemoteAction action = new RemoteAction(git, pane, RemoteOperation.Kind.PULL, afterwards,
                 Messages.get("menu.remote.pull"));

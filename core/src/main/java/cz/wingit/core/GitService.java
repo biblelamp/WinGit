@@ -78,6 +78,15 @@ public interface GitService {
     int unpushedCount(Path workTree, int max);
 
     /**
+     * How many commits the upstream of the checked-out branch (as last fetched) has that the branch
+     * does not, counted up to {@code max}: what a pull would bring. 0 without upstream or with a
+     * detached HEAD.
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    int unpulledCount(Path workTree, int max);
+
+    /**
      * Watches the working tree for changes that can affect status or the current branch
      * (debounced; Git-ignored paths and .git internals such as objects are skipped).
      * {@code onChange} runs on a background thread.
@@ -287,6 +296,29 @@ public interface GitService {
      * @throws GitCancelledException      if the calling thread is interrupted
      */
     void push(Path workTree, Credentials credentials, Consumer<String> progress);
+
+    /**
+     * Downloads new commits, branches and tags from the remote of the current branch (else
+     * {@code origin} or the only remote; from all remotes if none of them is obvious) and forgets
+     * remote branches deleted on the server. Local branches and files do not change.
+     *
+     * @param credentials as for {@link #push}
+     * @throws GitException               if the repository has no remote
+     * @throws GitAuthenticationException if the remote needs (other) credentials
+     * @throws GitCancelledException      if the calling thread is interrupted
+     */
+    void fetch(Path workTree, Credentials credentials, Consumer<String> progress);
+
+    /**
+     * Like {@link #fetch} but never asks anybody: only saved credentials are used, and where Git or SSH
+     * would need an answer (sign-in window, password, SSH passphrase or unknown host key) it fails
+     * instead. Does nothing for a repository without remotes.
+     *
+     * @return {@code true} if something was downloaded or removed (remote branches or tags changed)
+     * @throws GitException          if the fetch failed (offline, not signed in, ...)
+     * @throws GitCancelledException if the calling thread is interrupted
+     */
+    boolean fetchInBackground(Path workTree);
 
     /**
      * Pulls the upstream of the current branch into it (merge, or rebase if configured by

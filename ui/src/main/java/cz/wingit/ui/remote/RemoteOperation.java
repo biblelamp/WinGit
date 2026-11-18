@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,6 +48,7 @@ public final class RemoteOperation {
 
     /** The supported remote operations. */
     public enum Kind {
+        FETCH("remote.fetch"),
         PUSH("remote.push"),
         PULL("remote.pull");
 
@@ -76,6 +79,12 @@ public final class RemoteOperation {
 
     private static final Pattern PERCENT = Pattern.compile("(\\d{1,3})%");
 
+    /**
+     * Held while Git talks to a server, so a background fetch and an operation the user started never
+     * run at the same time (both would update the same refs); whoever comes second waits.
+     */
+    private static final Lock NETWORK = new ReentrantLock();
+
     private final GitService git;
     private final Component parent;
 
@@ -92,10 +101,16 @@ public final class RemoteOperation {
      */
     public boolean run(Kind kind, Path workTree) {
         return run(kind.title(), kind.errorTitle(), workTree, (credentials, progress) -> {
-            if (kind == Kind.PUSH) {
-                git.push(workTree, credentials, progress);
-            } else {
-                git.pull(workTree, credentials, progress);
+            switch (kind) {
+                case FETCH:
+                    git.fetch(workTree, credentials, progress);
+                    break;
+                case PUSH:
+                    git.push(workTree, credentials, progress);
+                    break;
+                default:
+                    git.pull(workTree, credentials, progress);
+                    break;
             }
         });
     }
@@ -134,6 +149,11 @@ public final class RemoteOperation {
         }
     }
 
+    /** The lock held during network operations (see {@link #NETWORK}). */
+    static Lock networkLock() {
+        return NETWORK;
+    }
+
     /** @param storeError why remembering the credentials failed (the operation itself may have worked) */
     private record Outcome(boolean succeeded, GitAuthenticationException authFailure, Throwable error,
                            Throwable storeError) {
@@ -156,7 +176,17 @@ public final class RemoteOperation {
             @Override
             protected Void doInBackground() {
                 Consumer<String> progress = this::publish;
-                call.run(credentials, progress);
+                try {
+                    NETWORK.lockInterruptibly();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new GitCancelledException();
+                }
+                try {
+                    call.run(credentials, progress);
+                } finally {
+                    NETWORK.unlock();
+                }
                 if (credentials != null && remember && url != null) {
                     try {
                         git.storeCredentials(workTree, url, credentials);

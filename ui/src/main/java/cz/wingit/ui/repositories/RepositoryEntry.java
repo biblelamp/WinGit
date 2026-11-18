@@ -9,11 +9,17 @@ import java.nio.file.Path;
  * @param changed whether the working tree has changes, or {@code null} while unknown
  * @param missing  whether the folder no longer exists on disk
  * @param unpushed commits of the current branch not pushed yet, or {@code null} while unknown
+ * @param unpulled commits fetched for the current branch but not pulled yet, or {@code null} while unknown
  */
-record RepositoryEntry(Path path, String branch, Boolean changed, boolean missing, Integer unpushed) {
+record RepositoryEntry(Path path, String branch, Boolean changed, boolean missing, Integer unpushed,
+                       Integer unpulled) {
 
     RepositoryEntry(Path path, String branch, Boolean changed, boolean missing) {
-        this(path, branch, changed, missing, null);
+        this(path, branch, changed, missing, null, null);
+    }
+
+    RepositoryEntry(Path path, String branch, Boolean changed, boolean missing, Integer unpushed) {
+        this(path, branch, changed, missing, unpushed, null);
     }
 
     static RepositoryEntry unknown(Path path) {
@@ -26,7 +32,16 @@ record RepositoryEntry(Path path, String branch, Boolean changed, boolean missin
     }
 
     RepositoryEntry withUnpushed(int newUnpushed) {
-        return new RepositoryEntry(path, branch, changed, missing, newUnpushed);
+        return new RepositoryEntry(path, branch, changed, missing, newUnpushed, unpulled);
+    }
+
+    /** {@code true} if commits of the upstream were fetched that the current branch does not have yet. */
+    boolean needsPull() {
+        return unpulled != null && unpulled > 0;
+    }
+
+    RepositoryEntry withUnpulled(int newUnpulled) {
+        return new RepositoryEntry(path, branch, changed, missing, unpushed, newUnpulled);
     }
 
     String displayName() {
@@ -35,11 +50,11 @@ record RepositoryEntry(Path path, String branch, Boolean changed, boolean missin
     }
 
     RepositoryEntry withBranch(String newBranch) {
-        return new RepositoryEntry(path, newBranch, changed, missing, unpushed);
+        return new RepositoryEntry(path, newBranch, changed, missing, unpushed, unpulled);
     }
 
     RepositoryEntry withChanged(boolean newChanged) {
-        return new RepositoryEntry(path, branch, newChanged, missing, unpushed);
+        return new RepositoryEntry(path, branch, newChanged, missing, unpushed, unpulled);
     }
 
     /** Marks the folder as missing (branch and changes become unknown) or present again. */
@@ -47,6 +62,6 @@ record RepositoryEntry(Path path, String branch, Boolean changed, boolean missin
         if (newMissing == missing) {
             return this;
         }
-        return newMissing ? new RepositoryEntry(path, null, null, true) : new RepositoryEntry(path, branch, changed, false, unpushed);
+        return newMissing ? new RepositoryEntry(path, null, null, true) : new RepositoryEntry(path, branch, changed, false, unpushed, unpulled);
     }
 }

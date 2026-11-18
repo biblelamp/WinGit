@@ -38,6 +38,7 @@ import cz.wingit.ui.diff.DiffPane;
 import cz.wingit.ui.files.FileAction;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
+import cz.wingit.ui.remote.AutoFetch;
 import cz.wingit.ui.remote.RemoteAction;
 import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
@@ -88,6 +89,14 @@ public final class MainWindow extends JFrame {
             repositoriesPane.openedRepository().ifPresent(repositoriesPane::refreshBranch);
         };
         AutoRefresh autoRefresh = new AutoRefresh(git, refresh);
+        AutoFetch autoFetch = new AutoFetch(git, repositoriesPane::paths, fetched -> {
+            if (repositoriesPane.openedRepository().filter(fetched::equals).isPresent()) {
+                refresh.run(); // the history shows the new commits, the list their count
+            } else {
+                repositoriesPane.refreshBranch(fetched);
+            }
+        });
+        Action fetch = RemoteAction.fetch(git, repositoriesPane, refresh);
         Action commit = new CommitAction(git, repositoriesPane, filesPane::selectedChanges, refresh);
         Action pull = RemoteAction.pull(git, repositoriesPane, refresh);
         Action push = RemoteAction.push(git, repositoriesPane, refresh);
@@ -112,7 +121,7 @@ public final class MainWindow extends JFrame {
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
                 new CloseRepositoryAction(repositoriesPane),
-                removeRepository, commit, pull, push, newBranch, renameBranch, deleteBranch, merge, abortMerge,
+                removeRepository, commit, fetch, pull, push, newBranch, renameBranch, deleteBranch, merge, abortMerge,
                 newTag, pushTag, renameTag, deleteTag, stage, unstage, discard, deleteFiles));
         filesPane.installContextActions(deleteFiles, stage, unstage, null, discard, deleteFiles);
         // Other repositories are not watched; re-check them when the user comes back to the window.
@@ -130,9 +139,11 @@ public final class MainWindow extends JFrame {
             branchesPane.showRepository(opened);
             historyPane.showRepository(opened);
             autoRefresh.watch(opened);
+            opened.ifPresent(autoFetch::fetch);
         });
+        autoFetch.start();
         mainContent = new MainContent(repositoriesPane, branchesPane, filesPane, diffPane, historyPane);
-        setContentPane(createContent(Map.of("commit", commit, "merge", merge, "pull", pull, "push", push,
+        setContentPane(createContent(Map.of("commit", commit, "merge", merge, "fetch", fetch, "pull", pull, "push", push,
                         "stage", stage, "unstage", unstage, "discard", discard, "delete", deleteFiles),
                 mainContent));
 

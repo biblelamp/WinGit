@@ -40,6 +40,11 @@ public final class Icons {
         return new FlatSVGIcon(BASE + "repositories/" + name + ".svg", LIST_SIZE, LIST_SIZE);
     }
 
+    /** Repository list icon, green: commits were fetched that the current branch has not pulled yet. */
+    public static FlatSVGIcon repositoryIncoming() {
+        return new FlatSVGIcon(BASE + "repositories/repository-incoming.svg", LIST_SIZE, LIST_SIZE);
+    }
+
     /** Repository list icon for a repository whose folder no longer exists. */
     public static FlatSVGIcon repositoryMissing() {
         return new FlatSVGIcon(BASE + "repositories/repository-missing.svg", LIST_SIZE, LIST_SIZE);

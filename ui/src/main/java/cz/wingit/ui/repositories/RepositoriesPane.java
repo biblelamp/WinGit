@@ -207,7 +207,12 @@ public final class RepositoriesPane extends TitledPane {
         }
     }
 
-    /** Re-reads the branch of one repository (e.g. after a checkout). */
+    /** All repositories of the list, in list order. */
+    public List<Path> paths() {
+        return repositories.paths();
+    }
+
+    /** Re-reads the branch and the commits to push and pull of one repository (e.g. after a checkout or fetch). */
     public void refreshBranch(Path workTree) {
         int index = indexOf(workTree);
         if (index >= 0) {
@@ -344,11 +349,11 @@ public final class RepositoriesPane extends TitledPane {
         return -1;
     }
 
-    /** Branch, "has changes" and unpushed commits of one repository; {@code null} parts are unknown. */
-    private record Info(String branch, Boolean changed, boolean missing, Integer unpushed) {
+    /** Branch, "has changes", unpushed and unpulled commits of one repository; {@code null} parts are unknown. */
+    private record Info(String branch, Boolean changed, boolean missing, Integer unpushed, Integer unpulled) {
     }
 
-    /** Unpushed commits are counted up to this number (shown as "999+" beyond). */
+    /** Unpushed and unpulled commits are counted up to this number (shown as "999+" beyond). */
     static final int MAX_UNPUSHED = 1000;
 
     /** Reads branch (and optionally "has changes") of {@code paths} in the background and applies it. */
@@ -363,7 +368,7 @@ public final class RepositoriesPane extends TitledPane {
                 Map<Path, Info> result = new HashMap<>();
                 for (Path path : paths) {
                     if (!Files.isDirectory(path)) {
-                        result.put(path, new Info(null, null, true, null));
+                        result.put(path, new Info(null, null, true, null, null));
                         continue;
                     }
                     String branch = git.currentBranch(path).orElse(null);
@@ -376,12 +381,14 @@ public final class RepositoriesPane extends TitledPane {
                         }
                     }
                     Integer unpushed = null;
+                    Integer unpulled = null;
                     try {
                         unpushed = git.unpushedCount(path, MAX_UNPUSHED);
+                        unpulled = git.unpulledCount(path, MAX_UNPUSHED);
                     } catch (GitException e) {
                         // unreadable: leave unknown
                     }
-                    result.put(path, new Info(branch, changed, false, unpushed));
+                    result.put(path, new Info(branch, changed, false, unpushed, unpulled));
                 }
                 return result;
             }
@@ -415,6 +422,9 @@ public final class RepositoriesPane extends TitledPane {
             }
             if (info.unpushed() != null) {
                 updated = updated.withUnpushed(info.unpushed());
+            }
+            if (info.unpulled() != null) {
+                updated = updated.withUnpulled(info.unpulled());
             }
             if (info.changed() != null && started >= changedStamps.getOrDefault(entry.path(), Long.MIN_VALUE)) {
                 changedStamps.put(entry.path(), started);

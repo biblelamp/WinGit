@@ -22,7 +22,8 @@ public final class MainMenuBar extends JMenuBar {
     private static final long serialVersionUID = 1L;
 
     public MainMenuBar(Action addOrCreateRepository, Action cloneRepository, Action closeRepository,
-                       Action removeRepository, Action commit, Action pull, Action push, Action newBranch,
+                       Action removeRepository, Action commit, Action fetch, Action pull, Action push,
+                       Action newBranch,
                        Action renameBranch, Action deleteBranch, Action merge, Action abortMerge,
                        Action newTag, Action pushTag, Action renameTag, Action deleteTag,
                        Action... fileActions) {
@@ -65,6 +66,7 @@ public final class MainMenuBar extends JMenuBar {
 
         JMenu remote = new JMenu(Messages.get("menu.remote"));
         remote.setMnemonic(KeyEvent.VK_M);
+        remote.add(fetch);
         remote.add(pull);
         remote.add(push);
         add(remote);

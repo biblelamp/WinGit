@@ -18,10 +18,12 @@ import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Icons;
 
 /**
- * Renders an icon (red when the working tree has changes), "name (branch)" with the branch in a
- * dimmed color; the opened repository is bold; the full path is the tooltip. A repository whose
- * folder is gone gets its own icon and a "missing" marker instead of the branch. Unpushed commits
- * of the current branch are shown as an arrow with their count after the branch.
+ * Renders an icon and "name (branch)" with the branch in a dimmed color; the opened repository is bold;
+ * the full path is the tooltip. Local changes win over incoming commits: with changes in the working tree
+ * the icon and the name are red, otherwise the icon is green when fetched commits wait to be pulled. A repository whose
+ * folder is gone gets its own icon and a "missing" marker instead of the branch. Commits of the
+ * current branch to push and fetched commits to pull are shown as arrows with their counts after the
+ * branch.
  */
 final class RepositoryCellRenderer extends DefaultListCellRenderer {
 
@@ -29,6 +31,9 @@ final class RepositoryCellRenderer extends DefaultListCellRenderer {
 
     private static final Icon CLEAN = Icons.repository(false);
     private static final Icon CHANGED = Icons.repository(true);
+    private static final Icon INCOMING = Icons.repositoryIncoming();
+    /** Same red as the "changed" icon. */
+    private static final String CHANGED_COLOR = "#DB5860";
     private static final Icon MISSING = Icons.repositoryMissing();
 
     private final transient Supplier<Path> opened;
@@ -45,23 +50,34 @@ final class RepositoryCellRenderer extends DefaultListCellRenderer {
             Path openedPath = opened.get();
             boolean isOpened = openedPath != null && RepositoryList.samePath(openedPath, entry.path());
             setFont(list.getFont().deriveFont(isOpened ? Font.BOLD : Font.PLAIN));
+            boolean changed = !entry.missing() && Boolean.TRUE.equals(entry.changed());
             String name = escape(entry.displayName());
+            // on a selected row the selection colors win, red on blue would be hard to read
+            boolean redName = changed && !isSelected;
+            if (redName) {
+                name = "<span style='color:" + CHANGED_COLOR + "'>" + name + "</span>";
+            }
             String detail = entry.missing() ? Messages.get("repositories.missing")
                     : entry.branch() != null ? "(" + entry.branch() + ")" : null;
-            String outgoing = entry.needsPush() && !entry.missing()
-                    // bold in the regular text color: a gray marker would vanish next to the dimmed branch
-                    ? " <b>" + Messages.format("repositories.unpushed", unpushedText(entry.unpushed())) + "</b>"
-                    : "";
+            String outgoing = "";
+            if (!entry.missing()) {
+                // bold in the regular text color: a gray marker would vanish next to the dimmed branch
+                if (entry.needsPush()) {
+                    outgoing += " <b>" + Messages.format("repositories.unpushed", countText(entry.unpushed())) + "</b>";
+                }
+                if (entry.needsPull()) {
+                    outgoing += " <b>" + Messages.format("repositories.unpulled", countText(entry.unpulled())) + "</b>";
+                }
+            }
             if (detail == null && outgoing.isEmpty()) {
-                setText(name);
+                setText(redName ? "<html>" + name + "</html>" : name);
             } else {
                 Color dim = isSelected ? list.getSelectionForeground() : UIManager.getColor("Label.disabledForeground");
                 String detailHtml = detail == null ? ""
                         : " <span style='color:" + hex(dim) + "'>" + escape(detail) + "</span>";
                 setText("<html>" + name + detailHtml + outgoing + "</html>");
             }
-            boolean changed = Boolean.TRUE.equals(entry.changed());
-            setIcon(entry.missing() ? MISSING : changed ? CHANGED : CLEAN);
+            setIcon(entry.missing() ? MISSING : changed ? CHANGED : entry.needsPull() ? INCOMING : CLEAN);
             setIconTextGap(UIScale.scale(6));
             if (entry.missing()) {
                 setToolTipText(Messages.format("repositories.tooltip.missing", entry.path()));
@@ -70,7 +86,10 @@ final class RepositoryCellRenderer extends DefaultListCellRenderer {
                         ? Messages.format("repositories.tooltip.changed", entry.path())
                         : entry.path().toString();
                 if (entry.needsPush()) {
-                    tooltip += " " + Messages.format("repositories.tooltip.unpushed", unpushedText(entry.unpushed()));
+                    tooltip += " " + Messages.format("repositories.tooltip.unpushed", countText(entry.unpushed()));
+                }
+                if (entry.needsPull()) {
+                    tooltip += " " + Messages.format("repositories.tooltip.unpulled", countText(entry.unpulled()));
                 }
                 setToolTipText(tooltip);
             }
@@ -78,7 +97,7 @@ final class RepositoryCellRenderer extends DefaultListCellRenderer {
         return this;
     }
 
-    private static String unpushedText(int count) {
+    private static String countText(int count) {
         return count >= RepositoriesPane.MAX_UNPUSHED ? (RepositoriesPane.MAX_UNPUSHED - 1) + "+" : Integer.toString(count);
     }
 

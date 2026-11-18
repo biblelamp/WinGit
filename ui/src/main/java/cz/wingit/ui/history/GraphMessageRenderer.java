@@ -64,12 +64,17 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
         // no padding: graph lines must touch the row edges to connect with the neighbours
         setBorder(BorderFactory.createEmptyBorder());
         setFont(CommitTextRenderer.fontFor(commit, table.getFont()));
+        if (!isSelected) {
+            setForeground(CommitTextRenderer.foregroundFor(commit, table));
+        }
         icon.set(commit, model.getGraphRow(modelRow), model.maxLaneCount(), table.getRowHeight(row),
                 getBackground(), getForeground(), getFont(), this);
         setIcon(icon);
         setIconTextGap(UIScale.scale(4));
         String tooltip = commit.shortId() + "  " + commit.message();
-        setToolTipText(commit.unpushed() ? tooltip + "  " + Messages.get("history.unpushed.suffix") : tooltip);
+        String state = commit.unpushed() ? Messages.get("history.unpushed.suffix")
+                : commit.unpulled() ? Messages.get("history.unpulled.suffix") : null;
+        setToolTipText(state == null ? tooltip : tooltip + "  " + state);
         return this;
     }
 
@@ -171,7 +176,8 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
             double cx = laneX(x, graph.lane());
             Ellipse2D node = new Ellipse2D.Double(cx - r, mid - r, 2 * r, 2 * r);
             Color color = commit.unpushed() ? UNPUSHED_COLOR : laneColor(graph.lane());
-            if (commit.isMerge() || commit.unpushed()) {
+            // Merges, unpushed and unpulled commits get a ring; the latter two differ by color and text.
+            if (commit.isMerge() || commit.unpushed() || commit.unpulled()) {
                 g2.setColor(background);
                 g2.fill(node);
                 g2.setColor(color);

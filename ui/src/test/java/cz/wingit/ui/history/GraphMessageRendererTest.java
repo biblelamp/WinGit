@@ -98,6 +98,34 @@ class GraphMessageRendererTest {
         assertThat(texts.getToolTipText()).isNull();
     }
 
+    @Test
+    void unpulledCommitsAreDimmedWithRingAndHint() {
+        CommitInfo incoming = new CommitInfo("d".repeat(40), List.of("a".repeat(40)), "Incoming", "T", Instant.EPOCH,
+                List.of(), false, true);
+        CommitInfo local = new CommitInfo("a".repeat(40), List.of(), "Here", "T", Instant.EPOCH, List.of(), false);
+        CommitTableModel model = new CommitTableModel(
+                new CommitDates(Clock.fixed(Instant.EPOCH, ZoneId.of("UTC")), Locale.UK));
+        model.setData(HistoryData.of(List.of(incoming, local)));
+        JTable table = new JTable(model);
+        table.setRowHeight(ROW_HEIGHT);
+        GraphMessageRenderer messages = new GraphMessageRenderer(model);
+        CommitTextRenderer texts = new CommitTextRenderer(model);
+
+        Component cell = messages.getTableCellRendererComponent(table, "Incoming", false, false, 0, 0);
+        assertThat(cell.getFont().isBold()).isFalse();
+        assertThat(cell.getForeground()).isEqualTo(CommitTextRenderer.unpulledForeground());
+        assertThat(messages.getToolTipText()).isEqualTo("ddddddd  Incoming  (not pulled yet)");
+        BufferedImage image = paint(messages);
+        Color background = new Color(image.getRGB(image.getWidth() - 1, 0));
+        assertThat(new Color(image.getRGB(4 + 7, ROW_HEIGHT / 2))).isEqualTo(background); // hollow node
+        assertThat(texts.getTableCellRendererComponent(table, "T", false, false, 0, 1).getForeground())
+                .isEqualTo(CommitTextRenderer.unpulledForeground());
+        assertThat(texts.getToolTipText()).isEqualTo("On the server, not pulled yet");
+
+        assertThat(messages.getTableCellRendererComponent(table, "Here", false, false, 1, 0).getForeground())
+                .isNotEqualTo(CommitTextRenderer.unpulledForeground());
+    }
+
     private static Set<Color> columnColors(BufferedImage image, int x, int fromY, int toY) {
         Set<Color> colors = new HashSet<>();
         for (int y = Math.max(0, fromY); y < Math.min(image.getHeight(), toY); y++) {

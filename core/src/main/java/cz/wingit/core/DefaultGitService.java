@@ -11,10 +11,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -149,6 +151,15 @@ public final class DefaultGitService implements GitService {
     public int unpushedCount(Path workTree, int max) {
         try (Git git = Git.open(workTree.toFile())) {
             return LogReader.unpushedCount(git.getRepository(), max);
+        } catch (IOException e) {
+            throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public int unpulledCount(Path workTree, int max) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return LogReader.unpulledCount(git.getRepository(), max);
         } catch (IOException e) {
             throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
         }
@@ -533,6 +544,65 @@ public final class DefaultGitService implements GitService {
             args.addAll(List.of("--set-upstream", target.remote(), source + ":" + source));
         }
         runRemote(workTree, args, target.url(), credentials, progress);
+    }
+
+    @Override
+    public void fetch(Path workTree, Credentials credentials, Consumer<String> progress) {
+        FetchSource source = readRepository(workTree, FetchSource::read);
+        if (source == null) {
+            throw new GitException("The repository has no remote to fetch from.");
+        }
+        runRemote(workTree, source.args(true), source.url(), credentials, progress);
+    }
+
+    @Override
+    public boolean fetchInBackground(Path workTree) {
+        FetchSource source = readRepository(workTree, FetchSource::read);
+        if (source == null) {
+            return false;
+        }
+        Map<String, String> environment = new HashMap<>(AskPass.storedOnlyEnvironment());
+        if (source.defaultSsh()) {
+            // OpenSSH would wait for a passphrase or a host key answer nobody sees; fail instead.
+            environment.put("GIT_SSH_COMMAND", "ssh -o BatchMode=yes");
+        }
+        // Git reports updated refs on stderr; nothing there means nothing changed.
+        return !cli.run(workTree, source.args(false), null, environment, null).stderr().isBlank();
+    }
+
+    /**
+     * What {@code git fetch} is run with.
+     *
+     * @param remote     the remote to fetch, {@code null} for all remotes
+     * @param url        its URL (of some remote for all), for sign-in
+     * @param defaultSsh SSH is not configured by the user ({@code core.sshCommand}, {@code GIT_SSH...}),
+     *                   so Git uses plain {@code ssh}
+     */
+    private record FetchSource(String remote, String url, boolean defaultSsh) {
+
+        /** {@code null} for a repository without remotes. */
+        static FetchSource read(Repository repository) {
+            StoredConfig config = repository.getConfig();
+            Set<String> remotes = config.getSubsections(ConfigConstants.CONFIG_REMOTE_SECTION);
+            if (remotes.isEmpty()) {
+                return null;
+            }
+            String remote = RemoteTarget.defaultRemote(repository).orElse(null);
+            String url = config.getString(ConfigConstants.CONFIG_REMOTE_SECTION,
+                    remote != null ? remote : remotes.iterator().next(), ConfigConstants.CONFIG_KEY_URL);
+            boolean defaultSsh = config.getString(ConfigConstants.CONFIG_CORE_SECTION, null, "sshCommand") == null
+                    && System.getenv("GIT_SSH_COMMAND") == null && System.getenv("GIT_SSH") == null;
+            return new FetchSource(remote, url != null ? url : remote, defaultSsh);
+        }
+
+        List<String> args(boolean progress) {
+            List<String> args = new ArrayList<>(List.of("fetch", "--prune"));
+            if (progress) {
+                args.add("--progress");
+            }
+            args.add(remote != null ? remote : "--all");
+            return args;
+        }
     }
 
     @Override

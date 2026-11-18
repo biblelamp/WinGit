@@ -148,6 +148,7 @@ class MainWindowContentTest {
                 new CloseRepositoryAction(repositoriesPane),
                 new RemoveRepositoryAction(repositoriesPane),
                 new CommitAction(git, repositoriesPane, filesPane::selectedChanges, () -> { }),
+                RemoteAction.fetch(git, repositoriesPane, () -> { }),
                 RemoteAction.pull(git, repositoriesPane, () -> { }),
                 RemoteAction.push(git, repositoriesPane, () -> { }),
                 new NewBranchAction(git, repositoriesPane, () -> { }),
@@ -202,11 +203,13 @@ class MainWindowContentTest {
         assertThat(local.getItem(2).isEnabled()).isFalse(); // nothing selected
         JMenu remote = menuBar.getMenu(3);
         assertThat(remote.getText()).isEqualTo("Remote");
-        assertThat(remote.getItem(0).getText()).isEqualTo("Pull");
-        assertThat(remote.getItem(0).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl T"));
-        assertThat(remote.getItem(1).getText()).isEqualTo("Push");
-        assertThat(remote.getItem(1).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift K"));
-        assertThat(remote.getItem(1).isEnabled()).isFalse();
+        assertThat(remote.getItem(0).getText()).isEqualTo("Fetch");
+        assertThat(remote.getItem(0).isEnabled()).isFalse(); // no repository open
+        assertThat(remote.getItem(1).getText()).isEqualTo("Pull");
+        assertThat(remote.getItem(1).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl T"));
+        assertThat(remote.getItem(2).getText()).isEqualTo("Push");
+        assertThat(remote.getItem(2).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift K"));
+        assertThat(remote.getItem(2).isEnabled()).isFalse();
 
         JMenu repository = menuBar.getMenu(0);
         assertThat(repository.getText()).isEqualTo("Repository");

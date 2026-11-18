@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.jgit.lib.BranchConfig;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -26,6 +27,8 @@ import org.eclipse.jgit.revwalk.RevWalk;
  * <p>
  * Commits are ordered by commit time, newest first (streamed; a topological sort would have to
  * read the whole history first). Commits not yet on any remote-tracking branch are marked as unpushed.
+ * The commits of the current branch's upstream that the branch does not have yet (fetched, not
+ * pulled) are included too and marked as unpulled.
  */
 public final class LogReader {
 
@@ -48,10 +51,15 @@ public final class LogReader {
         }
         Map<ObjectId, List<RefLabel>> labels = labels(repository);
         Set<ObjectId> unpushed = unpushed(repository, head, limit);
+        ObjectId upstream = upstream(repository);
+        Set<ObjectId> unpulled = upstream == null ? Set.of() : unpulled(repository, head, upstream, limit);
         List<CommitInfo> commits = new ArrayList<>(limit);
         try (RevWalk walk = new RevWalk(repository)) {
             walk.sort(RevSort.COMMIT_TIME_DESC);
             walk.markStart(walk.parseCommit(head));
+            if (!unpulled.isEmpty()) {
+                walk.markStart(walk.parseCommit(upstream));
+            }
             for (RevCommit commit : walk) {
                 if (commits.size() == limit) {
                     break;
@@ -67,7 +75,8 @@ public final class LogReader {
                         commit.getAuthorIdent().getName(),
                         commit.getAuthorIdent().getWhenAsInstant(),
                         labels.getOrDefault(commit.getId(), List.of()),
-                        unpushed.contains(commit.getId())));
+                        unpushed.contains(commit.getId()),
+                        unpulled.contains(commit.getId())));
             }
         }
         return commits;
@@ -107,6 +116,47 @@ public final class LogReader {
     public static int unpushedCount(Repository repository, int max) throws IOException {
         ObjectId head = repository.resolve(Constants.HEAD);
         return head == null ? 0 : unpushed(repository, head, max).size();
+    }
+
+    /**
+     * Number of commits on the upstream of the checked-out branch (as last fetched) that are not on
+     * HEAD, counted up to {@code max}. 0 without upstream, with a detached HEAD or without commits.
+     */
+    public static int unpulledCount(Repository repository, int max) throws IOException {
+        ObjectId head = repository.resolve(Constants.HEAD);
+        ObjectId upstream = upstream(repository);
+        return head == null || upstream == null ? 0 : unpulled(repository, head, upstream, max).size();
+    }
+
+    /** The commit of the checked-out branch's remote-tracking upstream, {@code null} if none. */
+    private static ObjectId upstream(Repository repository) throws IOException {
+        String branch = repository.getBranch();
+        if (branch == null || ObjectId.isId(branch)) {
+            return null;
+        }
+        String tracking = new BranchConfig(repository.getConfig(), branch).getRemoteTrackingBranch();
+        if (tracking == null) {
+            return null;
+        }
+        Ref ref = repository.exactRef(tracking);
+        return ref == null ? null : ref.getObjectId();
+    }
+
+    /** Commits reachable from {@code upstream} but not from {@code head} ({@code upstream --not HEAD}), at most {@code limit}. */
+    private static Set<ObjectId> unpulled(Repository repository, ObjectId head, ObjectId upstream, int limit)
+            throws IOException {
+        Set<ObjectId> result = new HashSet<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            walk.markStart(walk.parseCommit(upstream));
+            walk.markUninteresting(walk.parseCommit(head));
+            for (RevCommit commit : walk) {
+                if (result.size() == limit) {
+                    break;
+                }
+                result.add(commit.toObjectId());
+            }
+        }
+        return result;
     }
 
     /**

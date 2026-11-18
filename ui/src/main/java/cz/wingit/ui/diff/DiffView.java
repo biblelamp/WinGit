@@ -4,10 +4,8 @@ import java.awt.CardLayout;
 import java.awt.GridBagLayout;
 import java.io.File;
 
-import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -43,10 +41,7 @@ final class DiffView extends JPanel {
         messagePanel.add(message);
         add(messagePanel, MESSAGE);
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        split.setResizeWeight(0.5);
-        split.setBorder(BorderFactory.createEmptyBorder());
-        add(split, DIFF);
+        add(new HalfSplitPane(left, right), DIFF);
 
         // aligned sides have the same number of lines, so they can share the vertical scroll model
         right.scrollPane().getVerticalScrollBar().setModel(left.scrollPane().getVerticalScrollBar().getModel());
