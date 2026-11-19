@@ -1,4 +1,4 @@
-# Build and run all tests on every push to main and on pull requests.
+# Build and run all tests on every push to main and on pull requests, on Windows and Linux.
 name: CI
 
 on:
@@ -11,7 +11,11 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,5 +25,11 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build and test
+      - name: Build and test (Windows)
+        if: runner.os == 'Windows'
         run: mvn -B -ntp verify
+
+      # Swing tests need a display: a virtual X server
+      - name: Build and test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a mvn -B -ntp verify

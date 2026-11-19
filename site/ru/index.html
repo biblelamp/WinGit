@@ -6,9 +6,23 @@
   <title>WinGit — открытый настольный Git-клиент</title>
   <meta name="description" content="WinGit — бесплатный Git-клиент с открытым кодом: граф истории, сравнение в две колонки, индекс, ветки и слияния в одном окне.">
   <link rel="icon" href="../assets/wingit.svg" type="image/svg+xml">
-  <link rel="alternate" hreflang="en" href="../">
-  <link rel="alternate" hreflang="ru" href="./">
-  <link rel="alternate" hreflang="cs" href="../cs/">
+  <link rel="canonical" href="https://wgit.cz/ru/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WinGit">
+  <meta property="og:title" content="WinGit — открытый настольный Git-клиент">
+  <meta property="og:description" content="WinGit — бесплатный Git-клиент с открытым кодом: граф истории, сравнение в две колонки, индекс, ветки и слияния в одном окне.">
+  <meta property="og:url" content="https://wgit.cz/ru/">
+  <meta property="og:image" content="https://wgit.cz/assets/screenshot.png">
+  <meta property="og:image:width" content="1435">
+  <meta property="og:image:height" content="888">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale:alternate" content="cs_CZ">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -29,15 +43,17 @@
     <section class="hero">
       <div class="wrap">
         <div>
-          <h1>Управляйте Git легко и просто</h1>
+          <h1>Используй Git легко и просто</h1>
           <p class="lead">WinGit — бесплатный настольный Git-клиент с открытым кодом. Граф истории, сравнение
             в две колонки, индекс, ветки и слияния — всё в одном окне.</p>
           <div class="actions">
             <a class="btn btn-primary" id="download" href="https://github.com/biblelamp/WinGit/releases/latest"
-               data-label-version="Скачать {version} для Windows">Скачать для Windows</a>
+               data-label-windows="Скачать {version} для Windows"
+               data-label-linux="Скачать {version} для Linux (.deb)">Скачать для Windows</a>
             <a class="btn btn-secondary" href="https://github.com/biblelamp/WinGit">Открыть на GitHub</a>
           </div>
-          <p class="note">Сейчас Windows · сборки для Linux и macOS в планах · Apache-2.0</p>
+          <p class="note">Windows: <a data-asset="msi" href="https://github.com/biblelamp/WinGit/releases/latest">MSI</a>, <a data-asset="windows-zip" href="https://github.com/biblelamp/WinGit/releases/latest">ZIP</a> · Linux: <a data-asset="deb" href="https://github.com/biblelamp/WinGit/releases/latest">DEB</a>, <a data-asset="rpm" href="https://github.com/biblelamp/WinGit/releases/latest">RPM</a>, <a data-asset="tar" href="https://github.com/biblelamp/WinGit/releases/latest">tar.gz</a> · macOS в планах</p>
+          <p class="note">Apache-2.0 · <a href="code-signing/">Политика подписи кода (Code signing policy)</a></p>
         </div>
         <a href="../assets/screenshot.png"><img class="shot" src="../assets/screenshot.png" width="1435" height="888" alt="Главное окно WinGit: репозитории, ветки, граф истории и сравнение файлов"></a>
       </div>
@@ -75,7 +91,7 @@
         <ul>
           <li><strong>Сейчас:</strong> ранняя, но рабочая версия — репозитории, файлы, ветки, история, сравнение,
             индекс, commit, push, pull и слияние.</li>
-          <li><strong>Дальше:</strong> найти бета-тестеров и настроить автоматические сборки для Windows, Linux и macOS.</li>
+          <li><strong>Дальше:</strong> найти бета-тестеров и сделать сборку для macOS.</li>
         </ul>
         <p>Хотите помочь? Скачайте WinGit, попробуйте на своих репозиториях и расскажите, что работает, а что нет.
           Сообщения об ошибках, идеи и pull request-ы приветствуются.</p>
@@ -90,6 +106,7 @@
   <footer>
     <div class="wrap">
       <span>WinGit · лицензия Apache-2.0</span>
+      <a href="code-signing/">Политика подписи кода</a>
       <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
     </div>
   </footer>

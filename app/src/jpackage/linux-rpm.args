@@ -1,0 +1,10 @@
+# RPM options (paths relative to the app module). The package is named "wingit" and
+# installs to /opt/wingit; git itself comes from the distribution.
+--license-file ../LICENSE
+--icon src/jpackage/wingit.png
+--linux-package-name wingit
+--linux-shortcut
+--linux-menu-group Development
+--linux-rpm-license-type Apache-2.0
+--linux-package-deps git
+--about-url https://wgit.cz/

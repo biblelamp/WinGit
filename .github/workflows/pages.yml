@@ -1,4 +1,5 @@
-# Publishes the project page (site/) to GitHub Pages: https://biblelamp.github.io/WinGit/
+# Publishes the project page (site/) to GitHub Pages: https://wgit.cz/
+# (custom domain, set in Settings -> Pages; biblelamp.github.io/WinGit/ redirects there).
 # One-time setup: Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
 name: Pages
 

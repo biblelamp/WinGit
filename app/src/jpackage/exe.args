@@ -5,3 +5,5 @@
 --win-menu
 --win-shortcut
 --icon src/jpackage/wingit.ico
+# home page link in Windows "Installed apps" / "Programs and Features"
+--about-url https://wgit.cz/

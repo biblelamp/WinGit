@@ -1,8 +1,10 @@
 # WinGit
 Manage Git easily and simply
 
+**Website:** [wgit.cz](https://wgit.cz/) · **Download:** [latest release](https://github.com/biblelamp/WinGit/releases/latest)
+
 WinGit is a free, open-source desktop Git client written in Java (Swing).
-It runs on Windows today; Linux and macOS builds are planned.
+It runs on Windows and Linux (DEB, RPM and a portable archive); macOS builds are planned.
 
 The "Win" in WinGit stands for *window*: a windowed Git client, not a Windows-only one.
 

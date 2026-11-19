@@ -72,6 +72,17 @@ public final class MainMenuBar extends JMenuBar {
         add(remote);
     }
 
+    /** Help menu, last on the bar: website, report an issue, About. */
+    public void addHelpMenu(Action website, Action reportIssue, Action about) {
+        JMenu help = new JMenu(Messages.get("menu.help"));
+        help.setMnemonic(KeyEvent.VK_H);
+        help.add(website);
+        help.add(reportIssue);
+        help.addSeparator();
+        help.add(about);
+        add(help);
+    }
+
     private JMenuItem exitItem() {
         JMenuItem exit = new JMenuItem(Messages.get("menu.repository.exit"));
         exit.setMnemonic(KeyEvent.VK_X);

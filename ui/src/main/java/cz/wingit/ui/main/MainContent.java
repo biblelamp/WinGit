@@ -5,7 +5,9 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
@@ -33,13 +35,20 @@ import cz.wingit.ui.repositories.RepositoriesPane;
  * |               | History               |
  * +---------------+-----------------------+
  * </pre>
+ * Files and Diff share one split pane ("files"), which sits above History in another ("history"):
+ * moving the Files/Diff divider leaves History alone, and while the user drags the History divider
+ * the Diff keeps its height (Files takes up the difference).
  */
 public final class MainContent extends JPanel {
 
     private static final long serialVersionUID = 1L;
+    /** Share of window-resize space that Files gets from the Files/Diff split. */
+    private static final double FILES_WEIGHT = 0.35;
 
     /** Split panes by the names used in saved layouts; keep the names stable. */
     private final Map<String, JSplitPane> splits = new LinkedHashMap<>();
+    /** Pending divider restores; all stop once the user grabs any divider. */
+    private final List<Runnable> stopRestoring = new ArrayList<>();
 
     public MainContent(RepositoriesPane repositoriesPane, BranchesPane branchesPane, FilesPane filesPane,
                        DiffPane diffPane, HistoryPane historyPane) {
@@ -48,12 +57,18 @@ public final class MainContent extends JPanel {
         JSplitPane left = split("left", JSplitPane.VERTICAL_SPLIT,
                 repositoriesPane, branchesPane, 400, 0.5);
 
-        JSplitPane lower = split("lower", JSplitPane.VERTICAL_SPLIT,
-                diffPane, historyPane, 200, 0.4);
-        JSplitPane right = split("right", JSplitPane.VERTICAL_SPLIT,
-                filesPane, lower, 260, 0.35);
+        JSplitPane upper = split("files", JSplitPane.VERTICAL_SPLIT,
+                filesPane, diffPane, 220, FILES_WEIGHT);
+        JSplitPane right = split("history", JSplitPane.VERTICAL_SPLIT,
+                upper, historyPane, 460, 0.75);
+        keepSecondWhileDragging(right, upper);
 
         add(split("main", JSplitPane.HORIZONTAL_SPLIT, left, right, 300, 0.0), BorderLayout.CENTER);
+    }
+
+    /** Split pane by its layout name (for tests). */
+    JSplitPane splitPane(String name) {
+        return splits.get(name);
     }
 
     /** Current dividers, keyed by split name. */
@@ -70,6 +85,7 @@ public final class MainContent extends JPanel {
      * current one, so the window can get its final size (e.g. maximized) in several layout passes.
      */
     public void restoreDividers(Map<String, WindowLayout.Divider> saved) {
+        stopRestoring();
         saved.forEach((name, divider) -> {
             JSplitPane split = splits.get(name);
             if (split != null && divider != null && divider.location() >= 0) {
@@ -84,7 +100,7 @@ public final class MainContent extends JPanel {
      * re-balances them afterwards). So re-place the divider from the saved values on every resize, until
      * the user grabs the divider; from then on Swing's normal behavior applies.
      */
-    private static void restore(JSplitPane split, WindowLayout.Divider divider) {
+    private void restore(JSplitPane split, WindowLayout.Divider divider) {
         ComponentAdapter onResize = new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -95,16 +111,34 @@ public final class MainContent extends JPanel {
             }
         };
         split.addComponentListener(onResize);
-        if (split.getUI() instanceof BasicSplitPaneUI ui) {
+        stopRestoring.add(() -> split.removeComponentListener(onResize));
+        onResize.componentResized(null);
+    }
+
+    private void stopRestoring() {
+        stopRestoring.forEach(Runnable::run);
+        stopRestoring.clear();
+    }
+
+    /**
+     * While the user drags {@code outer}'s divider, {@code inner} (its first component) gives or takes
+     * all the space in its first component, so the second one keeps its size. Window resizes still
+     * distribute space by the normal weights.
+     */
+    private static void keepSecondWhileDragging(JSplitPane outer, JSplitPane inner) {
+        if (outer.getUI() instanceof BasicSplitPaneUI ui) {
             ui.getDivider().addMouseListener(new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    split.removeComponentListener(onResize);
-                    ui.getDivider().removeMouseListener(this);
+                    inner.setResizeWeight(1.0);
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    inner.setResizeWeight(FILES_WEIGHT);
                 }
             });
         }
-        onResize.componentResized(null);
     }
 
     /** Where a divider saved at {@code divider.splitSize()} ends up in a split pane of {@code length}. */
@@ -126,6 +160,14 @@ public final class MainContent extends JPanel {
         split.setResizeWeight(resizeWeight);
         split.setContinuousLayout(true);
         split.setBorder(BorderFactory.createEmptyBorder());
+        if (split.getUI() instanceof BasicSplitPaneUI ui) {
+            ui.getDivider().addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    stopRestoring();
+                }
+            });
+        }
         splits.put(name, split);
         return split;
     }

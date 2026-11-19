@@ -96,10 +96,12 @@ final class CommitDialog extends JDialog {
      * @param recentMessages messages of previous commits offered for reuse, newest first
      * @param initialMessage message to start with (e.g. the one Git prepared for a merge), or {@code null}
      * @param existingTags   tags of the repository, to check a new tag name and suggest the next version
+     * @param savedDate      date of the previous backdated commit of this repository, offered again;
+     *                       {@code null} to commit with the current date
      */
     CommitDialog(Window owner, GitService git, Path workTree, List<FileChange> changes,
                  Collection<FileChange> preselected, List<String> recentMessages, String initialMessage,
-                 List<String> existingTags) {
+                 List<String> existingTags, Instant savedDate) {
         super(owner, Messages.get("commit.title"), ModalityType.APPLICATION_MODAL);
         this.git = git;
         this.workTree = workTree;
@@ -109,7 +111,7 @@ final class CommitDialog extends JDialog {
         this.existingTags = List.copyOf(existingTags);
         configureTable();
         configureMessage();
-        configureDate();
+        configureDate(savedDate);
         configureTag();
         if (initialMessage != null) {
             messageArea.setText(initialMessage);
@@ -153,9 +155,9 @@ final class CommitDialog extends JDialog {
     /** Shows the dialog; returns how it ended if a commit was made. */
     static Optional<Result> show(Component parent, GitService git, Path workTree, List<FileChange> changes,
                                  Collection<FileChange> preselected, List<String> recentMessages,
-                                 String initialMessage, List<String> existingTags) {
+                                 String initialMessage, List<String> existingTags, Instant savedDate) {
         CommitDialog dialog = new CommitDialog(SwingUtilities.getWindowAncestor(parent), git, workTree,
-                changes, preselected, recentMessages, initialMessage, existingTags);
+                changes, preselected, recentMessages, initialMessage, existingTags, savedDate);
         dialog.setVisible(true);
         return Optional.ofNullable(dialog.result);
     }
@@ -274,9 +276,13 @@ final class CommitDialog extends JDialog {
         messageArea.requestFocusInWindow();
     }
 
-    private void configureDate() {
+    private void configureDate(Instant savedDate) {
         // Fixed, locale-independent pattern; the time zone is the one of this computer.
         dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, Messages.get("commit.date.pattern")));
+        if (savedDate != null) {
+            dateSpinner.setValue(Date.from(savedDate));
+            dateBox.setSelected(true);
+        }
         dateBox.setToolTipText(Messages.get("commit.date.tooltip"));
         dateBox.addActionListener(e -> {
             if (dateBox.isSelected()) {
@@ -387,6 +393,11 @@ final class CommitDialog extends JDialog {
             @Override
             protected RuntimeException doInBackground() {
                 git.commit(workTree, changes, message, date);
+                try {
+                    git.setSavedCommitDate(workTree, date); // offered next time; none = forget it
+                } catch (RuntimeException e) {
+                    // only a convenience; the commit is made
+                }
                 if (tag != null) {
                     try {
                         git.createTag(workTree, tag, null, message.lines().findFirst().orElse(""));

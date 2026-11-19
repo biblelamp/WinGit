@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Политика подписи кода — WinGit</title>
+  <meta name="description" content="Как подписываются файлы релизов WinGit: кто подтверждает подпись и что программа передаёт по сети.">
+  <link rel="icon" href="../../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/ru/code-signing/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/code-signing/">
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Главная</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+      </nav>
+      <div class="lang"><a href="../../code-signing/" hreflang="en">EN</a><span>RU</span><a href="../../cs/code-signing/" hreflang="cs">CS</a></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Политика подписи кода</h1>
+        <p lang="en"><strong>Free code signing provided by <a href="https://about.signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>.</strong></p>
+        <p>Бесплатную подпись кода предоставляет SignPath.io, сертификат выдан SignPath Foundation. Им подписаны установщик для Windows (MSI) и файл запуска программы <code>WinGit.exe</code> — в установщике и в переносном ZIP. Windows показывает издателем <em>SignPath Foundation</em>.</p>
+        <h2>Что подписывается</h2>
+        <p>Только файлы, собранные GitHub Actions из открытого исходного кода в <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a> процессом выпуска этого репозитория. Файлы, собранные где-либо ещё, не подписываются. Пакеты для Linux этим сертификатом не подписываются.</p>
+        <h2>Роли в команде</h2>
+        <ul>
+          <li><strong>Авторы и рецензенты:</strong> <a href="https://github.com/biblelamp">biblelamp</a> (владелец проекта). Изменения других участников проверяются перед слиянием.</li>
+          <li><strong>Подтверждающие подпись:</strong> <a href="https://github.com/biblelamp">biblelamp</a>. Каждый запрос на подпись релиза подтверждается вручную.</li>
+        </ul>
+        <h2>Конфиденциальность</h2>
+        <p>Программа не передаёт никакую информацию в другие сетевые системы, если об этом явно не попросил пользователь или тот, кто её устанавливает или использует.</p>
+        <p>WinGit подключается только к удалённым Git-репозиториям, которые настроили вы (clone, fetch, pull, push и фоновый fetch этих репозиториев). Программа работает через установленный у вас Git, который может запрашивать учётные данные у Git Credential Manager или SSH — для них действуют их собственные политики конфиденциальности. WinGit не хранит пароли и не отправляет статистику использования.</p>
+        <p>Этот сайт запрашивает у GitHub API последний релиз, чтобы показать ссылки на скачивание; файлы раздаёт GitHub согласно своему <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">заявлению о конфиденциальности</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · лицензия Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

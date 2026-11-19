@@ -7,7 +7,7 @@
     <parent>
         <groupId>cz.wingit</groupId>
         <artifactId>wingit-parent</artifactId>
-        <version>0.3.2-SNAPSHOT</version>
+        <version>0.3.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>wingit-app</artifactId>
@@ -20,8 +20,10 @@
         <!-- jpackage: numeric version only (no -SNAPSHOT); type msi/exe needs WiX 3 on PATH,
              app-image works without it -->
         <jpackage.type>msi</jpackage.type>
-        <jpackage.appVersion>0.3.2</jpackage.appVersion>
+        <jpackage.appVersion>0.3.4</jpackage.appVersion>
         <jpackage.input>${project.build.directory}/jpackage-input</jpackage.input>
+        <!-- options file src/jpackage/<argsFile>.args; the linux profile adds a "linux-" prefix -->
+        <jpackage.argsFile>${jpackage.type}</jpackage.argsFile>
     </properties>
 
     <dependencies>
@@ -45,16 +47,35 @@
                     <archive>
                         <manifest>
                             <mainClass>${exec.mainClass}</mainClass>
-                            <!-- Implementation-Version: the version shown in the window title -->
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <!-- version.properties gets the Maven version, also when the IDE runs the app from classes -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
     </build>
 
     <profiles>
+        <!-- On Linux: jpackage builds a DEB by default (-Djpackage.type=rpm|app-image for the
+             others) and reads its options from src/jpackage/linux-<type>.args -->
+        <profile>
+            <id>linux</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                </os>
+            </activation>
+            <properties>
+                <jpackage.type>deb</jpackage.type>
+                <jpackage.argsFile>linux-${jpackage.type}</jpackage.argsFile>
+            </properties>
+        </profile>
         <!-- mvn -q -pl app -am -Picons -DskipTests package  ->  regenerates src/jpackage/wingit.ico
              from the app icon SVG (run after changing the SVG, then commit the .ico) -->
         <profile>
@@ -81,6 +102,8 @@
                                         <argument>src/tools/IconExport.java</argument>
                                         <argument>../ui/src/main/resources/cz/wingit/ui/icons/app/wingit.svg</argument>
                                         <argument>src/jpackage/wingit.ico</argument>
+                                        <!-- 256 px PNG: the icon for Linux packages -->
+                                        <argument>src/jpackage/wingit.png</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -164,6 +187,8 @@
                                         <argument>WinGit</argument>
                                         <argument>--app-version</argument>
                                         <argument>${jpackage.appVersion}</argument>
+                                        <argument>--vendor</argument>
+                                        <argument>WinGit project</argument>
                                         <argument>--description</argument>
                                         <argument>${project.parent.description}</argument>
                                         <argument>--input</argument>
@@ -173,7 +198,7 @@
                                         <argument>--main-class</argument>
                                         <argument>${exec.mainClass}</argument>
                                         <!-- options valid only for this type, e.g. the license page -->
-                                        <argument>@src/jpackage/${jpackage.type}.args</argument>
+                                        <argument>@src/jpackage/${jpackage.argsFile}.args</argument>
                                         <argument>--dest</argument>
                                         <argument>${project.build.directory}/installer</argument>
                                     </arguments>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zásady podepisování kódu — WinGit</title>
+  <meta name="description" content="Jak se podepisují soubory vydání WinGit: kdo schvaluje podpis a co program posílá po síti.">
+  <link rel="icon" href="../../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/cs/code-signing/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/code-signing/">
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Domů</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+      </nav>
+      <div class="lang"><a href="../../code-signing/" hreflang="en">EN</a><a href="../../ru/code-signing/" hreflang="ru">RU</a><span>CS</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Zásady podepisování kódu</h1>
+        <p lang="en"><strong>Free code signing provided by <a href="https://about.signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>.</strong></p>
+        <p>Bezplatné podepisování kódu poskytuje SignPath.io, certifikát vydala SignPath Foundation. Je jím podepsán instalátor pro Windows (MSI) a spouštěcí soubor programu <code>WinGit.exe</code> — v instalátoru i v přenosném ZIP. Windows jako vydavatele zobrazí <em>SignPath Foundation</em>.</p>
+        <h2>Co se podepisuje</h2>
+        <p>Pouze soubory sestavené službou GitHub Actions z veřejného zdrojového kódu v <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a> procesem vydání tohoto repozitáře. Soubory sestavené jinde se nepodepisují. Balíčky pro Linux se tímto certifikátem nepodepisují.</p>
+        <h2>Role v týmu</h2>
+        <ul>
+          <li><strong>Autoři a recenzenti:</strong> <a href="https://github.com/biblelamp">biblelamp</a> (vlastník projektu). Změny ostatních přispěvatelů se před sloučením kontrolují.</li>
+          <li><strong>Schvalovatelé:</strong> <a href="https://github.com/biblelamp">biblelamp</a>. Každý požadavek na podpis vydání se schvaluje ručně.</li>
+        </ul>
+        <h2>Ochrana soukromí</h2>
+        <p>Program nepředává žádné informace jiným síťovým systémům, pokud o to výslovně nepožádá uživatel nebo ten, kdo program instaluje či používá.</p>
+        <p>WinGit se připojuje pouze ke vzdáleným Git repozitářům, které nastavíte vy (clone, fetch, pull, push a fetch těchto repozitářů na pozadí). Program pracuje přes váš nainstalovaný Git, který může žádat o přihlašovací údaje Git Credential Manager nebo SSH — pro ty platí jejich vlastní zásady ochrany soukromí. WinGit neukládá hesla a neodesílá statistiky používání.</p>
+        <p>Tento web se ptá GitHub API na poslední vydání, aby zobrazil odkazy ke stažení; soubory poskytuje GitHub podle svého <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">prohlášení o ochraně soukromí</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · licence Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

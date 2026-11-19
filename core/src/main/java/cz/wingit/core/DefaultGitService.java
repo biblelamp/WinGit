@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -163,6 +164,20 @@ public final class DefaultGitService implements GitService {
         } catch (IOException e) {
             throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public String gitVersion() {
+        // any existing folder will do: --version does not look at a repository
+        String out = cli.run(Path.of(System.getProperty("user.home")), List.of("--version")).stdout().strip();
+        return parseGitVersion(out);
+    }
+
+    /** {@code git version 2.47.1.windows.1} -> {@code 2.47.1.windows.1}; other text is returned as is. */
+    static String parseGitVersion(String output) {
+        String prefix = "git version ";
+        String line = output.lines().findFirst().orElse("").strip();
+        return line.startsWith(prefix) ? line.substring(prefix.length()).strip() : line;
     }
 
     @Override
@@ -530,6 +545,41 @@ public final class DefaultGitService implements GitService {
                     // temp file, removed by the OS eventually
                 }
             }
+        }
+    }
+
+    /** Local config key ({@code wingit.commitDate}) of the remembered commit date, an ISO-8601 instant. */
+    private static final String WINGIT_SECTION = "wingit";
+    private static final String COMMIT_DATE_KEY = "commitDate";
+
+    @Override
+    public Optional<Instant> savedCommitDate(Path workTree) {
+        String value;
+        try {
+            value = readRepository(workTree,
+                    r -> r.getConfig().getString(WINGIT_SECTION, null, COMMIT_DATE_KEY));
+        } catch (GitException e) {
+            return Optional.empty();
+        }
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Instant.parse(value.strip()));
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void setSavedCommitDate(Path workTree, Instant date) {
+        String key = WINGIT_SECTION + "." + COMMIT_DATE_KEY;
+        if (date != null) {
+            cli.run(workTree, List.of("config", "--local", key, date.toString()));
+        } else if (readRepository(workTree,
+                r -> r.getConfig().getString(WINGIT_SECTION, null, COMMIT_DATE_KEY) != null)) {
+            // 'git config --unset' fails when the key is missing, hence the check
+            cli.run(workTree, List.of("config", "--local", "--unset-all", key));
         }
     }
 

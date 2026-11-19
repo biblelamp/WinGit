@@ -6,9 +6,23 @@
   <title>WinGit — open-source desktopový klient pro Git</title>
   <meta name="description" content="WinGit je bezplatný open-source desktopový klient pro Git: graf historie, porovnání ve dvou sloupcích, stage, větve a merge v jednom okně.">
   <link rel="icon" href="../assets/wingit.svg" type="image/svg+xml">
-  <link rel="alternate" hreflang="en" href="../">
-  <link rel="alternate" hreflang="ru" href="../ru/">
-  <link rel="alternate" hreflang="cs" href="./">
+  <link rel="canonical" href="https://wgit.cz/cs/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WinGit">
+  <meta property="og:title" content="WinGit — open-source desktopový klient pro Git">
+  <meta property="og:description" content="WinGit je bezplatný open-source desktopový klient pro Git: graf historie, porovnání ve dvou sloupcích, stage, větve a merge v jednom okně.">
+  <meta property="og:url" content="https://wgit.cz/cs/">
+  <meta property="og:image" content="https://wgit.cz/assets/screenshot.png">
+  <meta property="og:image:width" content="1435">
+  <meta property="og:image:height" content="888">
+  <meta property="og:locale" content="cs_CZ">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale:alternate" content="ru_RU">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -29,15 +43,17 @@
     <section class="hero">
       <div class="wrap">
         <div>
-          <h1>Spravujte Git snadno a jednoduše</h1>
+          <h1>Používej Git snadno a jednoduše</h1>
           <p class="lead">WinGit je bezplatný open-source desktopový klient pro Git. Graf historie, porovnání
             ve dvou sloupcích, stage, větve a merge — vše v jednom okně.</p>
           <div class="actions">
             <a class="btn btn-primary" id="download" href="https://github.com/biblelamp/WinGit/releases/latest"
-               data-label-version="Stáhnout {version} pro Windows">Stáhnout pro Windows</a>
+               data-label-windows="Stáhnout {version} pro Windows"
+               data-label-linux="Stáhnout {version} pro Linux (.deb)">Stáhnout pro Windows</a>
             <a class="btn btn-secondary" href="https://github.com/biblelamp/WinGit">Zobrazit na GitHubu</a>
           </div>
-          <p class="note">Nyní Windows · sestavení pro Linux a macOS se plánují · Apache-2.0</p>
+          <p class="note">Windows: <a data-asset="msi" href="https://github.com/biblelamp/WinGit/releases/latest">MSI</a>, <a data-asset="windows-zip" href="https://github.com/biblelamp/WinGit/releases/latest">ZIP</a> · Linux: <a data-asset="deb" href="https://github.com/biblelamp/WinGit/releases/latest">DEB</a>, <a data-asset="rpm" href="https://github.com/biblelamp/WinGit/releases/latest">RPM</a>, <a data-asset="tar" href="https://github.com/biblelamp/WinGit/releases/latest">tar.gz</a> · macOS se plánuje</p>
+          <p class="note">Apache-2.0 · <a href="code-signing/">Zásady podepisování kódu (Code signing policy)</a></p>
         </div>
         <a href="../assets/screenshot.png"><img class="shot" src="../assets/screenshot.png" width="1435" height="888" alt="Hlavní okno WinGit: repozitáře, větve, graf historie a porovnání souborů"></a>
       </div>
@@ -75,7 +91,7 @@
         <ul>
           <li><strong>Nyní:</strong> raná, ale funkční verze — repozitáře, soubory, větve, historie, porovnání,
             stage, commit, push, pull a merge.</li>
-          <li><strong>Dále:</strong> najít beta testery a nastavit automatická sestavení pro Windows, Linux a macOS.</li>
+          <li><strong>Dále:</strong> najít beta testery a připravit sestavení pro macOS.</li>
         </ul>
         <p>Chcete pomoci? Stáhněte si WinGit, vyzkoušejte ho na svých repozitářích a dejte vědět, co funguje
           a co ne. Hlášení chyb, nápady i pull requesty jsou vítány.</p>
@@ -90,6 +106,7 @@
   <footer>
     <div class="wrap">
       <span>WinGit · licence Apache-2.0</span>
+      <a href="code-signing/">Zásady podepisování kódu</a>
       <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
     </div>
   </footer>

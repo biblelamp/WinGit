@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://wgit.cz/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/ru/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/cs/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/code-signing/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/ru/code-signing/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/cs/code-signing/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
+  </url>
+</urlset>

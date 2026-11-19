@@ -86,6 +86,32 @@ class CommitPushPullTest {
     }
 
     @Test
+    void savedCommitDateIsRememberedPerRepositoryAndCanBeForgotten() throws Exception {
+        Path repo = createRepo("saved-date");
+        Path other = createRepo("other-repo");
+        Instant date = Instant.parse("2024-03-01T08:30:00Z");
+        assertThat(git.savedCommitDate(repo)).isEmpty();
+        git.setSavedCommitDate(repo, null); // nothing to forget: no error
+
+        git.setSavedCommitDate(repo, date);
+
+        assertThat(git.savedCommitDate(repo)).contains(date);
+        assertThat(git.savedCommitDate(other)).isEmpty();
+
+        git.setSavedCommitDate(repo, null);
+
+        assertThat(git.savedCommitDate(repo)).isEmpty();
+    }
+
+    @Test
+    void unreadableSavedCommitDateIsIgnored() throws Exception {
+        Path repo = createRepo("bad-date");
+        cli.run(repo, List.of("config", "--local", "wingit.commitDate", "yesterday"));
+
+        assertThat(git.savedCommitDate(repo)).isEmpty();
+    }
+
+    @Test
     void gitDateUsesInternalFormatWithOffset() {
         Instant date = Instant.parse("2024-03-01T08:30:00Z");
         assertThat(DefaultGitService.gitDate(date, ZoneId.of("Europe/Prague"))).isEqualTo("1709281800 +0100");

@@ -1,9 +1,15 @@
-# Builds the Windows installer (MSI) and a portable ZIP (app image).
+# Builds the installers:
+#   Windows: MSI and a portable ZIP (app image), signed through SignPath when configured;
+#   Linux:   DEB, RPM and a portable tar.gz (app image).
 #
 # - Push a tag like v0.3.0 (or v0.3.0-beta.1 for a pre-release) -> a GitHub Release
-#   with both files attached.
-# - Run manually (Actions -> Release -> Run workflow) -> the same files as a workflow
-#   artifact only, no release; useful to check packaging before tagging.
+#   with all files attached.
+# - Run manually (Actions -> Release -> Run workflow) -> the same files as workflow
+#   artifacts only, no release; useful to check packaging before tagging.
+#
+# Code signing (Windows), see docs/code-signing.md: set the secret SIGNPATH_API_TOKEN and the
+# variable SIGNPATH_ORGANIZATION_ID (optionally SIGNPATH_PROJECT_SLUG, SIGNPATH_POLICY_RELEASE,
+# SIGNPATH_POLICY_TEST). Without the secret the Windows files are published unsigned.
 name: Release
 
 on:
@@ -14,26 +20,19 @@ on:
       version:
         description: 'Version for a test build (numbers only, e.g. 0.3.0)'
         required: true
-        default: '0.3.2'
+        default: '0.3.4'
 
 permissions:
   contents: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      numeric: ${{ steps.version.outputs.numeric }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: maven
-
       - name: Determine version
         id: version
         env:
@@ -44,7 +43,7 @@ jobs:
           else
             version="$INPUT_VERSION"
           fi
-          # jpackage on Windows accepts only numeric versions: v0.2.0-beta.1 -> 0.2.0
+          # jpackage accepts only numeric versions: v0.2.0-beta.1 -> 0.2.0
           numeric="${version%%-*}"
           if ! [[ "$numeric" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
             echo "::error::Version '$version' must look like 1.2.3 or 1.2.3-suffix"
@@ -55,6 +54,25 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "numeric=$numeric" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      NUMERIC: ${{ needs.version.outputs.numeric }}
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
 
       - name: Ensure WiX 3 (needed by jpackage for MSI)
         shell: pwsh
@@ -73,42 +91,120 @@ jobs:
         run: mvn -B -ntp verify
 
       - name: Package MSI and app image
-        env:
-          NUMERIC: ${{ steps.version.outputs.numeric }}
         run: |
           mvn -B -ntp -pl app -am -Ppackage -DskipTests package -Djpackage.appVersion="$NUMERIC"
           mvn -B -ntp -pl app -am -Ppackage -DskipTests package -Djpackage.appVersion="$NUMERIC" -Djpackage.type=app-image
 
       - name: Collect files
         shell: pwsh
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          NUMERIC: ${{ steps.version.outputs.numeric }}
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item "app/target/installer/WinGit-$env:NUMERIC.msi" "dist/WinGit-$env:VERSION-windows-x64.msi"
           Compress-Archive -Path app/target/installer/WinGit -DestinationPath "dist/WinGit-$env:VERSION-windows-x64.zip"
           Get-ChildItem dist
 
-      - name: Upload test build
-        if: github.event_name == 'workflow_dispatch'
+      # The unsigned files: input for SignPath (it downloads them from GitHub itself),
+      # or the final Windows build when signing is not configured.
+      - name: Upload unsigned files
+        id: unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: WinGit-${{ steps.version.outputs.version }}-windows-x64
+          name: WinGit-${{ env.VERSION }}-windows-x64${{ env.SIGNPATH_API_TOKEN != '' && '-unsigned' || '' }}
           path: dist/*
 
+      # Signs WinGit.exe inside the ZIP and the MSI, and the MSI itself
+      # (.signpath/artifact-configuration.xml). Release signing waits for a manual approval
+      # in SignPath; tag builds use the release policy, manual runs the test policy.
+      - name: Sign with SignPath
+        if: env.SIGNPATH_API_TOKEN != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'WinGit' }}
+          signing-policy-slug: ${{ github.event_name == 'push' && (vars.SIGNPATH_POLICY_RELEASE || 'release-signing') || (vars.SIGNPATH_POLICY_TEST || 'test-signing') }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed
+
+      - name: Upload signed files
+        if: env.SIGNPATH_API_TOKEN != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinGit-${{ env.VERSION }}-windows-x64
+          path: signed/*
+
+  linux:
+    needs: version
+    # the oldest supported runner: packages built against an older glibc run on more distributions
+    runs-on: ubuntu-22.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      NUMERIC: ${{ needs.version.outputs.numeric }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm fakeroot xvfb
+
+      - name: Build and test
+        run: xvfb-run -a mvn -B -ntp verify
+
+      - name: Package DEB, RPM and app image
+        run: |
+          for type in deb rpm app-image; do
+            mvn -B -ntp -pl app -am -Ppackage -DskipTests package \
+              -Djpackage.appVersion="$NUMERIC" -Djpackage.type="$type"
+          done
+
+      - name: Collect files
+        run: |
+          mkdir -p dist
+          cd app/target/installer
+          cp wingit_*.deb "../../../dist/WinGit-$VERSION-linux-amd64.deb"
+          cp wingit-*.rpm "../../../dist/WinGit-$VERSION-linux-x86_64.rpm"
+          tar -czf "../../../dist/WinGit-$VERSION-linux-x64.tar.gz" WinGit
+          ls -l ../../../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WinGit-${{ env.VERSION }}-linux-x64
+          path: dist/*
+
+  release:
+    if: github.event_name == 'push'
+    needs: [version, windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: WinGit-${{ needs.version.outputs.version }}-*-x64
+          path: dist
+          merge-multiple: true
+
       - name: Publish GitHub Release
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
         run: |
+          ls -l dist
           tag="$GITHUB_REF_NAME"
           if gh release view "$tag" > /dev/null 2>&1; then
             gh release upload "$tag" dist/* --clobber
           else
             flags=()
             [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
-            gh release create "$tag" dist/* --title "WinGit $VERSION" --generate-notes "${flags[@]}"
+            # SignPath Foundation asks for a link to the code signing policy on the release page
+            notes="[Code signing policy](https://wgit.cz/code-signing/)"
+            gh release create "$tag" dist/* --title "WinGit $VERSION" --notes "$notes" --generate-notes --verify-tag "${flags[@]}"
           fi

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Rectangle;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,8 +18,10 @@ import javax.swing.AbstractButton;
 import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.plaf.basic.BasicSplitPaneUI;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -87,8 +91,59 @@ class MainWindowContentTest {
         SwingUtilities.invokeAndWait(() -> { }); // deliver the resize events posted by the layout
 
         Map<String, WindowLayout.Divider> dividers = content.dividers();
-        assertThat(dividers).containsOnlyKeys("main", "left", "right", "lower");
+        assertThat(dividers).containsOnlyKeys("main", "left", "files", "history");
         assertThat(dividers.get("main")).isEqualTo(new WindowLayout.Divider(345, 1000));
+    }
+
+    @Test
+    void draggingTheHistoryDividerKeepsTheDiffHeight() {
+        MainContent content = laidOut(mainContent());
+        JSplitPane files = content.splitPane("files");
+        JSplitPane history = content.splitPane("history");
+        int diffHeight = files.getRightComponent().getHeight();
+        Component divider = ((BasicSplitPaneUI) history.getUI()).getDivider();
+
+        divider.dispatchEvent(mouse(divider, MouseEvent.MOUSE_PRESSED));
+        history.setDividerLocation(history.getDividerLocation() + 80);
+        layout(content);
+        divider.dispatchEvent(mouse(divider, MouseEvent.MOUSE_RELEASED));
+
+        assertThat(files.getRightComponent().getHeight()).isEqualTo(diffHeight);
+        assertThat(files.getResizeWeight()).isEqualTo(0.35);
+    }
+
+    @Test
+    void draggingTheDiffDividerLeavesTheHistoryDividerInPlace() {
+        MainContent content = laidOut(mainContent());
+        JSplitPane files = content.splitPane("files");
+        JSplitPane history = content.splitPane("history");
+        int historyDivider = history.getDividerLocation();
+
+        files.setDividerLocation(files.getDividerLocation() + 60);
+        layout(content);
+
+        assertThat(history.getDividerLocation()).isEqualTo(historyDivider);
+    }
+
+    private static MainContent laidOut(MainContent content) {
+        content.setSize(1000, 700);
+        layout(content);
+        // Swing distributes resize space by weight only after the first paint.
+        content.paint(new BufferedImage(1000, 700, BufferedImage.TYPE_INT_RGB).getGraphics());
+        return content;
+    }
+
+    private static void layout(Component component) {
+        if (component instanceof Container container) {
+            container.doLayout();
+            for (Component child : container.getComponents()) {
+                layout(child);
+            }
+        }
+    }
+
+    private static MouseEvent mouse(Component source, int id) {
+        return new MouseEvent(source, id, System.currentTimeMillis(), 0, 2, 2, 1, false, MouseEvent.BUTTON1);
     }
 
     @Test

@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -39,7 +40,7 @@ public final class CommitAction extends AbstractAction {
 
     /** What the dialog needs, read together in the background. */
     private record DialogData(List<FileChange> changes, List<String> recentMessages, String mergeMessage,
-                              List<String> tags) {
+                              List<String> tags, Instant savedDate) {
     }
 
     /**
@@ -90,7 +91,8 @@ public final class CommitAction extends AbstractAction {
                 } catch (RuntimeException e) {
                     // the tag name is then only checked by Git
                 }
-                return new DialogData(changes, messages, mergeMessage, tags);
+                Instant savedDate = changes.isEmpty() ? null : git.savedCommitDate(repo).orElse(null);
+                return new DialogData(changes, messages, mergeMessage, tags, savedDate);
             }
 
             @Override
@@ -117,7 +119,7 @@ public final class CommitAction extends AbstractAction {
             return;
         }
         Optional<CommitDialog.Result> result = CommitDialog.show(pane, git, repo, data.changes(), preselected,
-                data.recentMessages(), data.mergeMessage(), data.tags());
+                data.recentMessages(), data.mergeMessage(), data.tags(), data.savedDate());
         if (result.isEmpty()) {
             return;
         }

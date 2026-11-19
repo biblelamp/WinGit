@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for the Windows build (see docs/code-signing.md).
+  Paste it into the SignPath project as the default artifact configuration; this file is the
+  version-controlled copy, keep both in sync.
+
+  Input: the GitHub artifact uploaded by .github/workflows/release.yml (a ZIP) containing
+    WinGit-<version>-windows-x64.msi  - the installer
+    WinGit-<version>-windows-x64.zip  - the portable app image, WinGit/WinGit.exe inside
+  Signed: the launcher WinGit.exe in both, then the MSI itself. The bundled Java runtime
+  files are already signed by their vendor and are left as they are.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <msi-file path="WinGit-*-windows-x64.msi">
+      <pe-file path="WinGit.exe">
+        <authenticode-sign/>
+      </pe-file>
+      <authenticode-sign/>
+    </msi-file>
+    <zip-file path="WinGit-*-windows-x64.zip">
+      <pe-file path="WinGit/WinGit.exe">
+        <authenticode-sign/>
+      </pe-file>
+    </zip-file>
+  </zip-file>
+</artifact-configuration>

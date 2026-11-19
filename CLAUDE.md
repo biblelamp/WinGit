@@ -5,7 +5,7 @@
 Desktop Git client with a familiar multi-pane workflow (repositories,
 files, log graph, diff, branches) similar to established commercial Git GUIs.
 
-Platforms: Windows is the primary target today; Linux and macOS builds are
+Platforms: Windows is the primary target today; Linux builds exist, macOS is
 planned (automated CI builds for all three). Keep code portable: no hard
 Windows-only assumptions outside clearly isolated platform-specific code.
 
@@ -27,7 +27,7 @@ License: Apache-2.0.
 - Diff: java-diff-utils
 - Tests: JUnit 5, AssertJ
 - Packaging: jpackage with embedded runtime (Windows MSI/EXE now;
-  Linux DEB/RPM and macOS DMG/PKG planned)
+  Linux DEB/RPM/tar.gz; macOS DMG/PKG planned)
 
 ## Modules
 
@@ -80,18 +80,22 @@ mvn -q -DskipTests package          # build
 mvn -q verify                       # build + tests
 mvn -q -pl core test                # core tests only
 mvn -q -pl app -am compile exec:java    # run the app (builds core/ui in the reactor)
-mvn -q -pl app -am -Ppackage package   # jpackage installer (Windows, needs WiX 3; -Djpackage.type=app-image without it)
-mvn -q -pl app -am -Picons -DskipTests package   # regenerate app/src/jpackage/wingit.ico from ui/.../icons/app/wingit.svg
+mvn -q -pl app -am -Ppackage package   # jpackage installer (Windows MSI needs WiX 3, -Djpackage.type=app-image without it;
+                                       # Linux: DEB by default, -Djpackage.type=rpm|app-image; options in src/jpackage/*.args)
+mvn -q -pl app -am -Picons -DskipTests package   # regenerate app/src/jpackage/wingit.ico + .png from ui/.../icons/app/wingit.svg
 ```
 
-CI (GitHub Actions, `.github/workflows/`): `ci.yml` runs `mvn verify` on pushes to main
-and on PRs; `release.yml` builds the MSI and a portable ZIP — a pushed tag `vX.Y.Z`
-(or `vX.Y.Z-suffix` for a pre-release) publishes a GitHub Release, a manual run only
-uploads the files as a workflow artifact. The jpackage version comes from the tag
-(`-Djpackage.appVersion`), not from the POM.
+CI (GitHub Actions, `.github/workflows/`): `ci.yml` runs `mvn verify` on Windows and Linux
+on pushes to main and on PRs; `release.yml` builds the Windows MSI + portable ZIP and the
+Linux DEB, RPM + portable tar.gz — a pushed tag `vX.Y.Z` (or `vX.Y.Z-suffix` for a
+pre-release) publishes a GitHub Release, a manual run only uploads the files as workflow
+artifacts. The jpackage version comes from the tag (`-Djpackage.appVersion`), not from the POM.
+Windows files are signed through SignPath when the `SIGNPATH_API_TOKEN` secret is set
+(`.signpath/artifact-configuration.xml`, `docs/code-signing.md`).
 
-Project page: static HTML in `site/` (EN at the root, `ru/`, `cs/`; keep all three in sync),
-published to GitHub Pages by `pages.yml`, which copies the app icon SVG into `assets/`.
+Project page: https://wgit.cz/ (custom domain of GitHub Pages, set in the repository's Pages
+settings). Static HTML in `site/` (EN at the root, `ru/`, `cs/`; keep all three in sync),
+published by `pages.yml`, which copies the app icon SVG into `assets/`.
 
 Tests that need a repo create a temporary one (`@TempDir` + `git init`);
 never touch the developer's real repositories.

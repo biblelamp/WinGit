@@ -87,6 +87,14 @@ public interface GitService {
     int unpulledCount(Path workTree, int max);
 
     /**
+     * Version of the {@code git} executable used for writes and network operations,
+     * e.g. {@code 2.47.1.windows.1}. Runs a process: call off the EDT.
+     *
+     * @throws GitException if Git cannot be started
+     */
+    String gitVersion();
+
+    /**
      * Watches the working tree for changes that can affect status or the current branch
      * (debounced; Git-ignored paths and .git internals such as objects are skipped).
      * {@code onChange} runs on a background thread.
@@ -281,6 +289,19 @@ public interface GitService {
      * @param date commit date, or {@code null} for now
      */
     void commit(Path workTree, List<FileChange> changes, String message, Instant date);
+
+    /**
+     * The commit date remembered for this repository by {@link #setSavedCommitDate} (in its local
+     * Git config), to offer it again in the next commit; empty if none or unreadable.
+     */
+    Optional<Instant> savedCommitDate(Path workTree);
+
+    /**
+     * Remembers {@code date} for this repository (local Git config), or forgets it if {@code null}.
+     *
+     * @throws GitCommandException if Git cannot write the config
+     */
+    void setSavedCommitDate(Path workTree, Instant date);
 
     /**
      * Pushes the current branch to its upstream. A branch without upstream is pushed to

@@ -6,11 +6,12 @@
 
     <groupId>cz.wingit</groupId>
     <artifactId>wingit-parent</artifactId>
-    <version>0.3.2-SNAPSHOT</version>
+    <version>0.3.4-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>WinGit</name>
     <description>Open-source desktop Git GUI client</description>
+    <url>https://wgit.cz/</url>
 
     <licenses>
         <license>

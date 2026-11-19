@@ -2,9 +2,12 @@ package cz.wingit.app;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Properties;
 
 import javax.swing.SwingUtilities;
 
@@ -48,14 +51,27 @@ public final class Main {
 
     /**
      * The jpackage launcher passes the release version ({@code --app-version}, taken from the tag) as
-     * {@code jpackage.app-version}; a plain jar has the Maven version in its manifest; running from classes has none.
+     * {@code jpackage.app-version}; otherwise (jar, IDE) the Maven version from {@code version.properties}.
+     * {@code null} if neither is known.
      */
-    private static String version() {
+    static String version() {
         String version = System.getProperty("jpackage.app-version");
-        if (version == null || version.isBlank()) {
-            version = Main.class.getPackage().getImplementationVersion();
+        return version == null || version.isBlank() ? mavenVersion() : version;
+    }
+
+    private static String mavenVersion() {
+        try (InputStream in = Main.class.getResourceAsStream("version.properties")) {
+            if (in == null) {
+                return null;
+            }
+            Properties properties = new Properties();
+            properties.load(in);
+            String version = properties.getProperty("version");
+            // Unfiltered (e.g. an IDE that skips Maven filtering): no version rather than "${...}".
+            return version == null || version.isBlank() || version.startsWith("$") ? null : version;
+        } catch (IOException e) {
+            return null;
         }
-        return version;
     }
 
     /** Window geometry and the selected file, saved when the window closes. */

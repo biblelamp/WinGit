@@ -28,6 +28,7 @@ import cz.wingit.core.GitService;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.ui.Messages;
+import cz.wingit.ui.about.HelpActions;
 import cz.wingit.ui.branches.BranchesPane;
 import cz.wingit.ui.branches.DeleteBranchAction;
 import cz.wingit.ui.branches.MergeAction;
@@ -117,12 +118,15 @@ public final class MainWindow extends JFrame {
         branchesPane.installTagActions(renameTag, deleteTag, newTag, pushTag);
         historyPane.installContextActions(
                 NewTagAction.onCommit(git, repositoriesPane, historyPane::selectedCommit, refresh));
-        setJMenuBar(new MainMenuBar(
+        MainMenuBar menuBar = new MainMenuBar(
                 new AddRepositoryAction(git, repositoriesPane),
                 new CloneAction(git, repositoriesPane),
                 new CloseRepositoryAction(repositoriesPane),
                 removeRepository, commit, fetch, pull, push, newBranch, renameBranch, deleteBranch, merge, abortMerge,
-                newTag, pushTag, renameTag, deleteTag, stage, unstage, discard, deleteFiles));
+                newTag, pushTag, renameTag, deleteTag, stage, unstage, discard, deleteFiles);
+        menuBar.addHelpMenu(HelpActions.website(this), HelpActions.reportIssue(this),
+                HelpActions.about(this, git, () -> version));
+        setJMenuBar(menuBar);
         filesPane.installContextActions(deleteFiles, stage, unstage, null, discard, deleteFiles);
         // Other repositories are not watched; re-check them when the user comes back to the window.
         addWindowFocusListener(new WindowAdapter() {
