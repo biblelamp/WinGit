@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Getting started — WinGit</title>
+  <meta name="description" content="Install Git and WinGit, add a repository, see your changes, commit, pull and push: a step-by-step guide for Git beginners.">
+  <link rel="icon" href="../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/start/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/start/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/start/">
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Home</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+      </nav>
+      <div class="lang"><span>EN</span><a href="../ru/start/" hreflang="ru">RU</a><a href="../cs/start/" hreflang="cs">CS</a></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Getting started</h1>
+        <p class="lead">From installation to your first commit in about 15 minutes. No Git experience needed.</p>
+        <ol class="toc">
+          <li><a href="#git">Git</a></li>
+          <li><a href="#identity">Name and email</a></li>
+          <li><a href="#install">WinGit</a></li>
+          <li><a href="#repository">Repository</a></li>
+          <li><a href="#changes">Changes</a></li>
+          <li><a href="#commit">Commit</a></li>
+          <li><a href="#sync">Pull and push</a></li>
+        </ol>
+      </div>
+      <ol class="wrap prose steps">
+        <li class="step" id="git">
+          <span class="step-num" aria-hidden="true">1</span>
+          <div>
+            <h2>Install Git</h2>
+            <p>WinGit uses the Git installed on your computer to make commits and talk to servers. Download <a href="https://git-scm.com/downloads/win">Git for Windows</a>, run the installer and keep all the default options.</p>
+            <p class="muted">On Linux, install the <code>git</code> package of your distribution, for example <code>sudo apt install git</code>.</p>
+          </div>
+        </li>
+        <li class="step" id="identity">
+          <span class="step-num" aria-hidden="true">2</span>
+          <div>
+            <h2>Tell Git your name and email</h2>
+            <p>Git writes them into every commit, and without them it refuses to create one. You do this only once. Open the Command Prompt (Start menu, type <kbd>cmd</kbd>, press <kbd>Enter</kbd>) and run these two commands with your own name and email:</p>
+            <pre class="cmd">git config --global user.name "Jane Doe"
+git config --global user.email "jane@example.com"</pre>
+            <p class="muted">If you use GitHub, give the email of your GitHub account, so your commits are linked to your profile.</p>
+          </div>
+        </li>
+        <li class="step" id="install">
+          <span class="step-num" aria-hidden="true">3</span>
+          <div>
+            <h2>Install WinGit</h2>
+            <p>Download the installer (MSI) from the <a href="../">home page</a> and run it. WinGit appears in the Start menu.</p>
+            <p class="muted">Prefer not to install anything? Download the ZIP, unpack it into any folder and start <code>WinGit.exe</code>.</p>
+          </div>
+        </li>
+        <li class="step" id="repository">
+          <span class="step-num" aria-hidden="true">4</span>
+          <div>
+            <h2>Add a repository</h2>
+            <p>A repository is a project folder whose history Git keeps. There are two ways to add one:</p>
+            <ul><li><strong>From a server</strong> (GitHub, GitLab, …): <em>Repository → Clone…</em> (<kbd>Ctrl+Shift+O</kbd>), paste the repository address, for example <code>https://github.com/user/project.git</code>, choose a folder and click <em>Clone</em>.</li><li><strong>A folder on your disk</strong>: <em>Repository → Add or Create…</em> (<kbd>Ctrl+O</kbd>) and select the folder. If it isn't a repository yet, WinGit offers to create one.</li></ul>
+            <p>The repository opens right away and stays in the list on the left; next time, open it with a double-click.</p>
+            <p class="muted">The first time you connect to a server, Git may open a sign-in window (Git Credential Manager). Sign in as usual: WinGit never sees or stores your password.</p>
+          </div>
+        </li>
+        <li class="step" id="changes">
+          <span class="step-num" aria-hidden="true">5</span>
+          <div>
+            <h2>See your changes</h2>
+            <p>Edit any file in the repository folder. WinGit notices it and shows the file in the <em>Files</em> list. Click it: <em>Diff</em> shows the previous version on the left and yours on the right, with the changed lines highlighted.</p>
+            <p class="muted">A red repository name in the list means it has changes that are not committed yet.</p>
+          </div>
+        </li>
+        <li class="step" id="commit">
+          <span class="step-num" aria-hidden="true">6</span>
+          <div>
+            <h2>Make a commit</h2>
+            <p>A commit saves a snapshot of your changes in the history. Click <em>Commit</em> on the toolbar (<kbd>Ctrl+K</kbd>), tick the files to include, describe briefly what you changed and click <em>Commit</em>. <em>Commit &amp; Push</em> also sends it to the server right away.</p>
+            <p class="muted">The new commit appears at the top of the <em>History</em>.</p>
+          </div>
+        </li>
+        <li class="step" id="sync">
+          <span class="step-num" aria-hidden="true">7</span>
+          <div>
+            <h2>Pull and push</h2>
+            <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) uploads your commits to the server.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) brings in the commits others have pushed.</li><li><em>Fetch</em> only checks the server for news and doesn't change your files. When the repository icon turns green, there is something to pull.</li></ul>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="block soft">
+      <div class="wrap prose">
+        <h2>Something went wrong?</h2>
+        <p>Open <em>Help → About WinGit</em> and click <em>Copy Details</em>. Then choose <em>Help → Report an Issue</em> (you need a GitHub account), describe what you did and what happened, and paste the copied details.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/biblelamp/WinGit/issues/new">Report an issue</a>
+          <a class="btn btn-secondary" href="../">Back to home page</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · licensed under Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

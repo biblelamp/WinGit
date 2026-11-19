@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Začínáme — WinGit</title>
+  <meta name="description" content="Nainstalujte Git a WinGit, přidejte repozitář, prohlédněte si změny, udělejte commit, pull a push: návod krok za krokem pro začátečníky v Gitu.">
+  <link rel="icon" href="../../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/cs/start/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/start/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/start/">
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Domů</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+      </nav>
+      <div class="lang"><a href="../../start/" hreflang="en">EN</a><a href="../../ru/start/" hreflang="ru">RU</a><span>CS</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Začínáme</h1>
+        <p class="lead">Od instalace k prvnímu commitu asi za 15 minut. Zkušenosti s Gitem nejsou potřeba.</p>
+        <ol class="toc">
+          <li><a href="#git">Git</a></li>
+          <li><a href="#identity">Jméno a e-mail</a></li>
+          <li><a href="#install">WinGit</a></li>
+          <li><a href="#repository">Repozitář</a></li>
+          <li><a href="#changes">Změny</a></li>
+          <li><a href="#commit">Commit</a></li>
+          <li><a href="#sync">Pull a push</a></li>
+        </ol>
+      </div>
+      <ol class="wrap prose steps">
+        <li class="step" id="git">
+          <span class="step-num" aria-hidden="true">1</span>
+          <div>
+            <h2>Nainstalujte Git</h2>
+            <p>Pro commity a komunikaci se serverem používá WinGit Git nainstalovaný v počítači. Stáhněte <a href="https://git-scm.com/downloads/win">Git for Windows</a>, spusťte instalátor a ponechte všechna výchozí nastavení.</p>
+            <p class="muted">V Linuxu nainstalujte balíček <code>git</code> ze své distribuce, například <code>sudo apt install git</code>.</p>
+          </div>
+        </li>
+        <li class="step" id="identity">
+          <span class="step-num" aria-hidden="true">2</span>
+          <div>
+            <h2>Sdělte Gitu své jméno a e-mail</h2>
+            <p>Git je zapisuje do každého commitu a bez nich commit nevytvoří. Stačí to udělat jednou. Otevřete příkazový řádek (nabídka Start, napište <kbd>cmd</kbd>, stiskněte <kbd>Enter</kbd>) a spusťte tyto dva příkazy s vlastním jménem a e-mailem:</p>
+            <pre class="cmd">git config --global user.name "Jan Novák"
+git config --global user.email "jan@example.com"</pre>
+            <p class="muted">Pokud používáte GitHub, zadejte e-mail svého účtu na GitHubu — commity pak budou propojené s vaším profilem.</p>
+          </div>
+        </li>
+        <li class="step" id="install">
+          <span class="step-num" aria-hidden="true">3</span>
+          <div>
+            <h2>Nainstalujte WinGit</h2>
+            <p>Stáhněte instalátor (MSI) na <a href="../">hlavní stránce</a> a spusťte ho. WinGit se objeví v nabídce Start.</p>
+            <p class="muted">Nechcete nic instalovat? Stáhněte ZIP, rozbalte ho do libovolné složky a spusťte <code>WinGit.exe</code>.</p>
+          </div>
+        </li>
+        <li class="step" id="repository">
+          <span class="step-num" aria-hidden="true">4</span>
+          <div>
+            <h2>Přidejte repozitář</h2>
+            <p>Repozitář je složka projektu, jejíž historii Git uchovává. Přidat ho můžete dvěma způsoby:</p>
+            <ul><li><strong>Ze serveru</strong> (GitHub, GitLab, …): <em>Repository → Clone…</em> (<kbd>Ctrl+Shift+O</kbd>), vložte adresu repozitáře, například <code>https://github.com/user/project.git</code>, vyberte složku a klikněte na <em>Clone</em>.</li><li><strong>Složka na disku</strong>: <em>Repository → Add or Create…</em> (<kbd>Ctrl+O</kbd>) a vyberte složku. Pokud to ještě není repozitář, WinGit nabídne ho vytvořit.</li></ul>
+            <p>Repozitář se hned otevře a zůstane v seznamu vlevo; příště ho otevřete dvojklikem.</p>
+            <p class="muted">Při prvním připojení k serveru může Git otevřít přihlašovací okno (Git Credential Manager). Přihlaste se jako obvykle: WinGit vaše heslo nevidí ani neukládá.</p>
+          </div>
+        </li>
+        <li class="step" id="changes">
+          <span class="step-num" aria-hidden="true">5</span>
+          <div>
+            <h2>Prohlédněte si změny</h2>
+            <p>Upravte libovolný soubor ve složce repozitáře. WinGit si toho všimne a ukáže soubor v seznamu <em>Files</em>. Klikněte na něj: <em>Diff</em> ukáže vlevo předchozí verzi a vpravo vaši, změněné řádky jsou zvýrazněné.</p>
+            <p class="muted">Červený název repozitáře v seznamu znamená, že obsahuje změny, které ještě nejsou v commitu.</p>
+          </div>
+        </li>
+        <li class="step" id="commit">
+          <span class="step-num" aria-hidden="true">6</span>
+          <div>
+            <h2>Udělejte commit</h2>
+            <p>Commit uloží snímek vašich změn do historie. Klikněte na <em>Commit</em> na panelu nástrojů (<kbd>Ctrl+K</kbd>), zaškrtněte soubory, stručně popište, co jste změnili, a klikněte na <em>Commit</em>. <em>Commit &amp; Push</em> ho zároveň pošle na server.</p>
+            <p class="muted">Nový commit se objeví nahoře v <em>History</em>.</p>
+          </div>
+        </li>
+        <li class="step" id="sync">
+          <span class="step-num" aria-hidden="true">7</span>
+          <div>
+            <h2>Pull a push</h2>
+            <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) nahraje vaše commity na server.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) stáhne commity, které poslali ostatní.</li><li><em>Fetch</em> jen zjistí, co je na serveru nového, a vaše soubory nemění. Když ikona repozitáře zezelená, je co stáhnout přes Pull.</li></ul>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="block soft">
+      <div class="wrap prose">
+        <h2>Něco nefunguje?</h2>
+        <p>Otevřete <em>Help → About WinGit</em> a klikněte na <em>Copy Details</em>. Pak zvolte <em>Help → Report an Issue</em> (potřebujete účet na GitHubu), popište, co jste dělali a co se stalo, a vložte zkopírované údaje.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/biblelamp/WinGit/issues/new">Nahlásit problém</a>
+          <a class="btn btn-secondary" href="../">Zpět na hlavní stránku</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · licence Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

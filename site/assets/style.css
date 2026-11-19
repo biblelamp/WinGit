@@ -82,14 +82,34 @@ h2 { font-size: 28px; margin: 0 0 24px; }
 .prose ul { padding-left: 20px; margin: 0 0 14px; }
 .prose li { margin-bottom: 6px; }
 .muted { color: var(--text-muted); }
+.prose h1 { font-size: 36px; line-height: 1.2; margin: 0 0 12px; }
+.prose .lead { font-size: 18px; color: var(--text-muted); }
+code, kbd, pre { font-family: Consolas, "Cascadia Mono", ui-monospace, monospace; font-size: 0.9em; }
+code, kbd { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 5px; padding: 0 4px; white-space: nowrap; }
+pre.cmd { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; overflow-x: auto; margin: 0 0 14px; }
+
+/* getting started */
+.toc { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 20px 0 0; counter-reset: toc; }
+.toc li { counter-increment: toc; }
+.toc a { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--accent-soft); text-decoration: none; font-size: 14px; }
+.toc a::before { content: counter(toc) "  "; font-weight: 600; }
+.steps { list-style: none; padding-top: 0; padding-bottom: 0; margin-top: 32px; margin-bottom: 0; }
+.step { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 16px; padding: 24px 0; border-top: 1px solid var(--border); scroll-margin-top: 16px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.step h2 { font-size: 21px; margin: 2px 0 10px; }
+.step p:last-child, .step ul:last-child { margin-bottom: 0; }
 
 footer { border-top: 1px solid var(--border); padding: 24px 0; font-size: 14px; color: var(--text-muted); }
-footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
+footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+footer .osa-badge img { display: block; width: auto; height: 20px; max-width: 100%; }
 
 @media (max-width: 800px) {
   .hero .wrap { grid-template-columns: 1fr; padding-top: 32px; padding-bottom: 32px; }
   .hero h1 { font-size: 30px; }
   .features { grid-template-columns: 1fr; }
+  .prose h1 { font-size: 30px; }
+  .step { grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+  .step-num { width: 28px; height: 28px; font-size: 14px; }
   .nav { margin-left: 0; width: 100%; order: 3; gap: 14px; }
   .lang { margin-left: auto; }
 }

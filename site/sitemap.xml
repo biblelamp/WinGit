@@ -37,4 +37,22 @@
     <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
     <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
   </url>
+  <url>
+    <loc>https://wgit.cz/start/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/start/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/ru/start/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/start/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/cs/start/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/start/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/"/>
+  </url>
 </urlset>

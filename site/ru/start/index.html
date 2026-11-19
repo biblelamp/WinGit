@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Начало работы — WinGit</title>
+  <meta name="description" content="Установите Git и WinGit, добавьте репозиторий, посмотрите изменения, сделайте коммит, pull и push: пошаговое руководство для новичков в Git.">
+  <link rel="icon" href="../../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/ru/start/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/start/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/start/">
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Главная</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+        <a href="https://t.me/wingit_ru">Чат</a>
+      </nav>
+      <div class="lang"><a href="../../start/" hreflang="en">EN</a><span>RU</span><a href="../../cs/start/" hreflang="cs">CS</a></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Начало работы</h1>
+        <p class="lead">От установки до первого коммита — около 15 минут. Опыт работы с Git не нужен.</p>
+        <ol class="toc">
+          <li><a href="#git">Git</a></li>
+          <li><a href="#identity">Имя и почта</a></li>
+          <li><a href="#install">WinGit</a></li>
+          <li><a href="#repository">Репозиторий</a></li>
+          <li><a href="#changes">Изменения</a></li>
+          <li><a href="#commit">Коммит</a></li>
+          <li><a href="#sync">Pull и push</a></li>
+        </ol>
+      </div>
+      <ol class="wrap prose steps">
+        <li class="step" id="git">
+          <span class="step-num" aria-hidden="true">1</span>
+          <div>
+            <h2>Установите Git</h2>
+            <p>Для коммитов и связи с сервером WinGit использует Git, установленный на компьютере. Скачайте <a href="https://git-scm.com/downloads/win">Git for Windows</a>, запустите установщик и оставьте все настройки по умолчанию.</p>
+            <p class="muted">В Linux установите пакет <code>git</code> из своего дистрибутива, например <code>sudo apt install git</code>.</p>
+          </div>
+        </li>
+        <li class="step" id="identity">
+          <span class="step-num" aria-hidden="true">2</span>
+          <div>
+            <h2>Сообщите Git своё имя и почту</h2>
+            <p>Git записывает их в каждый коммит и без них коммит не создаёт. Это делается один раз. Откройте командную строку (меню «Пуск», наберите <kbd>cmd</kbd>, нажмите <kbd>Enter</kbd>) и выполните две команды, подставив своё имя и почту:</p>
+            <pre class="cmd">git config --global user.name "Ivan Petrov"
+git config --global user.email "ivan@example.com"</pre>
+            <p class="muted">Если вы пользуетесь GitHub, укажите почту своего аккаунта GitHub — тогда коммиты будут связаны с вашим профилем.</p>
+          </div>
+        </li>
+        <li class="step" id="install">
+          <span class="step-num" aria-hidden="true">3</span>
+          <div>
+            <h2>Установите WinGit</h2>
+            <p>Скачайте установщик (MSI) на <a href="../">главной странице</a> и запустите его. WinGit появится в меню «Пуск».</p>
+            <p class="muted">Не хотите ничего устанавливать? Скачайте ZIP, распакуйте в любую папку и запустите <code>WinGit.exe</code>.</p>
+          </div>
+        </li>
+        <li class="step" id="repository">
+          <span class="step-num" aria-hidden="true">4</span>
+          <div>
+            <h2>Добавьте репозиторий</h2>
+            <p>Репозиторий — это папка проекта, историю которой хранит Git. Добавить его можно двумя способами:</p>
+            <ul><li><strong>С сервера</strong> (GitHub, GitLab, …): <em>Repository → Clone…</em> (<kbd>Ctrl+Shift+O</kbd>), вставьте адрес репозитория, например <code>https://github.com/user/project.git</code>, выберите папку и нажмите <em>Clone</em>.</li><li><strong>Папка на диске</strong>: <em>Repository → Add or Create…</em> (<kbd>Ctrl+O</kbd>) и выберите папку. Если это ещё не репозиторий, WinGit предложит его создать.</li></ul>
+            <p>Репозиторий сразу откроется и останется в списке слева; в следующий раз открывайте его двойным щелчком.</p>
+            <p class="muted">При первом подключении к серверу Git может открыть окно входа (Git Credential Manager). Войдите как обычно: WinGit не видит и не хранит ваш пароль.</p>
+          </div>
+        </li>
+        <li class="step" id="changes">
+          <span class="step-num" aria-hidden="true">5</span>
+          <div>
+            <h2>Посмотрите изменения</h2>
+            <p>Измените любой файл в папке репозитория. WinGit заметит это и покажет файл в списке <em>Files</em>. Щёлкните по нему: в <em>Diff</em> слева будет прежняя версия, справа — ваша, изменённые строки выделены.</p>
+            <p class="muted">Красное название репозитория в списке означает, что в нём есть изменения, ещё не попавшие в коммит.</p>
+          </div>
+        </li>
+        <li class="step" id="commit">
+          <span class="step-num" aria-hidden="true">6</span>
+          <div>
+            <h2>Сделайте коммит</h2>
+            <p>Коммит сохраняет снимок ваших изменений в истории. Нажмите <em>Commit</em> на панели кнопок (<kbd>Ctrl+K</kbd>), отметьте нужные файлы, коротко опишите, что изменили, и нажмите <em>Commit</em>. <em>Commit &amp; Push</em> сразу же отправит коммит на сервер.</p>
+            <p class="muted">Новый коммит появится вверху <em>History</em>.</p>
+          </div>
+        </li>
+        <li class="step" id="sync">
+          <span class="step-num" aria-hidden="true">7</span>
+          <div>
+            <h2>Pull и push</h2>
+            <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) отправляет ваши коммиты на сервер.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) забирает коммиты, которые отправили другие.</li><li><em>Fetch</em> только проверяет, что нового на сервере, и не меняет ваши файлы. Если иконка репозитория стала зелёной — есть что забрать через Pull.</li></ul>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="block soft">
+      <div class="wrap prose">
+        <h2>Что-то не получилось?</h2>
+        <p>Откройте <em>Help → About WinGit</em> и нажмите <em>Copy Details</em>. Затем выберите <em>Help → Report an Issue</em> (нужен аккаунт GitHub), опишите, что вы делали и что произошло, и вставьте скопированные сведения.</p>
+        <p>Нет аккаунта GitHub или просто есть вопрос? Напишите в <a href="https://t.me/wingit_ru">чат в Telegram</a>.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/biblelamp/WinGit/issues/new">Сообщить о проблеме</a>
+          <a class="btn btn-secondary" href="https://t.me/wingit_ru">Чат в Telegram</a>
+          <a class="btn btn-secondary" href="../">На главную</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · лицензия Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+      <a href="https://t.me/wingit_ru">Чат в Telegram</a>
+    </div>
+  </footer>
+</body>
+</html>
