@@ -3,8 +3,6 @@ Manage Git easily and simply
 
 **Website:** [wgit.cz](https://wgit.cz/) · **Download:** [latest release](https://github.com/biblelamp/WinGit/releases/latest)
 
-[![As seen on Open Source Alternatives](https://www.opensourcealternatives.to/badge-osa.svg)](https://www.opensourcealternatives.to)
-
 WinGit is a free, open-source desktop Git client written in Java (Swing).
 It runs on Windows and Linux (DEB, RPM and a portable archive); macOS builds are planned.
 
@@ -38,3 +36,5 @@ and ideas are welcome.
 
 WinGit is licensed under the [Apache License 2.0](LICENSE).
 Third-party components and their licenses are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+[![As seen on Open Source Alternatives](https://www.opensourcealternatives.to/badge-osa.svg)](https://www.opensourcealternatives.to)

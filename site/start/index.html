@@ -75,6 +75,7 @@ git config --global user.email "jane@example.com"</pre>
             <ul><li><strong>From a server</strong> (GitHub, GitLab, …): <em>Repository → Clone…</em> (<kbd>Ctrl+Shift+O</kbd>), paste the repository address, for example <code>https://github.com/user/project.git</code>, choose a folder and click <em>Clone</em>.</li><li><strong>A folder on your disk</strong>: <em>Repository → Add or Create…</em> (<kbd>Ctrl+O</kbd>) and select the folder. If it isn't a repository yet, WinGit offers to create one.</li></ul>
             <p>The repository opens right away and stays in the list on the left; next time, open it with a double-click.</p>
             <p class="muted">The first time you connect to a server, Git may open a sign-in window (Git Credential Manager). Sign in as usual: WinGit never sees or stores your password.</p>
+            <figure class="step-shot"><a href="../assets/start/clone.png"><img class="shot" src="../assets/start/clone.png" width="799" height="228" loading="lazy" alt="The Clone Repository window with a repository address and a target folder"></a></figure>
           </div>
         </li>
         <li class="step" id="changes">
@@ -83,6 +84,7 @@ git config --global user.email "jane@example.com"</pre>
             <h2>See your changes</h2>
             <p>Edit any file in the repository folder. WinGit notices it and shows the file in the <em>Files</em> list. Click it: <em>Diff</em> shows the previous version on the left and yours on the right, with the changed lines highlighted.</p>
             <p class="muted">A red repository name in the list means it has changes that are not committed yet.</p>
+            <figure class="step-shot"><a href="../assets/start/changes.webp"><img class="shot" src="../assets/start/changes.webp" width="1280" height="759" loading="lazy" alt="Main window: a modified README.md in Files, the old and new text side by side in Diff"></a><figcaption>The new lines are highlighted in green on the right.</figcaption></figure>
           </div>
         </li>
         <li class="step" id="commit">
@@ -91,6 +93,7 @@ git config --global user.email "jane@example.com"</pre>
             <h2>Make a commit</h2>
             <p>A commit saves a snapshot of your changes in the history. Click <em>Commit</em> on the toolbar (<kbd>Ctrl+K</kbd>), tick the files to include, describe briefly what you changed and click <em>Commit</em>. <em>Commit &amp; Push</em> also sends it to the server right away.</p>
             <p class="muted">The new commit appears at the top of the <em>History</em>.</p>
+            <figure class="step-shot"><a href="../assets/start/commit.png"><img class="shot" src="../assets/start/commit.png" width="825" height="609" loading="lazy" alt="The Commit window with one ticked file and a commit message"></a></figure>
           </div>
         </li>
         <li class="step" id="sync">
@@ -98,6 +101,7 @@ git config --global user.email "jane@example.com"</pre>
           <div>
             <h2>Pull and push</h2>
             <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) uploads your commits to the server.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) brings in the commits others have pushed.</li><li><em>Fetch</em> only checks the server for news and doesn't change your files. When the repository icon turns green, there is something to pull.</li></ul>
+            <figure class="step-shot"><a href="../assets/start/pushed.png"><img class="shot" src="../assets/start/pushed.png" width="1280" height="759" loading="lazy" alt="Main window after Commit &amp; Push: the new commit at the top of History"></a><figcaption>After Commit &amp; Push the branch and its <code>origin/…</code> copy point to the same commit: it is on the server.</figcaption></figure>
           </div>
         </li>
       </ol>

@@ -76,6 +76,7 @@ git config --global user.email "ivan@example.com"</pre>
             <ul><li><strong>С сервера</strong> (GitHub, GitLab, …): <em>Repository → Clone…</em> (<kbd>Ctrl+Shift+O</kbd>), вставьте адрес репозитория, например <code>https://github.com/user/project.git</code>, выберите папку и нажмите <em>Clone</em>.</li><li><strong>Папка на диске</strong>: <em>Repository → Add or Create…</em> (<kbd>Ctrl+O</kbd>) и выберите папку. Если это ещё не репозиторий, WinGit предложит его создать.</li></ul>
             <p>Репозиторий сразу откроется и останется в списке слева; в следующий раз открывайте его двойным щелчком.</p>
             <p class="muted">При первом подключении к серверу Git может открыть окно входа (Git Credential Manager). Войдите как обычно: WinGit не видит и не хранит ваш пароль.</p>
+            <figure class="step-shot"><a href="../../assets/start/clone.png"><img class="shot" src="../../assets/start/clone.png" width="799" height="228" loading="lazy" alt="Окно Clone Repository с адресом репозитория и папкой"></a></figure>
           </div>
         </li>
         <li class="step" id="changes">
@@ -84,6 +85,7 @@ git config --global user.email "ivan@example.com"</pre>
             <h2>Посмотрите изменения</h2>
             <p>Измените любой файл в папке репозитория. WinGit заметит это и покажет файл в списке <em>Files</em>. Щёлкните по нему: в <em>Diff</em> слева будет прежняя версия, справа — ваша, изменённые строки выделены.</p>
             <p class="muted">Красное название репозитория в списке означает, что в нём есть изменения, ещё не попавшие в коммит.</p>
+            <figure class="step-shot"><a href="../../assets/start/changes.webp"><img class="shot" src="../../assets/start/changes.webp" width="1280" height="759" loading="lazy" alt="Главное окно: изменённый README.md в Files, старый и новый текст рядом в Diff"></a><figcaption>Новые строки справа выделены зелёным.</figcaption></figure>
           </div>
         </li>
         <li class="step" id="commit">
@@ -92,6 +94,7 @@ git config --global user.email "ivan@example.com"</pre>
             <h2>Сделайте коммит</h2>
             <p>Коммит сохраняет снимок ваших изменений в истории. Нажмите <em>Commit</em> на панели кнопок (<kbd>Ctrl+K</kbd>), отметьте нужные файлы, коротко опишите, что изменили, и нажмите <em>Commit</em>. <em>Commit &amp; Push</em> сразу же отправит коммит на сервер.</p>
             <p class="muted">Новый коммит появится вверху <em>History</em>.</p>
+            <figure class="step-shot"><a href="../../assets/start/commit.png"><img class="shot" src="../../assets/start/commit.png" width="825" height="609" loading="lazy" alt="Окно Commit с отмеченным файлом и сообщением коммита"></a></figure>
           </div>
         </li>
         <li class="step" id="sync">
@@ -99,6 +102,7 @@ git config --global user.email "ivan@example.com"</pre>
           <div>
             <h2>Pull и push</h2>
             <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) отправляет ваши коммиты на сервер.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) забирает коммиты, которые отправили другие.</li><li><em>Fetch</em> только проверяет, что нового на сервере, и не меняет ваши файлы. Если иконка репозитория стала зелёной — есть что забрать через Pull.</li></ul>
+            <figure class="step-shot"><a href="../../assets/start/pushed.png"><img class="shot" src="../../assets/start/pushed.png" width="1280" height="759" loading="lazy" alt="Главное окно после Commit &amp; Push: новый коммит вверху History"></a><figcaption>После Commit &amp; Push ветка и её копия <code>origin/…</code> указывают на один и тот же коммит — он уже на сервере.</figcaption></figure>
           </div>
         </li>
       </ol>

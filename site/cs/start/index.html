@@ -75,6 +75,7 @@ git config --global user.email "jan@example.com"</pre>
             <ul><li><strong>Ze serveru</strong> (GitHub, GitLab, …): <em>Repository → Clone…</em> (<kbd>Ctrl+Shift+O</kbd>), vložte adresu repozitáře, například <code>https://github.com/user/project.git</code>, vyberte složku a klikněte na <em>Clone</em>.</li><li><strong>Složka na disku</strong>: <em>Repository → Add or Create…</em> (<kbd>Ctrl+O</kbd>) a vyberte složku. Pokud to ještě není repozitář, WinGit nabídne ho vytvořit.</li></ul>
             <p>Repozitář se hned otevře a zůstane v seznamu vlevo; příště ho otevřete dvojklikem.</p>
             <p class="muted">Při prvním připojení k serveru může Git otevřít přihlašovací okno (Git Credential Manager). Přihlaste se jako obvykle: WinGit vaše heslo nevidí ani neukládá.</p>
+            <figure class="step-shot"><a href="../../assets/start/clone.png"><img class="shot" src="../../assets/start/clone.png" width="799" height="228" loading="lazy" alt="Okno Clone Repository s adresou repozitáře a cílovou složkou"></a></figure>
           </div>
         </li>
         <li class="step" id="changes">
@@ -83,6 +84,7 @@ git config --global user.email "jan@example.com"</pre>
             <h2>Prohlédněte si změny</h2>
             <p>Upravte libovolný soubor ve složce repozitáře. WinGit si toho všimne a ukáže soubor v seznamu <em>Files</em>. Klikněte na něj: <em>Diff</em> ukáže vlevo předchozí verzi a vpravo vaši, změněné řádky jsou zvýrazněné.</p>
             <p class="muted">Červený název repozitáře v seznamu znamená, že obsahuje změny, které ještě nejsou v commitu.</p>
+            <figure class="step-shot"><a href="../../assets/start/changes.webp"><img class="shot" src="../../assets/start/changes.webp" width="1280" height="759" loading="lazy" alt="Hlavní okno: změněný README.md ve Files, starý a nový text vedle sebe v Diff"></a><figcaption>Nové řádky vpravo jsou zvýrazněné zeleně.</figcaption></figure>
           </div>
         </li>
         <li class="step" id="commit">
@@ -91,6 +93,7 @@ git config --global user.email "jan@example.com"</pre>
             <h2>Udělejte commit</h2>
             <p>Commit uloží snímek vašich změn do historie. Klikněte na <em>Commit</em> na panelu nástrojů (<kbd>Ctrl+K</kbd>), zaškrtněte soubory, stručně popište, co jste změnili, a klikněte na <em>Commit</em>. <em>Commit &amp; Push</em> ho zároveň pošle na server.</p>
             <p class="muted">Nový commit se objeví nahoře v <em>History</em>.</p>
+            <figure class="step-shot"><a href="../../assets/start/commit.png"><img class="shot" src="../../assets/start/commit.png" width="825" height="609" loading="lazy" alt="Okno Commit se zaškrtnutým souborem a zprávou commitu"></a></figure>
           </div>
         </li>
         <li class="step" id="sync">
@@ -98,6 +101,7 @@ git config --global user.email "jan@example.com"</pre>
           <div>
             <h2>Pull a push</h2>
             <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) nahraje vaše commity na server.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) stáhne commity, které poslali ostatní.</li><li><em>Fetch</em> jen zjistí, co je na serveru nového, a vaše soubory nemění. Když ikona repozitáře zezelená, je co stáhnout přes Pull.</li></ul>
+            <figure class="step-shot"><a href="../../assets/start/pushed.png"><img class="shot" src="../../assets/start/pushed.png" width="1280" height="759" loading="lazy" alt="Hlavní okno po Commit &amp; Push: nový commit nahoře v History"></a><figcaption>Po Commit &amp; Push ukazují větev i její kopie <code>origin/…</code> na stejný commit — je už na serveru.</figcaption></figure>
           </div>
         </li>
       </ol>
