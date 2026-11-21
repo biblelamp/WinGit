@@ -45,6 +45,11 @@ public final class Icons {
         return new FlatSVGIcon(BASE + "repositories/repository-incoming.svg", LIST_SIZE, LIST_SIZE);
     }
 
+    /** Small icon of the Diff header, {@code icons/diff/<name>.svg}, e.g. {@code next-change}. */
+    public static FlatSVGIcon diff(String name) {
+        return new FlatSVGIcon(BASE + "diff/" + name + ".svg", LIST_SIZE, LIST_SIZE);
+    }
+
     /** Repository list icon for a repository whose folder no longer exists. */
     public static FlatSVGIcon repositoryMissing() {
         return new FlatSVGIcon(BASE + "repositories/repository-missing.svg", LIST_SIZE, LIST_SIZE);

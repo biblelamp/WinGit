@@ -1,0 +1,87 @@
+# Flatpak manifest for WinGit (https://wgit.cz/), see README.md in this folder.
+# This copy builds the checked-out source tree (used by .github/workflows/flatpak.yml);
+# the copy submitted to Flathub replaces the "dir" source with the release tag.
+id: io.github.biblelamp.WinGit
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.openjdk17
+command: wingit
+finish-args:
+  # Swing on Java 17 has no native Wayland support: X11 (XWayland on Wayland sessions)
+  - --share=ipc
+  - --socket=x11
+  # fetch, pull, push and clone
+  - --share=network
+  # repositories can live anywhere in the home folder; settings stay in ~/.wingit
+  - --filesystem=home
+  # SSH keys loaded in the user's ssh-agent
+  - --socket=ssh-auth
+
+modules:
+  # Java runtime: copied from the SDK extension into /app/jre
+  - name: openjdk
+    buildsystem: simple
+    build-commands:
+      - /usr/lib/sdk/openjdk17/install.sh
+
+  # The sandbox cannot see the system git, so WinGit ships its own
+  - name: git
+    buildsystem: autotools
+    config-opts:
+      - --with-curl
+      - --with-expat
+      - --without-tcltk
+    make-args:
+      - NO_PERL=1
+      - NO_PYTHON=1
+      - NO_TCLTK=1
+      - INSTALL_SYMLINKS=1
+    make-install-args:
+      - NO_PERL=1
+      - NO_PYTHON=1
+      - NO_TCLTK=1
+      - INSTALL_SYMLINKS=1
+    cleanup:
+      - /share/gitweb
+      - /share/man
+    sources:
+      - type: archive
+        url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.56.1.tar.xz
+        sha256: f0b0bf89264b9bd2e1c640363e7529643989da76281600473c50745cd34a607f
+        x-checker-data:
+          type: anitya
+          project-id: 5350
+          url-template: https://mirrors.edge.kernel.org/pub/software/scm/git/git-$version.tar.xz
+
+  - name: wingit
+    buildsystem: simple
+    build-commands:
+      # offline Maven build: every artifact comes from maven-sources.json
+      - . /usr/lib/sdk/openjdk17/enable.sh &&
+        ./maven/bin/mvn -B -o -Dmaven.repo.local="$PWD/maven-repo" -DskipTests
+        package dependency:copy-dependencies -DincludeScope=runtime
+      - install -Dm644 -t /app/lib/wingit app/target/wingit-app-*.jar app/target/dependency/*.jar
+      # the launcher passes the version of the newest <release> in the metainfo
+      - version=$(sed -n 's/.*<release version="\([^"]*\)".*/\1/p' packaging/flatpak/${FLATPAK_ID}.metainfo.xml | head -n 1) &&
+        sed "s/@VERSION@/$version/" packaging/flatpak/wingit.sh > wingit &&
+        install -Dm755 wingit /app/bin/wingit
+      - install -Dm644 -t /app/share/applications packaging/flatpak/${FLATPAK_ID}.desktop
+      - install -Dm644 -t /app/share/metainfo packaging/flatpak/${FLATPAK_ID}.metainfo.xml
+      - install -Dm644 ui/src/main/resources/cz/wingit/ui/icons/app/wingit.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+      - install -Dm644 app/src/jpackage/wingit.png /app/share/icons/hicolor/256x256/apps/${FLATPAK_ID}.png
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .idea
+          - core/target
+          - ui/target
+          - app/target
+      - type: archive
+        url: https://archive.apache.org/dist/maven/maven-3/3.9.11/binaries/apache-maven-3.9.11-bin.tar.gz
+        sha256: 4b7195b6a4f5c81af4c0212677a32ee8143643401bc6e1e8412e6b06ea82beac
+        dest: maven
+      - maven-sources.json

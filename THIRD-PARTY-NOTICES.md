@@ -66,5 +66,12 @@ File status icons in `ui/src/main/resources/cz/wingit/ui/icons/files/` (same ver
 | untracked.svg   | file-question-mark  |
 | conflicted.svg  | file-x              |
 
+Diff navigation icons in `ui/src/main/resources/cz/wingit/ui/icons/diff/` (same version):
+
+| File                 | Lucide icon |
+|----------------------|-------------|
+| previous-change.svg  | arrow-up    |
+| next-change.svg      | arrow-down  |
+
 License: ISC (some icons MIT via Feather), full text in
 [`licenses/LICENSE-lucide.txt`](licenses/LICENSE-lucide.txt).

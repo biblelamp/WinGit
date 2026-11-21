@@ -3,9 +3,12 @@ package cz.wingit.ui.diff;
 import java.awt.CardLayout;
 import java.awt.GridBagLayout;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -19,7 +22,8 @@ import cz.wingit.ui.Messages;
 
 /**
  * Side-by-side display of a {@link FileDiff}, or a centered message (no file, loading, binary...).
- * Both sides scroll vertically together; their lines are aligned by filler lines.
+ * Both sides scroll vertically together; their lines are aligned by filler lines. "Next/previous change"
+ * scroll a changed fragment to the top, with a few lines of context above it.
  */
 final class DiffView extends JPanel {
 
@@ -33,6 +37,16 @@ final class DiffView extends JPanel {
     private final DiffSide right = new DiffSide(false);
     private String shownPath;
 
+    /** Lines of context shown above a fragment that "next/previous change" scrolled to. */
+    static final int CONTEXT_LINES = 3;
+    /** First row of each changed fragment of the shown diff. */
+    private List<Integer> changes = List.of();
+    /** Fragment the user navigated to last, -1 for none. */
+    private int current = -1;
+    /** Top line after that navigation; if the view is scrolled elsewhere, navigation starts from there. */
+    private int navigatedTop = -1;
+    private final List<Runnable> navigationListeners = new ArrayList<>();
+
     DiffView() {
         setLayout(cards);
 
@@ -45,13 +59,17 @@ final class DiffView extends JPanel {
 
         // aligned sides have the same number of lines, so they can share the vertical scroll model
         right.scrollPane().getVerticalScrollBar().setModel(left.scrollPane().getVerticalScrollBar().getModel());
+        left.scrollPane().getVerticalScrollBar().getModel().addChangeListener(e -> fireNavigation());
         showMessage("");
     }
 
     void showMessage(String text) {
         shownPath = null;
+        changes = List.of();
+        current = -1;
         message.setText(text);
         cards.show(this, MESSAGE);
+        fireNavigation();
     }
 
     void showDiff(FileDiff diff) {
@@ -73,9 +91,101 @@ final class DiffView extends JPanel {
         left.setRows(diff.rows(), style);
         right.setRows(diff.rows(), style);
         shownPath = diff.path();
+        changes = DiffChanges.starts(diff.rows());
+        if (!sameFile || current >= changes.size()) {
+            current = -1;
+        }
         cards.show(this, DIFF);
         if (sameFile) {
             SwingUtilities.invokeLater(() -> left.scrollPane().getVerticalScrollBar().setValue(scrollValue));
+        } else if (!changes.isEmpty()) {
+            // a newly selected file opens at its first change; scroll again once the new text is laid out
+            goTo(0);
+            String path = shownPath;
+            SwingUtilities.invokeLater(() -> {
+                if (path.equals(shownPath) && current == 0) {
+                    goTo(0);
+                }
+            });
+        }
+        fireNavigation();
+    }
+
+    /** Called when the shown diff, the scroll position or the navigated fragment changes. */
+    void addNavigationListener(Runnable listener) {
+        navigationListeners.add(listener);
+    }
+
+    boolean hasNextChange() {
+        return DiffChanges.next(changes, reference(true)) >= 0;
+    }
+
+    boolean hasPreviousChange() {
+        return DiffChanges.previous(changes, reference(false)) >= 0;
+    }
+
+    void nextChange() {
+        goTo(DiffChanges.next(changes, reference(true)));
+    }
+
+    void previousChange() {
+        goTo(DiffChanges.previous(changes, reference(false)));
+    }
+
+    /** "3 of 7" after navigating, "7 change(s)" otherwise; empty without a diff or changes. */
+    String changesText() {
+        if (changes.isEmpty()) {
+            return "";
+        }
+        String total = String.valueOf(changes.size());
+        return navigated() ? Messages.format("diff.changes.position", String.valueOf(current + 1), total)
+                : Messages.format("diff.changes", total);
+    }
+
+    /** First row of the fragment navigated to last, -1 for none (tests). */
+    int currentChangeRow() {
+        return current < 0 ? -1 : changes.get(current);
+    }
+
+    private boolean navigated() {
+        return current >= 0 && topLine() == navigatedTop;
+    }
+
+    /**
+     * Row that "next/previous" counts from: the fragment navigated to last, or, after the user scrolled,
+     * the rows at the top of the view.
+     */
+    private int reference(boolean forNext) {
+        if (navigated()) {
+            return changes.get(current);
+        }
+        int top = topLine();
+        if (top == 0) {
+            return forNext ? -1 : 0;
+        }
+        return forNext ? top + CONTEXT_LINES - 1 : top + CONTEXT_LINES;
+    }
+
+    private void goTo(int index) {
+        if (index < 0) {
+            return;
+        }
+        current = index;
+        JScrollBar bar = left.scrollPane().getVerticalScrollBar();
+        int lineHeight = Math.max(1, left.textArea().getLineHeight());
+        bar.setValue(Math.max(0, changes.get(index) - CONTEXT_LINES) * lineHeight);
+        navigatedTop = topLine();
+        fireNavigation();
+    }
+
+    private int topLine() {
+        int lineHeight = Math.max(1, left.textArea().getLineHeight());
+        return left.scrollPane().getVerticalScrollBar().getValue() / lineHeight;
+    }
+
+    private void fireNavigation() {
+        for (Runnable listener : navigationListeners) {
+            listener.run();
         }
     }
 

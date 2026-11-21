@@ -7,9 +7,12 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.RenderingHints;
+import java.util.List;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 
 import javax.swing.BorderFactory;
@@ -29,7 +32,8 @@ import cz.wingit.ui.Messages;
 /**
  * Message cell: a regular table label (so the message text is rendered exactly like the other
  * columns, incl. system ClearType settings and "..." truncation) whose icon paints the commit graph
- * and the branch/tag labels. Commits that are not pushed yet are shown in bold.
+ * and the branch/tag labels. Commits that are not pushed yet are shown in bold. A local branch and its
+ * remote branch of the same name on the same commit share one two-part label ({@link RefBadges}).
  */
 final class GraphMessageRenderer extends DefaultTableCellRenderer {
 
@@ -72,7 +76,11 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
         String tooltip = commit.shortId() + "  " + commit.message();
         String state = commit.unpushed() ? Messages.get("history.unpushed.suffix")
                 : commit.unpulled() ? Messages.get("history.unpulled.suffix") : null;
-        setToolTipText(state == null ? tooltip : tooltip + "  " + state);
+        if (state != null) {
+            tooltip += "  " + state;
+        }
+        String fullNames = RefBadges.fullNames(icon.badges);
+        setToolTipText(fullNames == null ? tooltip : tooltip + "  [" + fullNames + "]");
         return this;
     }
 
@@ -105,6 +113,7 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
         private Color foreground;
         private Font font;
         private int width;
+        private List<RefBadges.Badge> badges = List.of();
 
         void set(CommitInfo newCommit, GraphRow newGraph, int maxLanes, int rowHeight, Color bg, Color fg,
                  Font baseFont, JComponent c) {
@@ -115,6 +124,7 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
             background = bg;
             foreground = fg;
             font = baseFont;
+            badges = RefBadges.of(newCommit.refs());
             width = graphWidth() + labelsWidth(c);
         }
 
@@ -189,14 +199,20 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
 
         private int labelsWidth(JComponent c) {
             int total = 0;
-            for (RefLabel label : commit.refs()) {
-                total += labelWidth(c.getFontMetrics(labelFont(label)), label) + UIScale.scale(4);
+            for (RefBadges.Badge badge : badges) {
+                total += nameWidth(c, badge) + remoteWidth(c, badge) + UIScale.scale(4);
             }
             return total;
         }
 
-        private int labelWidth(FontMetrics fm, RefLabel label) {
-            return fm.stringWidth(label.name()) + 2 * UIScale.scale(5);
+        private int nameWidth(JComponent c, RefBadges.Badge badge) {
+            return c.getFontMetrics(labelFont(badge.label())).stringWidth(badge.text()) + 2 * UIScale.scale(5);
+        }
+
+        /** Width of the "origin" part of a merged label, 0 for a plain one. */
+        private int remoteWidth(JComponent c, RefBadges.Badge badge) {
+            return badge.remote() == null ? 0
+                    : c.getFontMetrics(font.deriveFont(Font.PLAIN)).stringWidth(badge.remote()) + 2 * UIScale.scale(5);
         }
 
         private Font labelFont(RefLabel label) {
@@ -204,26 +220,54 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
         }
 
         private void paintLabels(Graphics2D shapes, Graphics2D text, JComponent c, int x, int y) {
-            for (RefLabel label : commit.refs()) {
-                Font labelFont = labelFont(label);
+            for (RefBadges.Badge badge : badges) {
+                Font labelFont = labelFont(badge.label());
                 FontMetrics fm = c.getFontMetrics(labelFont);
-                int w = labelWidth(fm, label);
+                int nameWidth = nameWidth(c, badge);
+                int w = nameWidth + remoteWidth(c, badge);
                 int h = Math.min(height - UIScale.scale(4), fm.getHeight() + UIScale.scale(1));
                 int top = y + (height - h) / 2;
-                Color accent = labelColor(label.kind());
                 RoundRectangle2D shape = new RoundRectangle2D.Double(x + 0.5, top + 0.5, w - 1, h - 1,
                         UIScale.scale(6), UIScale.scale(6));
-                shapes.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 48));
-                shapes.fill(shape);
-                shapes.setColor(accent);
-                shapes.setStroke(new BasicStroke(UIScale.scale(1f)));
-                shapes.draw(shape);
+                Color accent = labelColor(badge.label().kind());
+                if (badge.remote() == null) {
+                    paintPart(shapes, shape, null, accent);
+                } else {
+                    Rectangle2D left = new Rectangle2D.Double(x, top, nameWidth, h);
+                    Rectangle2D right = new Rectangle2D.Double(x + nameWidth, top, w - nameWidth, h);
+                    Color remoteAccent = labelColor(RefLabel.Kind.REMOTE_BRANCH);
+                    paintPart(shapes, shape, left, accent);
+                    paintPart(shapes, shape, right, remoteAccent);
+                    shapes.setColor(remoteAccent);
+                    shapes.draw(new Line2D.Double(x + nameWidth + 0.5, top + 0.5, x + nameWidth + 0.5, top + h - 0.5));
+                }
 
-                text.setFont(labelFont);
-                text.setColor(foreground);
                 int baseline = y + (height - fm.getHeight()) / 2 + fm.getAscent();
-                FlatUIUtils.drawString(c, text, label.name(), x + UIScale.scale(5), baseline);
+                text.setColor(foreground);
+                text.setFont(labelFont);
+                FlatUIUtils.drawString(c, text, badge.text(), x + UIScale.scale(5), baseline);
+                if (badge.remote() != null) {
+                    text.setFont(font.deriveFont(Font.PLAIN));
+                    FlatUIUtils.drawString(c, text, badge.remote(), x + nameWidth + UIScale.scale(5), baseline);
+                }
                 x += w + UIScale.scale(4);
+            }
+        }
+
+        /** Fills and outlines {@code shape} in {@code accent}, only within {@code clip} if given. */
+        private static void paintPart(Graphics2D g2, Shape shape, Shape clip, Color accent) {
+            Graphics2D g = (Graphics2D) g2.create();
+            try {
+                if (clip != null) {
+                    g.clip(clip);
+                }
+                g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 48));
+                g.fill(shape);
+                g.setColor(accent);
+                g.setStroke(new BasicStroke(UIScale.scale(1f)));
+                g.draw(shape);
+            } finally {
+                g.dispose();
             }
         }
     }

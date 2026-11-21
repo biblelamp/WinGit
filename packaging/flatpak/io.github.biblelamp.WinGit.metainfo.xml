@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: the app's listing on Flathub, GNOME Software and KDE Discover.
+     Add a <release> for every version (newest first): the Flatpak launcher takes its version from it. -->
+<component type="desktop-application">
+  <id>io.github.biblelamp.WinGit</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+
+  <name>WinGit</name>
+  <summary>Browse history, review changes and commit with Git</summary>
+  <developer id="io.github.biblelamp">
+    <name>WinGit project</name>
+  </developer>
+
+  <description>
+    <p>
+      WinGit is a free, open-source desktop Git client. History graph, side-by-side diffs,
+      staging, branches and merges are all in one window, so everyday Git work does not
+      need the command line.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Repository list, file tree and commit history with a branch graph</li>
+      <li>Side-by-side diffs with syntax highlighting</li>
+      <li>Stage, unstage and discard changes and commit</li>
+      <li>Branches, tags, merges and stashes</li>
+      <li>Clone, fetch, pull and push over HTTPS and SSH</li>
+      <li>Light and dark themes</li>
+    </ul>
+    <p>
+      The "Win" in WinGit stands for window: it is a windowed Git client, not a Windows-only one.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.biblelamp.WinGit.desktop</launchable>
+  <provides>
+    <binary>wingit</binary>
+  </provides>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Commit history with the branch graph and a diff</caption>
+      <image>https://wgit.cz/assets/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://wgit.cz/</url>
+  <url type="bugtracker">https://github.com/biblelamp/WinGit/issues</url>
+  <url type="vcs-browser">https://github.com/biblelamp/WinGit</url>
+  <url type="help">https://wgit.cz/start/</url>
+
+  <categories>
+    <category>Development</category>
+    <category>RevisionControl</category>
+  </categories>
+  <keywords>
+    <keyword>git</keyword>
+    <keyword>version control</keyword>
+    <keyword>diff</keyword>
+    <keyword>commit</keyword>
+  </keywords>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#dbe7f9</color>
+    <color type="primary" scheme_preference="dark">#123a73</color>
+  </branding>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.3.5" date="2026-11-21">
+      <url type="details">https://github.com/biblelamp/WinGit/releases/tag/v0.3.5</url>
+    </release>
+    <release version="0.3.4" date="2026-11-19"/>
+    <release version="0.3.3" date="2026-11-18"/>
+    <release version="0.3.2" date="2026-11-17"/>
+    <release version="0.3.1" date="2026-11-17"/>
+    <release version="0.3.0" date="2026-11-16"/>
+  </releases>
+</component>
