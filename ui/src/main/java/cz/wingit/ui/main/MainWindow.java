@@ -46,6 +46,8 @@ import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
+import cz.wingit.ui.stash.SelectedStashAction;
+import cz.wingit.ui.stash.StashAction;
 import cz.wingit.ui.tags.NewTagAction;
 import cz.wingit.ui.tags.SelectedTagAction;
 
@@ -116,6 +118,11 @@ public final class MainWindow extends JFrame {
         Action renameTag = SelectedTagAction.rename(git, branchesPane, refresh);
         Action deleteTag = SelectedTagAction.delete(git, branchesPane, refresh);
         branchesPane.installTagActions(renameTag, deleteTag, newTag, pushTag);
+        Action stash = new StashAction(git, repositoriesPane, refresh);
+        Action applyStash = SelectedStashAction.apply(git, branchesPane, refresh);
+        Action popStash = SelectedStashAction.pop(git, branchesPane, refresh);
+        Action deleteStash = SelectedStashAction.delete(git, branchesPane, refresh);
+        branchesPane.installStashActions(deleteStash, stash, applyStash, popStash);
         historyPane.installContextActions(
                 NewTagAction.onCommit(git, repositoriesPane, historyPane::selectedCommit, refresh));
         MainMenuBar menuBar = new MainMenuBar(
@@ -123,7 +130,8 @@ public final class MainWindow extends JFrame {
                 new CloneAction(git, repositoriesPane),
                 new CloseRepositoryAction(repositoriesPane),
                 removeRepository, commit, fetch, pull, push, newBranch, renameBranch, deleteBranch, merge, abortMerge,
-                newTag, pushTag, renameTag, deleteTag, stage, unstage, discard, deleteFiles);
+                newTag, pushTag, renameTag, deleteTag, List.of(stash, applyStash, popStash, deleteStash),
+                stage, unstage, discard, deleteFiles);
         menuBar.addHelpMenu(HelpActions.website(this), HelpActions.reportIssue(this),
                 HelpActions.about(this, git, () -> version));
         setJMenuBar(menuBar);
@@ -148,7 +156,8 @@ public final class MainWindow extends JFrame {
         autoFetch.start();
         mainContent = new MainContent(repositoriesPane, branchesPane, filesPane, diffPane, historyPane);
         setContentPane(createContent(Map.of("commit", commit, "merge", merge, "fetch", fetch, "pull", pull, "push", push,
-                        "stage", stage, "unstage", unstage, "discard", discard, "delete", deleteFiles),
+                        "stage", stage, "unstage", unstage, "discard", discard, "delete", deleteFiles,
+                        "stash", stash),
                 mainContent));
 
         setMinimumSize(new Dimension(640, 400));

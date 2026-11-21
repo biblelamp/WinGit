@@ -33,6 +33,7 @@ import cz.wingit.core.GitService;
 import cz.wingit.core.refs.LocalBranch;
 import cz.wingit.core.refs.RemoteBranches;
 import cz.wingit.core.refs.RepositoryRefs;
+import cz.wingit.core.refs.Stash;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Components;
 import cz.wingit.ui.common.Dialogs;
@@ -42,6 +43,7 @@ import cz.wingit.ui.common.TitledPane;
 
 /**
  * Branches, remotes, tags and stashes of the opened repository, read in the background.
+ * Each kind of node (branch, tag, stash) has its own context menu.
  * Expanded groups stay expanded when the content is refreshed. Double-click or Enter on a branch
  * checks it out; on a remote branch it checks out the local branch of the same name, creating it
  * (tracking the remote one) if there is none.
@@ -59,10 +61,12 @@ public final class BranchesPane extends TitledPane {
     private boolean switching;
     private JPopupMenu branchPopup;
     private JPopupMenu tagPopup;
+    private JPopupMenu stashPopup;
     private transient Action branchDelete;
     private transient Action branchRename;
     private transient Action tagDelete;
     private transient Action tagRename;
+    private transient Action stashDelete;
 
     public BranchesPane(GitService git) {
         this(git, new PlaceholderTree(emptyModel()));
@@ -266,6 +270,31 @@ public final class BranchesPane extends TitledPane {
                 && (item.key().equals(BranchTreeBuilder.TAGS) || item.key().startsWith(BranchTreeBuilder.TAG_KEY));
     }
 
+    /** The selected stash, if a stash is selected. */
+    public Optional<Stash> selectedStash() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null || shown == null) {
+            return Optional.empty();
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        if (user instanceof BranchItem item && item.key().startsWith(BranchTreeBuilder.STASH_KEY)) {
+            int index = Integer.parseInt(item.key().substring(BranchTreeBuilder.STASH_KEY.length()));
+            return shown.stashes().stream().filter(s -> s.index() == index).findFirst();
+        }
+        return Optional.empty();
+    }
+
+    /** {@code true} if the Stashes group or a stash is selected (its context menu offers the stash actions). */
+    private boolean stashNodeSelected() {
+        TreePath selection = tree.getSelectionPath();
+        if (selection == null) {
+            return false;
+        }
+        Object user = ((DefaultMutableTreeNode) selection.getLastPathComponent()).getUserObject();
+        return user instanceof BranchItem item && (item.key().equals(BranchTreeBuilder.STASHES)
+                || item.key().startsWith(BranchTreeBuilder.STASH_KEY));
+    }
+
     /** Name of the selected local branch unless it is checked out (it cannot be deleted then). */
     public Optional<String> selectedLocalBranch() {
         TreePath selection = tree.getSelectionPath();
@@ -315,6 +344,16 @@ public final class BranchesPane extends TitledPane {
         tagPopup.add(delete);
     }
 
+    /** Context menu of the Stashes group and stashes with {@code actions}; on a stash the Delete key runs {@code delete}. */
+    public void installStashActions(Action delete, Action... actions) {
+        stashDelete = delete;
+        stashPopup = new JPopupMenu();
+        for (Action action : actions) {
+            stashPopup.add(action);
+        }
+        stashPopup.add(delete);
+    }
+
     /** Key binding that runs the tag or the branch variant of an action, whichever fits the selection. */
     private void bindKey(int key, String name, boolean rename) {
         tree.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(key, 0), name);
@@ -324,7 +363,12 @@ public final class BranchesPane extends TitledPane {
             @Override
             public void actionPerformed(ActionEvent e) {
                 boolean tag = selectedTag().isPresent();
-                Action action = rename ? (tag ? tagRename : branchRename) : (tag ? tagDelete : branchDelete);
+                Action action;
+                if (selectedStash().isPresent()) {
+                    action = rename ? null : stashDelete;
+                } else {
+                    action = rename ? (tag ? tagRename : branchRename) : (tag ? tagDelete : branchDelete);
+                }
                 if (action != null && action.isEnabled()) {
                     action.actionPerformed(e);
                 }
@@ -354,7 +398,7 @@ public final class BranchesPane extends TitledPane {
                 if (path != null) {
                     tree.setSelectionPath(path);
                 }
-                JPopupMenu popup = tagNodeSelected() ? tagPopup : branchPopup;
+                JPopupMenu popup = tagNodeSelected() ? tagPopup : stashNodeSelected() ? stashPopup : branchPopup;
                 if (popup != null) {
                     popup.show(tree, e.getX(), e.getY());
                 }

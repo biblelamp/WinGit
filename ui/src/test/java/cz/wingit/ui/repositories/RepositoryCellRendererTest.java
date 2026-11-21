@@ -53,25 +53,40 @@ class RepositoryCellRendererTest {
     }
 
     @Test
-    void localChangesWinOverIncomingCommits() {
+    void incomingCommitsWinOverLocalChanges() {
         assertThat(iconOf(new RepositoryEntry(path, "main", false, false, 0, 0))).isEqualTo("repository.svg");
         assertThat(iconOf(new RepositoryEntry(path, "main", false, false, 0, 3))).isEqualTo("repository-incoming.svg");
         assertThat(iconOf(new RepositoryEntry(path, "main", true, false, 0, 0))).isEqualTo("repository-changed.svg");
-        assertThat(iconOf(new RepositoryEntry(path, "main", true, false, 0, 3))).isEqualTo("repository-changed.svg");
+        assertThat(iconOf(new RepositoryEntry(path, "main", true, false, 0, 3))).isEqualTo("repository-incoming.svg");
         assertThat(iconOf(new RepositoryEntry(path, null, null, true))).isEqualTo("repository-missing.svg");
     }
 
     @Test
-    void nameIsRedOnlyWithLocalChangesAndNotWhenSelected() {
-        assertThat(render(new RepositoryEntry(path, "main", true, false)).getText())
-                .contains("<span style='color:#DB5860'>GitExercises</span>");
-        assertThat(render(new RepositoryEntry(path, null, true, false)).getText())
-                .isEqualTo("<html><span style='color:#DB5860'>GitExercises</span></html>");
-        assertThat(render(new RepositoryEntry(path, "main", false, false, 0, 3)).getText()).doesNotContain("#DB5860");
-        assertThat(render(new RepositoryEntry(path, null, false, false)).getText()).isEqualTo("GitExercises");
+    void localChangesColorOnlyTheIcon() {
+        JLabel cell = render(new RepositoryEntry(path, "main", true, false));
+
+        assertThat(cell.getText()).doesNotContain("#DB5860").startsWith("<html>GitExercises <span");
+        assertThat(iconOf(new RepositoryEntry(path, "main", true, false))).isEqualTo("repository-changed.svg");
+    }
+
+    @Test
+    void onlyTheNameOfTheOpenedRepositoryIsBold() {
+        RepositoryCellRenderer openedRenderer = new RepositoryCellRenderer(() -> path);
+        JLabel cell = (JLabel) openedRenderer.getListCellRendererComponent(
+                list, new RepositoryEntry(path, "main", false, false), 0, false, false);
+
+        assertThat(cell.getFont().isBold()).isFalse();
+        assertThat(cell.getText()).startsWith("<html><b>GitExercises</b> <span").contains("(main)</span>");
+        assertThat(render(new RepositoryEntry(path, "main", false, false)).getText()).doesNotContain("<b>");
+    }
+
+    @Test
+    void selectedRowHasLightBackgroundAndKeepsTextColors() {
         JLabel selected = (JLabel) renderer.getListCellRendererComponent(
-                list, new RepositoryEntry(path, "main", true, false), 0, true, false);
-        assertThat(selected.getText()).doesNotContain("#DB5860");
+                list, new RepositoryEntry(path, "main", true, false), 0, true, true);
+
+        assertThat(selected.getBackground()).isIn(Theme.SELECTION_LIGHT, Theme.SELECTION_INACTIVE_LIGHT);
+        assertThat(selected.getForeground()).isEqualTo(list.getForeground());
     }
 
     @Test

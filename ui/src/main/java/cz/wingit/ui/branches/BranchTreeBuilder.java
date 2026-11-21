@@ -21,6 +21,8 @@ final class BranchTreeBuilder {
     /** Key prefix of tag nodes, followed by the tag name. */
     static final String TAG_KEY = "tag:";
     static final String STASHES = "stashes";
+    /** Key prefix of stash nodes, followed by the stash index. */
+    static final String STASH_KEY = "stash:";
 
     private BranchTreeBuilder() {
     }
@@ -59,7 +61,7 @@ final class BranchTreeBuilder {
 
         DefaultMutableTreeNode stashes = group(STASHES, Messages.get("branches.stashes"), refs.stashes().size());
         for (Stash stash : refs.stashes()) {
-            stashes.add(leaf("stash:" + stash.index(), "stash@{" + stash.index() + "}", stash.message(), false, null));
+            stashes.add(leaf(STASH_KEY + stash.index(), stash.ref(), stash.message(), false, null));
         }
         root.add(stashes);
         return root;

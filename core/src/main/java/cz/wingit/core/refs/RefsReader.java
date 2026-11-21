@@ -132,7 +132,7 @@ public final class RefsReader {
         List<Stash> stashes = new ArrayList<>();
         int index = 0;
         for (RevCommit commit : git.stashList().call()) {
-            stashes.add(new Stash(index++, commit.getShortMessage()));
+            stashes.add(new Stash(index++, commit.name(), commit.getShortMessage()));
         }
         return stashes;
     }

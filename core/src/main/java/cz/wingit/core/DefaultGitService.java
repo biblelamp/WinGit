@@ -48,6 +48,7 @@ import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.BranchNames;
 import cz.wingit.core.refs.RefsReader;
 import cz.wingit.core.refs.RepositoryRefs;
+import cz.wingit.core.refs.Stash;
 import cz.wingit.core.refs.TagNames;
 import cz.wingit.core.remote.AskPass;
 import cz.wingit.core.remote.AuthFailures;
@@ -405,6 +406,69 @@ public final class DefaultGitService implements GitService {
         String url = readRepository(workTree, repository -> RemoteTarget.pushUrl(repository, remote));
         runRemote(workTree, List.of("push", "--progress", remote, "--delete", Constants.R_TAGS + name),
                 url, credentials, progress);
+    }
+
+    @Override
+    public boolean stash(Path workTree, String message, boolean includeUntracked) {
+        ObjectId before = readRepository(workTree, DefaultGitService::stashId);
+        List<String> args = new ArrayList<>(List.of("stash", "push"));
+        if (includeUntracked) {
+            args.add("--include-untracked");
+        }
+        String text = message == null ? "" : message.strip().replaceAll("\\s*\\R\\s*", " ");
+        if (!text.isEmpty()) {
+            args.add("--message=" + text);
+        }
+        cli.run(workTree, args);
+        ObjectId after = readRepository(workTree, DefaultGitService::stashId);
+        return after != null && !after.equals(before);
+    }
+
+    @Override
+    public List<String> applyStash(Path workTree, Stash stash, boolean drop) {
+        checkStash(workTree, stash);
+        try {
+            cli.run(workTree, List.of("stash", drop ? "pop" : "apply", stash.ref()));
+            return List.of();
+        } catch (GitCommandException e) {
+            List<String> conflicts = status(workTree).changes().stream()
+                    .filter(c -> c.staged() == ChangeType.CONFLICTED || c.unstaged() == ChangeType.CONFLICTED)
+                    .map(FileChange::path).toList();
+            if (conflicts.isEmpty()) {
+                throw e;
+            }
+            return conflicts;
+        }
+    }
+
+    @Override
+    public void dropStash(Path workTree, Stash stash) {
+        checkStash(workTree, stash);
+        cli.run(workTree, List.of("stash", "drop", stash.ref()));
+    }
+
+    /** Fails unless {@code stash} is still at its index, so a changed list never hits another stash. */
+    private static void checkStash(Path workTree, Stash stash) {
+        boolean same;
+        try (Git git = Git.open(workTree.toFile())) {
+            List<String> ids = new ArrayList<>();
+            git.stashList().call().forEach(commit -> ids.add(commit.name()));
+            same = stash.index() >= 0 && stash.index() < ids.size() && ids.get(stash.index()).equals(stash.id());
+        } catch (IOException | GitAPIException e) {
+            throw new GitException("Cannot read the stashes of " + workTree + ": " + e.getMessage(), e);
+        }
+        if (!same) {
+            throw new GitException("The list of stashes has changed in the meantime. Look at it again and retry.");
+        }
+    }
+
+    private static ObjectId stashId(Repository repository) {
+        try {
+            Ref ref = repository.exactRef(Constants.R_STASH);
+            return ref == null ? null : ref.getObjectId();
+        } catch (IOException e) {
+            throw new GitException("Cannot read the stashes: " + e.getMessage(), e);
+        }
     }
 
     @Override

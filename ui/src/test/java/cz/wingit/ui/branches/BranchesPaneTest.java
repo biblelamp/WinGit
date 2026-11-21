@@ -21,6 +21,7 @@ import cz.wingit.core.DefaultGitService;
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.refs.LocalBranch;
 import cz.wingit.ui.Theme;
+import cz.wingit.ui.stash.SelectedStashAction;
 import cz.wingit.ui.tags.SelectedTagAction;
 
 class BranchesPaneTest {
@@ -213,6 +214,48 @@ class BranchesPaneTest {
             assertThat(delete.get().isEnabled()).isTrue();
             pane.get().selectRowForTest("main");
             assertThat(pane.get().selectedTag()).isEmpty();
+            assertThat(delete.get().isEnabled()).isFalse();
+        });
+    }
+
+    @Test
+    void stashActionsFollowTheSelectedStash() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            Files.writeString(repo.resolve("a.txt"), "a", StandardCharsets.UTF_8);
+            git.add().addFilepattern("a.txt").call();
+            git.commit().setMessage("init").setAuthor(IDENT).setCommitter(IDENT).setSign(false).call();
+            Files.writeString(repo.resolve("a.txt"), "wip", StandardCharsets.UTF_8);
+            git.stashCreate().setPerson(IDENT).setWorkingDirectoryMessage("wip").call();
+        }
+        DefaultGitService service = new DefaultGitService(new GitCli());
+
+        AtomicReference<BranchesPane> pane = new AtomicReference<>();
+        AtomicReference<SelectedStashAction> apply = new AtomicReference<>();
+        AtomicReference<SelectedStashAction> delete = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new BranchesPane(service));
+            apply.set(SelectedStashAction.apply(service, pane.get(), () -> { }));
+            delete.set(SelectedStashAction.delete(service, pane.get(), () -> { }));
+            pane.get().installStashActions(delete.get(), apply.get());
+            pane.get().showRepository(Optional.of(repo));
+        });
+        // Local, main, Tags (0), Stashes (1)
+        assertThat(awaitRows(pane.get(), 4)).contains("Stashes (1)");
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(pane.get().selectedStash()).isEmpty();
+            assertThat(apply.get().isEnabled()).isFalse();
+            pane.get().expandRowForTest(3); // Stashes
+            pane.get().selectRowForTest("stash@{0}");
+            assertThat(pane.get().selectedStash()).hasValueSatisfying(s -> {
+                assertThat(s.index()).isZero();
+                assertThat(s.message()).isEqualTo("wip");
+            });
+            assertThat(pane.get().selectedTag()).isEmpty();
+            assertThat(apply.get().isEnabled()).isTrue();
+            assertThat(delete.get().isEnabled()).isTrue();
+            pane.get().selectRowForTest("main");
+            assertThat(pane.get().selectedStash()).isEmpty();
             assertThat(delete.get().isEnabled()).isFalse();
         });
     }

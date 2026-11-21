@@ -31,9 +31,7 @@ final class CommitTextRenderer extends DefaultTableCellRenderer {
         super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         CommitInfo commit = model.getCommit(table.convertRowIndexToModel(row));
         setFont(fontFor(commit, table.getFont()));
-        if (!isSelected) {
-            setForeground(foregroundFor(commit, table));
-        }
+        setForeground(foregroundFor(commit, table)); // the selection is light: dimmed rows stay dimmed
         setToolTipText(commit.unpushed() ? Messages.get("history.unpushed")
                 : commit.unpulled() ? Messages.get("history.unpulled") : null);
         return this;

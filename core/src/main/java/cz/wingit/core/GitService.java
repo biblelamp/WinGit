@@ -10,6 +10,7 @@ import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.RepositoryRefs;
+import cz.wingit.core.refs.Stash;
 import cz.wingit.core.remote.Credentials;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.core.status.RepositoryStatus;
@@ -216,6 +217,37 @@ public interface GitService {
      */
     void deleteRemoteTag(Path workTree, String remote, String name, Credentials credentials,
                          Consumer<String> progress);
+
+    /**
+     * Puts the local changes (staged and unstaged) aside as a new stash ({@code git stash push}); the
+     * files go back to the state of HEAD. Ignored files are never stashed.
+     *
+     * @param message          what the stash holds; blank for Git's default ("WIP on branch: ...")
+     * @param includeUntracked also stash new (untracked) files, which are then removed from disk
+     * @return {@code false} if there was nothing to stash
+     * @throws GitCommandException if Git refuses (e.g. no commit yet, unresolved conflicts)
+     */
+    boolean stash(Path workTree, String message, boolean includeUntracked);
+
+    /**
+     * Brings the changes of {@code stash} back into the working tree ({@code git stash apply}); with
+     * {@code drop} the stash is deleted afterwards ({@code git stash pop}), but only if it applied
+     * without conflicts. Conflicts stay in the files, to be resolved and staged.
+     *
+     * @param stash from {@link #refs}
+     * @return repository-relative paths with conflicts; empty if the stash applied cleanly
+     * @throws GitException        if the stash is no longer in the list at its index (list changed)
+     * @throws GitCommandException if Git refuses (e.g. local changes or a new file would be overwritten)
+     */
+    List<String> applyStash(Path workTree, Stash stash, boolean drop);
+
+    /**
+     * Deletes {@code stash} ({@code git stash drop}); its changes are lost.
+     *
+     * @param stash from {@link #refs}
+     * @throws GitException if the stash is no longer in the list at its index (list changed)
+     */
+    void dropStash(Path workTree, Stash stash);
 
     /**
      * Checks out the local branch {@code branch} ({@code git switch}). Fails, leaving everything

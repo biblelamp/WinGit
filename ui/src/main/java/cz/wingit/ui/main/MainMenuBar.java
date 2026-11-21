@@ -4,6 +4,7 @@ import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
+import java.util.List;
 
 import javax.swing.Action;
 import javax.swing.JMenu;
@@ -26,7 +27,7 @@ public final class MainMenuBar extends JMenuBar {
                        Action newBranch,
                        Action renameBranch, Action deleteBranch, Action merge, Action abortMerge,
                        Action newTag, Action pushTag, Action renameTag, Action deleteTag,
-                       Action... fileActions) {
+                       List<Action> stashActions, Action... fileActions) {
         JMenu repository = new JMenu(Messages.get("menu.repository"));
         repository.setMnemonic(KeyEvent.VK_R);
         repository.add(addOrCreateRepository);
@@ -46,6 +47,10 @@ public final class MainMenuBar extends JMenuBar {
             for (Action action : fileActions) {
                 local.add(action);
             }
+        }
+        if (!stashActions.isEmpty()) {
+            local.addSeparator();
+            stashActions.forEach(local::add);
         }
         add(local);
 

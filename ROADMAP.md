@@ -14,12 +14,12 @@ clarity for Git newcomers first, power-user features second.
 - Remote: fetch (manual and background), pull, push, credential prompt.
 - Branches: create, rename, delete, switch; merge and abort merge.
 - Tags: create, rename, delete, push.
+- Stash: save (optionally with new files), apply, apply and delete, delete.
 - File watcher with automatic refresh.
 
 Known gaps:
 
 - History shows only the latest 50 commits.
-- Stashes are displayed but cannot be created or applied.
 - No conflict resolution tools, although merge and pull can produce conflicts.
 - No settings dialog.
 
@@ -32,7 +32,7 @@ Everything without which a newcomer gets stuck or loses work.
 2. **Conflict handling** — list conflicted files; "use mine" / "use theirs" /
    "mark as resolved"; open in an external editor; a clear banner
    "merge in progress: resolve conflicts or abort".
-3. **Stash** — save, apply, pop, drop.
+3. ~~**Stash** — save, apply, pop, drop.~~ Done.
 4. **Amend last commit** — message and files; warn if already pushed.
 5. **Human-readable errors** — map raw git stderr to plain explanations
    (e.g. "the remote branch has new commits, pull first").

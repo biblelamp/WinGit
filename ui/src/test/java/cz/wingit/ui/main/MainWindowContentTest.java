@@ -49,6 +49,8 @@ import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
+import cz.wingit.ui.stash.SelectedStashAction;
+import cz.wingit.ui.stash.StashAction;
 import cz.wingit.ui.tags.NewTagAction;
 import cz.wingit.ui.tags.SelectedTagAction;
 
@@ -215,6 +217,10 @@ class MainWindowContentTest {
                 SelectedTagAction.push(git, new BranchesPane(git), () -> { }),
                 SelectedTagAction.rename(git, new BranchesPane(git), () -> { }),
                 SelectedTagAction.delete(git, new BranchesPane(git), () -> { }),
+                List.of(new StashAction(git, repositoriesPane, () -> { }),
+                        SelectedStashAction.apply(git, new BranchesPane(git), () -> { }),
+                        SelectedStashAction.pop(git, new BranchesPane(git), () -> { }),
+                        SelectedStashAction.delete(git, new BranchesPane(git), () -> { })),
                 FileAction.stage(git, filesPane, () -> { }),
                 FileAction.unstage(git, filesPane, () -> { }),
                 FileAction.discard(git, filesPane, () -> { }),
@@ -256,6 +262,14 @@ class MainWindowContentTest {
         assertThat(local.getItem(4).getText()).isEqualTo("Discard Changes…");
         assertThat(local.getItem(5).getText()).isEqualTo("Delete…");
         assertThat(local.getItem(2).isEnabled()).isFalse(); // nothing selected
+        assertThat(local.getItem(6)).isNull(); // separator
+        assertThat(local.getItem(7).getText()).isEqualTo("Stash Changes…");
+        assertThat(local.getItem(7).getAccelerator()).isEqualTo(KeyStroke.getKeyStroke("ctrl shift S"));
+        assertThat(local.getItem(7).isEnabled()).isFalse(); // no repository open
+        assertThat(local.getItem(8).getText()).isEqualTo("Apply Stash");
+        assertThat(local.getItem(8).isEnabled()).isFalse(); // no stash selected
+        assertThat(local.getItem(9).getText()).isEqualTo("Apply and Delete Stash");
+        assertThat(local.getItem(10).getText()).isEqualTo("Delete Stash…");
         JMenu remote = menuBar.getMenu(3);
         assertThat(remote.getText()).isEqualTo("Remote");
         assertThat(remote.getItem(0).getText()).isEqualTo("Fetch");

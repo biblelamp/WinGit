@@ -64,9 +64,7 @@ final class GraphMessageRenderer extends DefaultTableCellRenderer {
         // no padding: graph lines must touch the row edges to connect with the neighbours
         setBorder(BorderFactory.createEmptyBorder());
         setFont(CommitTextRenderer.fontFor(commit, table.getFont()));
-        if (!isSelected) {
-            setForeground(CommitTextRenderer.foregroundFor(commit, table));
-        }
+        setForeground(CommitTextRenderer.foregroundFor(commit, table)); // the selection is light: dimmed rows stay dimmed
         icon.set(commit, model.getGraphRow(modelRow), model.maxLaneCount(), table.getRowHeight(row),
                 getBackground(), getForeground(), getFont(), this);
         setIcon(icon);

@@ -59,7 +59,12 @@ class RefsTest {
         assertThat(refs.remotes()).containsExactly(
                 new RemoteBranches("origin", List.of("main", "release/1.0"), server.toUri().toString()));
         assertThat(refs.tags()).containsExactly("v1.0");
-        assertThat(refs.stashes()).containsExactly(new Stash(0, "work in progress"));
+        assertThat(refs.stashes()).hasSize(1);
+        Stash stash = refs.stashes().get(0);
+        assertThat(stash.index()).isZero();
+        assertThat(stash.ref()).isEqualTo("stash@{0}");
+        assertThat(stash.message()).isEqualTo("work in progress");
+        assertThat(stash.id()).matches("[0-9a-f]{40}");
     }
 
     @Test

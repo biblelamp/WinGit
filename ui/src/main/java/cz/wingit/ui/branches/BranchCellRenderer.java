@@ -22,12 +22,12 @@ final class BranchCellRenderer extends DefaultTreeCellRenderer {
         setIcon(null);
         Object user = value instanceof DefaultMutableTreeNode node ? node.getUserObject() : null;
         if (user instanceof BranchItem item) {
-            setText(html(item, selected));
+            setText(html(item));
         }
         return this;
     }
 
-    private static String html(BranchItem item, boolean selected) {
+    private static String html(BranchItem item) {
         String label = escape(item.label());
         if (item.current()) {
             label = "<b>" + label + "</b>";
@@ -35,7 +35,7 @@ final class BranchCellRenderer extends DefaultTreeCellRenderer {
         if (item.detail() == null) {
             return "<html>" + label + "</html>";
         }
-        Color dim = selected ? UIManager.getColor("Tree.selectionForeground") : UIManager.getColor("Label.disabledForeground");
+        Color dim = UIManager.getColor("Label.disabledForeground"); // readable on the light selection too
         return "<html>" + label + " <span style='color:" + hex(dim) + "'>" + escape(item.detail()) + "</span></html>";
     }
 
