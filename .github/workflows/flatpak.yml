@@ -17,7 +17,7 @@ jobs:
       MANIFEST: packaging/flatpak/io.github.biblelamp.WinGit.yml
       APP_ID: io.github.biblelamp.WinGit
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6

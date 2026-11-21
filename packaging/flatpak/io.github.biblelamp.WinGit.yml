@@ -34,11 +34,13 @@ modules:
       - --with-expat
       - --without-tcltk
     make-args:
+      - NO_RUST=1
       - NO_PERL=1
       - NO_PYTHON=1
       - NO_TCLTK=1
       - INSTALL_SYMLINKS=1
     make-install-args:
+      - NO_RUST=1
       - NO_PERL=1
       - NO_PYTHON=1
       - NO_TCLTK=1
