@@ -7,9 +7,10 @@ pkgdesc='Free, open-source desktop Git client'
 arch=('x86_64')
 url='https://wgit.cz/'
 license=('Apache-2.0')
-# the release archive is a jpackage app image with its own Java runtime;
-# the runtime needs the X11 and font libraries, WinGit itself needs git
-depends=('git' 'glibc' 'zlib' 'libx11' 'libxext' 'libxi' 'libxrender' 'libxtst' 'freetype2' 'fontconfig')
+# The release archive is a jpackage app image with its own Java runtime (so no java-runtime
+# dependency); the runtime needs the X11 libraries and loads fontconfig at run time.
+# WinGit runs the git command line for commits and network operations.
+depends=('git' 'glibc' 'libx11' 'libxext' 'libxi' 'libxrender' 'libxtst' 'fontconfig' 'hicolor-icon-theme')
 provides=('wingit')
 conflicts=('wingit')
 # stripping the bundled Java runtime can break it
