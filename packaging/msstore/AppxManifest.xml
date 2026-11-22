@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for the Microsoft Store package. build-msix.ps1 replaces @VERSION@.
+  Identity Name/Publisher and PublisherDisplayName come from Partner Center
+  (Product management -> Product identity) and must match it exactly.
+  Both DisplayName values must be the product name reserved in Partner Center.
+-->
+<Package
+    xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+    xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+    IgnorableNamespaces="uap rescap">
+
+  <Identity
+      Name="WinGitProject.WinGitGitGUI"
+      Publisher="CN=B4232CD3-ED77-4D59-AB49-C5133C86FAF0"
+      Version="@VERSION@"
+      ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>WinGit – Git GUI</DisplayName>
+    <PublisherDisplayName>WinGit Project</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <!-- the UI languages of WinGit; the Store listing needs a description in each of them -->
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="ru-ru" />
+    <Resource Language="cs-cz" />
+  </Resources>
+
+  <Applications>
+    <Application Id="WinGit" Executable="WinGit.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+          DisplayName="WinGit – Git GUI"
+          Description="Open-source desktop Git client"
+          BackgroundColor="transparent"
+          Square150x150Logo="Assets\Square150x150Logo.png"
+          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- a classic desktop app: starts git, reads and writes repositories anywhere on disk -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

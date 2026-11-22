@@ -1,6 +1,7 @@
 # Builds the installers:
 #   Windows: MSI and a portable ZIP (app image), signed through SignPath when configured;
 #   Linux:   DEB, RPM and a portable tar.gz (app image).
+#   Microsoft Store: an unsigned MSIX, only as the workflow artifact WinGit-<version>-msstore.
 #
 # - Push a tag like v0.3.0 (or v0.3.0-beta.1 for a pre-release) -> a GitHub Release
 #   with all files attached.
@@ -102,6 +103,18 @@ jobs:
           Copy-Item "app/target/installer/WinGit-$env:NUMERIC.msi" "dist/WinGit-$env:VERSION-windows-x64.msi"
           Compress-Archive -Path app/target/installer/WinGit -DestinationPath "dist/WinGit-$env:VERSION-windows-x64.zip"
           Get-ChildItem dist
+
+      # Microsoft Store package, see packaging/msstore/README.md. Kept out of dist/: the Store
+      # signs it, and an unsigned MSIX is of no use on the GitHub Release.
+      - name: Build MSIX for the Microsoft Store
+        shell: pwsh
+        run: ./packaging/msstore/build-msix.ps1 -AppImage app/target/installer/WinGit -Version $env:NUMERIC -Output "msstore/WinGit-$env:VERSION.msix"
+
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinGit-${{ env.VERSION }}-msstore
+          path: msstore/*.msix
 
       # The unsigned files: input for SignPath (it downloads them from GitHub itself),
       # or the final Windows build when signing is not configured.

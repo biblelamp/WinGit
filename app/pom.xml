@@ -107,6 +107,26 @@
                                     </arguments>
                                 </configuration>
                             </execution>
+                            <!-- tiles and logos for the Microsoft Store MSIX package -->
+                            <execution>
+                                <id>msix-assets</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>java</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <arguments>
+                                        <argument>-Djava.awt.headless=true</argument>
+                                        <argument>-classpath</argument>
+                                        <classpath/>
+                                        <argument>src/tools/MsixAssets.java</argument>
+                                        <argument>../ui/src/main/resources/cz/wingit/ui/icons/app/wingit.svg</argument>
+                                        <argument>../packaging/msstore/Assets</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
