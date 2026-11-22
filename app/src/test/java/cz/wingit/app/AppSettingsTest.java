@@ -11,7 +11,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import cz.wingit.ui.Language;
+import cz.wingit.ui.Theme;
 import cz.wingit.ui.main.WindowLayout;
+import cz.wingit.ui.settings.Appearance;
 
 class AppSettingsTest {
 
@@ -62,6 +65,24 @@ class AppSettingsTest {
                 Map.of("main", new WindowLayout.Divider(250, 880)));
         AppSettings.load(file).setWindowLayout(normal);
         assertThat(AppSettings.load(file).windowLayout()).contains(normal);
+    }
+
+    @Test
+    void appearanceIsPersisted() {
+        Path file = tempDir.resolve("settings.properties");
+        assertThat(AppSettings.load(file).appearance()).isEqualTo(Appearance.DEFAULT);
+
+        Appearance chosen = new Appearance(Language.CZECH, Theme.Mode.DARK);
+        AppSettings.load(file).setAppearance(chosen);
+        assertThat(AppSettings.load(file).appearance()).isEqualTo(chosen);
+    }
+
+    @Test
+    void unknownAppearanceValuesGiveDefaults() throws Exception {
+        Path file = tempDir.resolve("settings.properties");
+        Files.writeString(file, "ui.language=klingon\nui.theme=purple\n", StandardCharsets.UTF_8);
+
+        assertThat(AppSettings.load(file).appearance()).isEqualTo(Appearance.DEFAULT);
     }
 
     @Test

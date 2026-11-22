@@ -26,7 +26,9 @@ jobs:
           manifest-path: ${{ env.MANIFEST }}
           cache-key: flatpak-builder-${{ github.sha }}
 
-      # Flathub's linter: errors here would block the Flathub submission
+      # Flathub's linter: errors here would block the Flathub submission. Expected in this test
+      # build: appstream-external-screenshot-url and appstream-screenshots-not-mirrored-in-ostree
+      # (Flathub's own build mirrors the screenshots).
       - name: Lint
         continue-on-error: true
         run: |

@@ -1,6 +1,7 @@
 package cz.wingit.ui;
 
 import java.awt.Color;
+import java.util.Locale;
 
 import javax.swing.UIManager;
 
@@ -14,7 +15,19 @@ import com.formdev.flatlaf.FlatLightLaf;
  */
 public final class Theme {
 
-    public enum Mode { LIGHT, DARK }
+    public enum Mode {
+        LIGHT, DARK;
+
+        /** Value used in settings. */
+        public String code() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+
+        /** Parses a {@link #code()}; unknown or missing values give {@link #LIGHT}. */
+        public static Mode fromCode(String code) {
+            return code != null && code.trim().equalsIgnoreCase(DARK.code()) ? DARK : LIGHT;
+        }
+    }
 
     /** Selection background of lists, tables and trees. */
     public static final Color SELECTION_LIGHT = new Color(0xCCE8FF);
@@ -23,7 +36,14 @@ public final class Theme {
     public static final Color SELECTION_INACTIVE_LIGHT = new Color(0xDADADA);
     public static final Color SELECTION_INACTIVE_DARK = new Color(0x45484C);
 
+    private static volatile Mode current = Mode.LIGHT;
+
     private Theme() {
+    }
+
+    /** The installed mode. */
+    public static Mode current() {
+        return current;
     }
 
     /** Must be called before any Swing component is created. */
@@ -33,6 +53,7 @@ public final class Theme {
         } else {
             FlatLightLaf.setup();
         }
+        current = mode;
         boolean dark = mode == Mode.DARK;
         Color selection = dark ? SELECTION_DARK : SELECTION_LIGHT;
         Color inactive = dark ? SELECTION_INACTIVE_DARK : SELECTION_INACTIVE_LIGHT;

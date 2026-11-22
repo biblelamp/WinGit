@@ -22,6 +22,8 @@ public final class MainMenuBar extends JMenuBar {
 
     private static final long serialVersionUID = 1L;
 
+    private final JMenu repositoryMenu;
+
     public MainMenuBar(Action addOrCreateRepository, Action cloneRepository, Action closeRepository,
                        Action removeRepository, Action commit, Action fetch, Action pull, Action push,
                        Action newBranch,
@@ -29,6 +31,7 @@ public final class MainMenuBar extends JMenuBar {
                        Action newTag, Action pushTag, Action renameTag, Action deleteTag,
                        List<Action> stashActions, Action... fileActions) {
         JMenu repository = new JMenu(Messages.get("menu.repository"));
+        repositoryMenu = repository;
         repository.setMnemonic(KeyEvent.VK_R);
         repository.add(addOrCreateRepository);
         repository.add(cloneRepository);
@@ -75,6 +78,13 @@ public final class MainMenuBar extends JMenuBar {
         remote.add(pull);
         remote.add(push);
         add(remote);
+    }
+
+    /** Adds Settings… to the Repository menu, in its own group just above Exit. */
+    public void addSettingsAction(Action settings) {
+        int exitIndex = repositoryMenu.getMenuComponentCount() - 1;
+        repositoryMenu.insert(settings, exitIndex);
+        repositoryMenu.insertSeparator(exitIndex + 1);
     }
 
     /** Help menu, last on the bar: website, report an issue, About. */

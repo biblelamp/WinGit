@@ -2,6 +2,8 @@ package cz.wingit.ui.diff;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -15,6 +17,7 @@ import org.fife.ui.rtextarea.LineNumberFormatter;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
 import cz.wingit.core.diff.DiffRow;
+import cz.wingit.ui.Theme;
 
 /**
  * One side of the side-by-side view: caption, read-only text with syntax highlighting, change
@@ -29,6 +32,8 @@ final class DiffSide extends JPanel {
     static final Color CHANGED = new Color(0xED, 0xA2, 0x00, 48);
     static final Color FILLER = new Color(128, 128, 128, 28);
 
+    private static final String DARK_SCHEME = "/org/fife/ui/rsyntaxtextarea/themes/dark.xml";
+
     private final boolean leftSide;
     private final JLabel caption = new JLabel(" ");
     private final RSyntaxTextArea area = new RSyntaxTextArea();
@@ -40,6 +45,9 @@ final class DiffSide extends JPanel {
     DiffSide(boolean leftSide) {
         super(new BorderLayout());
         this.leftSide = leftSide;
+        if (Theme.current() == Theme.Mode.DARK) {
+            applyDarkColors();
+        }
         area.setEditable(false);
         area.setHighlightCurrentLine(false);
         area.setCodeFoldingEnabled(false);
@@ -63,6 +71,17 @@ final class DiffSide extends JPanel {
         caption.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         add(caption, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
+    }
+
+    /** RSyntaxTextArea's own dark scheme (text, syntax colors, gutter); the scroll pane must exist already. */
+    private void applyDarkColors() {
+        try (InputStream in = RSyntaxTextArea.class.getResourceAsStream(DARK_SCHEME)) {
+            if (in != null) {
+                org.fife.ui.rsyntaxtextarea.Theme.load(in, area.getFont()).apply(area);
+            }
+        } catch (IOException e) {
+            // keep the default colors; the diff stays readable
+        }
     }
 
     RTextScrollPane scrollPane() {

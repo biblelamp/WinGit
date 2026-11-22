@@ -174,6 +174,92 @@ public final class DefaultGitService implements GitService {
         return parseGitVersion(out);
     }
 
+    @Override
+    public GitIdentity globalIdentity() {
+        return readGlobalIdentity(cli, Map.of());
+    }
+
+    /** {@code environment} lets tests point {@code GIT_CONFIG_GLOBAL} at their own file. */
+    static GitIdentity readGlobalIdentity(GitCli cli, Map<String, String> environment) {
+        try {
+            String out = cli.run(Path.of(System.getProperty("user.home")),
+                    List.of("config", "--global", "--includes", "-z", "--get-regexp", "^user\\.(name|email)$"),
+                    null, environment, null).stdout();
+            return parseIdentity(out);
+        } catch (GitCommandException e) {
+            if (e.exitCode() == 1) {
+                return GitIdentity.NONE; // no such key, or no global configuration file at all
+            }
+            throw e;
+        }
+    }
+
+    /** {@code key<LF>value<NUL>} entries of {@code git config -z}; a later value wins, as in Git. */
+    static GitIdentity parseIdentity(String output) {
+        String name = "";
+        String email = "";
+        for (String entry : output.split("\0")) {
+            int newline = entry.indexOf('\n');
+            String key = (newline < 0 ? entry : entry.substring(0, newline)).strip().toLowerCase(Locale.ROOT);
+            String value = newline < 0 ? "" : entry.substring(newline + 1).strip();
+            if (key.equals("user.name")) {
+                name = value;
+            } else if (key.equals("user.email")) {
+                email = value;
+            }
+        }
+        return new GitIdentity(name, email);
+    }
+
+    @Override
+    public RepositoryIdentity repositoryIdentity(Path workTree) {
+        return readRepositoryIdentity(cli, workTree, Map.of());
+    }
+
+    /** {@code environment} lets tests point {@code GIT_CONFIG_GLOBAL} at their own file. */
+    static RepositoryIdentity readRepositoryIdentity(GitCli cli, Path workTree, Map<String, String> environment) {
+        try {
+            // No scope option: all levels as Git uses them for a commit here (system, global, includeIf, local).
+            String out = cli.run(workTree,
+                    List.of("config", "-z", "--show-scope", "--get-regexp", "^user\\.(name|email)$"),
+                    null, environment, null).stdout();
+            return parseScopedIdentity(out);
+        } catch (GitCommandException e) {
+            if (e.exitCode() == 1) {
+                return new RepositoryIdentity(GitIdentity.NONE, false, false);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * {@code scope<NUL>key<LF>value<NUL>} entries of {@code git config -z --show-scope}; a later value wins.
+     * Values from the {@code local} or {@code worktree} scope belong to the repository itself.
+     */
+    static RepositoryIdentity parseScopedIdentity(String output) {
+        String name = "";
+        String email = "";
+        boolean ownName = false;
+        boolean ownEmail = false;
+        String[] tokens = output.split("\0");
+        for (int i = 0; i + 1 < tokens.length; i += 2) {
+            String scope = tokens[i].strip().toLowerCase(Locale.ROOT);
+            boolean own = scope.equals("local") || scope.equals("worktree");
+            String entry = tokens[i + 1];
+            int newline = entry.indexOf('\n');
+            String key = (newline < 0 ? entry : entry.substring(0, newline)).strip().toLowerCase(Locale.ROOT);
+            String value = newline < 0 ? "" : entry.substring(newline + 1).strip();
+            if (key.equals("user.name")) {
+                name = value;
+                ownName = own;
+            } else if (key.equals("user.email")) {
+                email = value;
+                ownEmail = own;
+            }
+        }
+        return new RepositoryIdentity(new GitIdentity(name, email), ownName, ownEmail);
+    }
+
     /** {@code git version 2.47.1.windows.1} -> {@code 2.47.1.windows.1}; other text is returned as is. */
     static String parseGitVersion(String output) {
         String prefix = "git version ";

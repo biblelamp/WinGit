@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import javax.swing.JFrame;
 import javax.swing.Action;
@@ -46,6 +47,8 @@ import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
+import cz.wingit.ui.settings.Appearance;
+import cz.wingit.ui.settings.SettingsAction;
 import cz.wingit.ui.stash.SelectedStashAction;
 import cz.wingit.ui.stash.StashAction;
 import cz.wingit.ui.tags.NewTagAction;
@@ -65,6 +68,7 @@ public final class MainWindow extends JFrame {
     private final RepositoriesPane repositoriesPane;
     private final MainContent mainContent;
     private final FilesPane filesPane;
+    private final transient GitService git;
     private Optional<Path> openedRepository = Optional.empty();
     private String version;
     /** Bounds in the normal (not maximized) state; what we save and restore. */
@@ -72,6 +76,7 @@ public final class MainWindow extends JFrame {
 
     public MainWindow(GitService git, RepositoryList repositories) {
         super(Messages.get("mainWindow.title"));
+        this.git = git;
         setIconImages(FlatSVGUtils.createWindowIconImages("/cz/wingit/ui/icons/app/wingit.svg"));
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
@@ -178,6 +183,17 @@ public final class MainWindow extends JFrame {
     }
 
     /** Application version shown in the title, e.g. {@code 0.3.0}; {@code null} if unknown. Call on the EDT. */
+    /**
+     * Adds Repository → Settings…; {@code active} is what this run uses, {@code load}/{@code save} access the
+     * stored settings ({@code save} may throw {@link java.io.UncheckedIOException}); {@code restart}, if this
+     * run can restart itself, saves the state, starts a new instance and exits.
+     */
+    public void installSettings(Appearance active, Supplier<Appearance> load, Consumer<Appearance> save,
+                                Optional<Runnable> restart) {
+        ((MainMenuBar) getJMenuBar()).addSettingsAction(
+                new SettingsAction(this, active, load, git, repositoriesPane::openedRepository, save, restart));
+    }
+
     public void setVersion(String version) {
         this.version = version;
         updateTitle();

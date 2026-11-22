@@ -96,6 +96,22 @@ public interface GitService {
     String gitVersion();
 
     /**
+     * {@code user.name} and {@code user.email} from the global Git configuration ({@code ~/.gitconfig} or
+     * {@code ~/.config/git/config}); values that are not set are empty.
+     *
+     * @throws GitException if Git cannot be run
+     */
+    GitIdentity globalIdentity();
+
+    /**
+     * {@code user.name} and {@code user.email} as commits in {@code workTree} get them (repository settings
+     * first, then global and system ones), and whether the repository sets them itself.
+     *
+     * @throws GitException if Git cannot be run
+     */
+    RepositoryIdentity repositoryIdentity(Path workTree);
+
+    /**
      * Watches the working tree for changes that can affect status or the current branch
      * (debounced; Git-ignored paths and .git internals such as objects are skipped).
      * {@code onChange} runs on a background thread.

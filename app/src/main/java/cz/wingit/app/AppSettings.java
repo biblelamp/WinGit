@@ -14,7 +14,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
+import cz.wingit.ui.Language;
+import cz.wingit.ui.Theme;
 import cz.wingit.ui.main.WindowLayout;
+import cz.wingit.ui.settings.Appearance;
 
 /**
  * Small persistent user settings, stored as a UTF-8 properties file. Each change is saved at once.
@@ -29,6 +32,8 @@ final class AppSettings {
     private static final String WINDOW_HEIGHT = "window.height";
     private static final String WINDOW_MAXIMIZED = "window.maximized";
     private static final String DIVIDER_PREFIX = "window.divider.";
+    private static final String LANGUAGE = "ui.language";
+    private static final String THEME = "ui.theme";
 
     private final Path file;
     private final Properties properties = new Properties();
@@ -146,6 +151,23 @@ final class AppSettings {
         properties.setProperty(WINDOW_MAXIMIZED, Boolean.toString(layout.maximized()));
         layout.dividers().forEach((name, divider) ->
                 properties.setProperty(DIVIDER_PREFIX + name, divider.location() + "/" + divider.splitSize()));
+        save();
+    }
+
+    /** Language and theme chosen in the Settings dialog (applied at startup). */
+    Appearance appearance() {
+        return new Appearance(Language.fromCode(properties.getProperty(LANGUAGE)),
+                Theme.Mode.fromCode(properties.getProperty(THEME)));
+    }
+
+    /**
+     * Remembers the language and theme and saves.
+     *
+     * @throws UncheckedIOException if the file cannot be written
+     */
+    void setAppearance(Appearance appearance) {
+        properties.setProperty(LANGUAGE, appearance.language().code());
+        properties.setProperty(THEME, appearance.theme().code());
         save();
     }
 

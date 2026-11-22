@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -15,8 +16,10 @@ import cz.wingit.core.DefaultGitService;
 import cz.wingit.core.GitService;
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.repo.RepositoryList;
+import cz.wingit.ui.Messages;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.main.MainWindow;
+import cz.wingit.ui.settings.Appearance;
 
 /**
  * Application entry point and wiring.
@@ -30,10 +33,14 @@ public final class Main {
         GitService git = new DefaultGitService(new GitCli());
         RepositoryList repositories = RepositoryList.load(AppPaths.repositoryListFile());
         AppSettings settings = AppSettings.load(AppPaths.settingsFile());
+        Appearance appearance = settings.appearance();
 
         SwingUtilities.invokeLater(() -> {
-            Theme.install(Theme.Mode.LIGHT);
+            Messages.setLanguage(appearance.language());
+            Theme.install(appearance.theme());
             MainWindow window = new MainWindow(git, repositories);
+            window.installSettings(appearance, settings::appearance, settings::setAppearance,
+                    Restarter.currentCommand().map(command -> () -> restart(settings, window, command)));
             window.setVersion(version());
             settings.windowLayout().ifPresent(window::applyLayout);
             settings.lastOpenedRepository().ifPresent(repo -> window.reopen(repo, settings.lastSelectedFile()));
@@ -72,6 +79,17 @@ public final class Main {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    /**
+     * Saves what closing the window would save, starts a new instance and exits.
+     *
+     * @throws UncheckedIOException if the new instance cannot be started (this one keeps running)
+     */
+    private static void restart(AppSettings settings, MainWindow window, List<String> command) {
+        rememberLayout(settings, window);
+        Restarter.launch(command);
+        System.exit(0);
     }
 
     /** Window geometry and the selected file, saved when the window closes. */
