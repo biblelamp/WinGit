@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=WinGit
+GenericName=Git Client
+Comment=Browse history, review changes and commit with Git
+Exec=wingit
+Icon=wingit
+Terminal=false
+Categories=Development;RevisionControl;
+Keywords=git;version control;vcs;diff;commit;branch;merge;
+StartupWMClass=cz-wingit-app-Main

@@ -1,0 +1,27 @@
+pkgbase = wingit-bin
+	pkgdesc = Free, open-source desktop Git client
+	pkgver = 0.3.6
+	pkgrel = 1
+	url = https://wgit.cz/
+	arch = x86_64
+	license = Apache-2.0
+	depends = git
+	depends = glibc
+	depends = zlib
+	depends = libx11
+	depends = libxext
+	depends = libxi
+	depends = libxrender
+	depends = libxtst
+	depends = freetype2
+	depends = fontconfig
+	provides = wingit
+	conflicts = wingit
+	options = !strip
+	options = !debug
+	source = WinGit-0.3.6-linux-x64.tar.gz::https://github.com/biblelamp/WinGit/releases/download/v0.3.6/WinGit-0.3.6-linux-x64.tar.gz
+	source = wingit.desktop
+	sha256sums = 4c93b9174af6ab951ef993f8a6935d24983cd0f0bb89fa9b5287a6b75dc0acb7
+	sha256sums = 49d6409b1f05bc0c4be80ccff869da584fc2807abd3d183c9d385ace14688d5a
+
+pkgname = wingit-bin

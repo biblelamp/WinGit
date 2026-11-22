@@ -1,0 +1,42 @@
+# Test of the AUR package (packaging/aur/wingit-bin) in an Arch Linux container: builds and
+# installs it with makepkg, checks that .SRCINFO matches the PKGBUILD and runs namcap.
+# Run it manually (Actions -> AUR -> Run workflow) after changing the PKGBUILD.
+name: AUR
+
+on:
+  workflow_dispatch:
+
+jobs:
+  aur:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Prepare
+        run: |
+          pacman -Syu --noconfirm namcap
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+          cp -r packaging/aur/wingit-bin /home/builder/pkg
+          chown -R builder: /home/builder/pkg
+
+      - name: .SRCINFO is up to date
+        working-directory: /home/builder/pkg
+        run: sudo -u builder makepkg --printsrcinfo | diff -u .SRCINFO -
+
+      - name: Build and install
+        working-directory: /home/builder/pkg
+        run: sudo -u builder makepkg -si --noconfirm
+
+      - name: namcap
+        working-directory: /home/builder/pkg
+        run: |
+          namcap PKGBUILD
+          namcap wingit-bin-*.pkg.tar.zst
+
+      - name: Installed files
+        run: |
+          ls -l /usr/bin/wingit
+          test -x /opt/wingit/bin/WinGit
+          pacman -Ql wingit-bin | grep -v '/opt/wingit/lib/' | head -n 30

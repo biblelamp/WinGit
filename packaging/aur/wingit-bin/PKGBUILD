@@ -1,0 +1,30 @@
+# Maintainer: Sergey Iryupin <address at domain dot tld>
+
+pkgname=wingit-bin
+pkgver=0.3.6
+pkgrel=1
+pkgdesc='Free, open-source desktop Git client'
+arch=('x86_64')
+url='https://wgit.cz/'
+license=('Apache-2.0')
+# the release archive is a jpackage app image with its own Java runtime;
+# the runtime needs the X11 and font libraries, WinGit itself needs git
+depends=('git' 'glibc' 'zlib' 'libx11' 'libxext' 'libxi' 'libxrender' 'libxtst' 'freetype2' 'fontconfig')
+provides=('wingit')
+conflicts=('wingit')
+# stripping the bundled Java runtime can break it
+options=('!strip' '!debug')
+source=("WinGit-$pkgver-linux-x64.tar.gz::https://github.com/biblelamp/WinGit/releases/download/v$pkgver/WinGit-$pkgver-linux-x64.tar.gz"
+        'wingit.desktop')
+sha256sums=('4c93b9174af6ab951ef993f8a6935d24983cd0f0bb89fa9b5287a6b75dc0acb7'
+            '49d6409b1f05bc0c4be80ccff869da584fc2807abd3d183c9d385ace14688d5a')
+
+package() {
+  install -d "$pkgdir/opt/wingit" "$pkgdir/usr/bin"
+  cp -a WinGit/. "$pkgdir/opt/wingit/"
+  ln -s /opt/wingit/bin/WinGit "$pkgdir/usr/bin/wingit"
+
+  install -Dm644 wingit.desktop "$pkgdir/usr/share/applications/wingit.desktop"
+  install -Dm644 WinGit/lib/WinGit.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/wingit.png"
+  install -Dm644 WinGit/lib/app/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
