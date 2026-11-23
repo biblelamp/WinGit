@@ -18,10 +18,12 @@ Without signing configured, `release.yml` publishes the Windows files unsigned, 
 1. **Apply** for the SignPath Foundation open-source program (signpath.org → apply).
    Their conditions include an OSI license (Apache-2.0), released and maintained
    software, builds on GitHub-hosted runners from this public repository, MFA for the
-   team, and a *code signing policy* on the project website — published at
-   [wgit.cz/code-signing/](https://wgit.cz/code-signing/) (`site/code-signing/`, linked from
-   the home page and from every GitHub Release created by `release.yml`). Keep its team
-   roles up to date.
+   team, and a *code signing policy* on the project website. The first application was
+   declined, so the page was taken down; before reapplying, restore `site/code-signing/`
+   (EN, `ru/`, `cs/`) from git history (commit `0aaaf2b`), link it again from the home page
+   footers and `sitemap.xml`, and add it back to the release notes in `release.yml`
+   (`--notes "[Code signing policy](https://wgit.cz/code-signing/)"`). Keep its team roles
+   up to date.
 2. After approval, in the SignPath web app:
    - the project (slug `WinGit` by default) is linked to this GitHub repository as a
      *trusted build system* (GitHub.com);

@@ -217,7 +217,5 @@ jobs:
           else
             flags=()
             [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
-            # SignPath Foundation asks for a link to the code signing policy on the release page
-            notes="[Code signing policy](https://wgit.cz/code-signing/)"
-            gh release create "$tag" dist/* --title "WinGit $VERSION" --notes "$notes" --generate-notes --verify-tag "${flags[@]}"
+            gh release create "$tag" dist/* --title "WinGit $VERSION" --generate-notes --verify-tag "${flags[@]}"
           fi

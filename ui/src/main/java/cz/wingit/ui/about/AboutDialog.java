@@ -66,7 +66,10 @@ final class AboutDialog extends JDialog {
 
     /** Shows the window (modal). Call on the EDT. */
     static void show(Component parent, GitService git, String appVersion) {
-        Window owner = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
+        // The Help menu passes the main window itself, and getWindowAncestor() of a window is null: without an
+        // owner the dialog would get no icon and open in the middle of the screen.
+        Window owner = parent instanceof Window ? (Window) parent
+                : parent == null ? null : SwingUtilities.getWindowAncestor(parent);
         new AboutDialog(owner, git, appVersion).setVisible(true);
     }
 

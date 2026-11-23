@@ -27,7 +27,7 @@ public final class MainToolBar extends JToolBar {
      */
     static final String[][] GROUPS = {
             {"fetch", "pull", "push"},
-            {"commit", "merge"},
+            {"merge", "commit"},
             {"stage", "unstage", "discard", "delete"},
             {"stash", "history"},
     };

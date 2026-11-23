@@ -1,5 +1,5 @@
 # WinGit
-Manage Git easily and simply
+Use Git easily and simply
 
 **Website:** [wgit.cz](https://wgit.cz/) · **Download:** [latest release](https://github.com/biblelamp/WinGit/releases/latest)
 

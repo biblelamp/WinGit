@@ -20,24 +20,6 @@
     <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/"/>
   </url>
   <url>
-    <loc>https://wgit.cz/code-signing/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/"/>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
-  </url>
-  <url>
-    <loc>https://wgit.cz/ru/code-signing/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/"/>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
-  </url>
-  <url>
-    <loc>https://wgit.cz/cs/code-signing/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/code-signing/"/>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/code-signing/"/>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/code-signing/"/>
-  </url>
-  <url>
     <loc>https://wgit.cz/start/</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/start/"/>
     <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/"/>
@@ -54,5 +36,23 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/start/"/>
     <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/start/"/>
     <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/start/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/privacy/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/ru/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/privacy/"/>
+  </url>
+  <url>
+    <loc>https://wgit.cz/cs/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://wgit.cz/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/privacy/"/>
   </url>
 </urlset>

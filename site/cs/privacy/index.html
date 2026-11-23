@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zásady ochrany soukromí — WinGit</title>
+  <meta name="description" content="WinGit neshromažďuje žádné osobní údaje: co program ukládá ve vašem počítači a kdy používá síť.">
+  <link rel="icon" href="../../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/cs/privacy/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/privacy/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/privacy/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/privacy/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/privacy/">
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Domů</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+      </nav>
+      <div class="lang"><a href="../../privacy/" hreflang="en">EN</a><a href="../../ru/privacy/" hreflang="ru">RU</a><span>CS</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Zásady ochrany soukromí</h1>
+        <p>Poslední aktualizace: 22. listopadu 2026</p>
+        <p><strong>WinGit neshromažďuje, neukládá ani nesdílí žádné osobní údaje.</strong> Nemá uživatelské účty, analytiku, reklamu ani telemetrii. Tyto zásady platí pro desktopovou aplikaci WinGit bez ohledu na způsob instalace (Microsoft Store, instalátor, přenosný archiv nebo balíček pro Linux) a pro tento web.</p>
+
+        <h2>Data ve vašem počítači</h2>
+        <p>WinGit ukládá nastavení do místního souboru: seznam přidaných repozitářů, naposledy otevřený repozitář a soubor, velikost a rozložení okna, jazyk a motiv. Ve Windows je soubor v <code>%APPDATA%\WinGit</code> (u verze z Microsoft Store jej Windows ukládá do soukromé složky aplikace), v Linuxu v <code>~/.wingit</code>. Soubor nikdy neopouští váš počítač; při odinstalaci se podle způsobu instalace smaže nebo zůstane a můžete jej kdykoli smazat.</p>
+        <p>Vaše repozitáře, jejich soubory a historie zůstávají tam, kde jsou. WinGit je čte a mění jen tehdy, když s nimi pracujete.</p>
+
+        <h2>Síť</h2>
+        <p>WinGit nepředává žádné informace jiným síťovým systémům, pokud o to nepožádáte. Připojuje se pouze ke vzdáleným Git repozitářům, které jste nastavili: při clone, fetch, pull a push a při fetch těchto repozitářů na pozadí, aby ukázal nové commity. Odesílá se totéž, co posílá samotný Git na vámi zvolený server; pro server platí jeho vlastní zásady ochrany soukromí.</p>
+        <p>Odkazy v programu (například v okně O aplikaci) se otevřou v prohlížeči jen po vašem kliknutí.</p>
+
+        <h2>Hesla a klíče</h2>
+        <p>WinGit nikdy neukládá hesla, tokeny ani SSH klíče. Přihlášení ke vzdáleným repozitářům zajišťuje váš nainstalovaný Git a jeho pomocníci, jako Git Credential Manager (HTTPS) nebo OpenSSH a Pageant (SSH), podle svých vlastních zásad ochrany soukromí.</p>
+
+        <h2>Microsoft Store</h2>
+        <p>Pokud WinGit získáte z Microsoft Store, stažení, instalaci a aktualizace zajišťuje Microsoft podle <a href="https://privacy.microsoft.com/privacystatement">Prohlášení společnosti Microsoft o zásadách ochrany osobních údajů</a>. Microsoft může vývojáři poskytovat souhrnné statistiky, například počet instalací a hlášení Windows o chybách; neidentifikují žádnou osobu a neobsahují obsah repozitářů.</p>
+
+        <h2>Tento web</h2>
+        <p>Web nepoužívá cookies ani analytiku. Ptá se GitHub API na poslední vydání, aby zobrazil odkazy ke stažení; soubory poskytuje GitHub podle svého <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">prohlášení o ochraně soukromí</a>. Web běží na GitHub Pages, které mohou z bezpečnostních důvodů zaznamenávat IP adresy návštěvníků. Odznak v zápatí se načítá z opensourcealternatives.to, katalogu, ve kterém je WinGit uveden.</p>
+
+        <h2>Změny a kontakt</h2>
+        <p>Pokud se zásady změní, nová verze bude zveřejněna na této stránce s novým datem. Dotazy: založte issue na <a href="https://github.com/biblelamp/WinGit/issues">github.com/biblelamp/WinGit/issues</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · licence Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

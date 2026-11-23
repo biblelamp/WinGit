@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Политика конфиденциальности — WinGit</title>
+  <meta name="description" content="WinGit не собирает персональные данные: что программа хранит на вашем компьютере и когда обращается к сети.">
+  <link rel="icon" href="../../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/ru/privacy/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/privacy/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/privacy/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/privacy/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/privacy/">
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Главная</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+        <a href="https://t.me/wingit_ru">Чат</a>
+      </nav>
+      <div class="lang"><a href="../../privacy/" hreflang="en">EN</a><span>RU</span><a href="../../cs/privacy/" hreflang="cs">CS</a></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Политика конфиденциальности</h1>
+        <p>Обновлено: 22 ноября 2026 г.</p>
+        <p><strong>WinGit не собирает, не хранит и не передаёт никакие персональные данные.</strong> В программе нет учётных записей, аналитики, рекламы и телеметрии. Эта политика относится к настольной программе WinGit, как бы она ни была установлена (Microsoft Store, установщик, портативный архив или пакет для Linux), и к этому сайту.</p>
+
+        <h2>Данные на вашем компьютере</h2>
+        <p>Настройки WinGit хранятся в локальном файле: список добавленных репозиториев, последний открытый репозиторий и файл, размер и расположение окна, язык и тема. В Windows файл лежит в <code>%APPDATA%\WinGit</code> (у версии из Microsoft Store Windows хранит его в личной папке приложения), в Linux — в <code>~/.wingit</code>. Файл никуда не отправляется; при удалении программы он удаляется или остаётся в зависимости от способа установки, и его можно удалить в любой момент.</p>
+        <p>Ваши репозитории, их файлы и история остаются на своих местах. WinGit читает и меняет их только тогда, когда вы с ними работаете.</p>
+
+        <h2>Сеть</h2>
+        <p>WinGit не передаёт никакую информацию в другие сетевые системы, если вы об этом не попросили. Программа подключается только к удалённым Git-репозиториям, которые настроили вы: при clone, fetch, pull и push, а также при фоновом fetch этих репозиториев, чтобы показать новые коммиты. Передаётся то же, что передаёт сам Git на выбранный вами сервер; для сервера действует его собственная политика конфиденциальности.</p>
+        <p>Ссылки в программе (например, в окне «О программе») открываются в браузере только по вашему щелчку.</p>
+
+        <h2>Пароли и ключи</h2>
+        <p>WinGit никогда не хранит пароли, токены и SSH-ключи. Вход в удалённые репозитории выполняют установленный у вас Git и его помощники — Git Credential Manager (HTTPS) или OpenSSH и Pageant (SSH) — по своим политикам конфиденциальности.</p>
+
+        <h2>Microsoft Store</h2>
+        <p>Если вы установили WinGit из Microsoft Store, загрузкой, установкой и обновлениями занимается Microsoft согласно <a href="https://privacy.microsoft.com/privacystatement">Заявлению о конфиденциальности Microsoft</a>. Microsoft может предоставлять разработчику обобщённую статистику — например, число установок и отчёты Windows о сбоях; по ним нельзя определить человека, и в них нет содержимого репозиториев.</p>
+
+        <h2>Этот сайт</h2>
+        <p>Сайт не использует cookie и аналитику. Он запрашивает у GitHub API последний релиз, чтобы показать ссылки на скачивание; файлы раздаёт GitHub согласно своему <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">заявлению о конфиденциальности</a>. Сайт размещён на GitHub Pages, которые могут записывать IP-адреса посетителей в целях безопасности. Значок в подвале загружается с opensourcealternatives.to — каталога, в котором есть WinGit.</p>
+
+        <h2>Изменения и связь</h2>
+        <p>Если политика изменится, новая версия будет опубликована на этой странице с новой датой. Вопросы можно задать в <a href="https://github.com/biblelamp/WinGit/issues">github.com/biblelamp/WinGit/issues</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · лицензия Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

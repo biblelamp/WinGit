@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy policy — WinGit</title>
+  <meta name="description" content="WinGit collects no personal data: what the program stores on your computer and when it uses the network.">
+  <link rel="icon" href="../assets/wingit.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://wgit.cz/privacy/">
+  <link rel="alternate" hreflang="en" href="https://wgit.cz/privacy/">
+  <link rel="alternate" hreflang="ru" href="https://wgit.cz/ru/privacy/">
+  <link rel="alternate" hreflang="cs" href="https://wgit.cz/cs/privacy/">
+  <link rel="alternate" hreflang="x-default" href="https://wgit.cz/privacy/">
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="../"><img src="../assets/wingit.svg" alt="">WinGit</a>
+      <nav class="nav">
+        <a href="../">Home</a>
+        <a href="https://github.com/biblelamp/WinGit">GitHub</a>
+      </nav>
+      <div class="lang"><span>EN</span><a href="../ru/privacy/" hreflang="ru">RU</a><a href="../cs/privacy/" hreflang="cs">CS</a></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block">
+      <div class="wrap prose">
+        <h1>Privacy policy</h1>
+        <p>Last updated: 22 November 2026</p>
+        <p><strong>WinGit does not collect, store or share any personal data.</strong> It has no user accounts, no analytics, no advertising and no telemetry. This policy applies to the WinGit desktop application, however it was installed (Microsoft Store, installer, portable archive or Linux package), and to this website.</p>
+
+        <h2>Data on your computer</h2>
+        <p>WinGit keeps its settings in a local file: the list of repositories you added, the last opened repository and file, the window size and layout, the language and the theme. On Windows the file is in <code>%APPDATA%\WinGit</code> (for the Microsoft Store version Windows keeps it in the app's private folder), on Linux in <code>~/.wingit</code>. The file never leaves your computer, and uninstalling the app removes or leaves it according to the installation type; you can delete it at any time.</p>
+        <p>Your repositories, their files and their history stay where they are. WinGit reads and changes them only when you work with them.</p>
+
+        <h2>Network</h2>
+        <p>WinGit does not transfer any information to other networked systems unless you ask for it. The only connections it makes are to the Git remote repositories that you set up: when you clone, fetch, pull or push, and when it fetches those remotes in the background to show new commits. What is sent is what Git itself sends to the server you chose; the server's own privacy policy applies.</p>
+        <p>Links in the program (for example in the About dialog) open in your web browser only when you click them.</p>
+
+        <h2>Passwords and keys</h2>
+        <p>WinGit never stores passwords, tokens or SSH keys. Sign-in to remote repositories is handled by your installed Git and its helpers, such as Git Credential Manager (HTTPS) or OpenSSH and Pageant (SSH), under their own privacy policies.</p>
+
+        <h2>Microsoft Store</h2>
+        <p>When you get WinGit from the Microsoft Store, Microsoft handles the download, installation and updates under the <a href="https://privacy.microsoft.com/privacystatement">Microsoft Privacy Statement</a>. Microsoft may give the developer aggregated statistics such as the number of installations and crash reports from Windows; they identify no person and contain no repository content.</p>
+
+        <h2>This website</h2>
+        <p>The website uses no cookies and no analytics. It asks the GitHub API for the latest release to show the download links; downloads are served by GitHub under its <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a>. The site is hosted on GitHub Pages, which may log visitors' IP addresses for security. The footer badge image is loaded from opensourcealternatives.to, a directory that lists WinGit.</p>
+
+        <h2>Changes and contact</h2>
+        <p>If this policy changes, the new version is published on this page with a new date. Questions: open an issue at <a href="https://github.com/biblelamp/WinGit/issues">github.com/biblelamp/WinGit/issues</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>WinGit · licensed under Apache-2.0</span>
+      <a href="https://github.com/biblelamp/WinGit">github.com/biblelamp/WinGit</a>
+    </div>
+  </footer>
+</body>
+</html>

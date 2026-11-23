@@ -1,10 +1,13 @@
 package cz.wingit.ui.common;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Insets;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 /**
  * A pane with a compact header line (title on the left, optional tools on the right)
@@ -14,7 +17,21 @@ public class TitledPane extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private final JPanel header = new JPanel(new BorderLayout());
+    private final JPanel header = new JPanel(new BorderLayout()) {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * At least as tall as a header holding a text field (the Files filter), so panes side by side have
+         * their titles and separator lines at the same height whether they have header tools or not.
+         */
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension size = super.getPreferredSize();
+            Insets insets = getInsets();
+            int withField = new JTextField().getPreferredSize().height + insets.top + insets.bottom;
+            return new Dimension(size.width, Math.max(size.height, withField));
+        }
+    };
 
     public TitledPane(String title, JComponent content) {
         super(new BorderLayout());
