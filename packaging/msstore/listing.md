@@ -35,7 +35,14 @@ WinGit is an early but working version, developed in the open at https://github.
 
 ### What's new in this version
 
-First release in the Microsoft Store.
+Version 0.3.7:
+- Amend the last commit (when it is not pushed yet)
+- An unfinished commit message is kept as a draft
+- The commit dialog shows the Git user (name and e-mail) of the new commit
+- Diff: search (Ctrl+F), changed words highlighted, a strip with all changes of the file
+- Double-click a file to open its diff in a separate window
+- Settings: interval of the automatic fetch, or turn it off
+- Fixed: in Russian and Czech, removing a repository from the list did not open the confirmation dialog
 
 ### Product features
 
@@ -92,7 +99,14 @@ WinGit — ранняя, но уже рабочая версия; разрабо
 
 ### Что нового в этой версии
 
-Первый выпуск в Microsoft Store.
+Версия 0.3.7:
+- Исправление последнего коммита (amend), пока он не отправлен на сервер
+- Недописанное сообщение коммита сохраняется как черновик
+- В окне коммита видно, от чьего имени (имя и e-mail Git) он будет создан
+- Сравнение версий: поиск (Ctrl+F), подсветка изменённых слов, полоса со всеми изменениями файла
+- Двойной щелчок по файлу открывает сравнение в отдельном окне
+- Настройки: интервал автоматического fetch или его отключение
+- Исправлено: на русском и чешском языках не открывался диалог удаления репозитория из списка
 
 ### Функции продукта
 
@@ -149,7 +163,14 @@ WinGit je raná, ale funkční verze, vyvíjená otevřeně na https://github.co
 
 ### Co je nového v této verzi
 
-První vydání v Microsoft Store.
+Verze 0.3.7:
+- Úprava posledního commitu (amend), dokud není odeslán na server
+- Nedokončená zpráva commitu se uloží jako koncept
+- Okno commitu ukazuje, pod jakým uživatelem Gitu (jméno a e-mail) commit vznikne
+- Porovnání verzí: hledání (Ctrl+F), zvýraznění změněných slov, pruh se všemi změnami souboru
+- Dvojklik na soubor otevře porovnání v samostatném okně
+- Nastavení: interval automatického fetch nebo jeho vypnutí
+- Opraveno: v ruštině a češtině se neotevřel dialog pro odebrání repozitáře ze seznamu
 
 ### Funkce produktu
 

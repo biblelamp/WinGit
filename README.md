@@ -59,8 +59,7 @@ and ideas are welcome.
 Every [release](https://github.com/biblelamp/WinGit/releases/latest) also has:
 
 - **Windows:** an MSI installer and a portable ZIP;
-- **Linux:** DEB and RPM packages and a portable tar.gz;
-- **Arch Linux:** the AUR package `wingit-bin`, e.g. `yay -S wingit-bin`.
+- **Linux:** DEB and RPM packages and a portable tar.gz.
 
 WinGit brings its own Java runtime; it needs Git installed on the computer.
 

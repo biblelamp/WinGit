@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>wingit</id>
+    <version>0.3.7</version>
+    <title>WinGit</title>
+    <authors>WinGit project</authors>
+    <owners>biblelamp</owners>
+    <copyright>2026 WinGit project</copyright>
+    <projectUrl>https://wgit.cz/</projectUrl>
+    <iconUrl>https://wgit.cz/assets/wingit.png</iconUrl>
+    <licenseUrl>https://github.com/biblelamp/WinGit/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/biblelamp/WinGit</projectSourceUrl>
+    <packageSourceUrl>https://github.com/biblelamp/WinGit/tree/main/packaging/chocolatey</packageSourceUrl>
+    <docsUrl>https://wgit.cz/start/</docsUrl>
+    <bugTrackerUrl>https://github.com/biblelamp/WinGit/issues</bugTrackerUrl>
+    <tags>wingit git git-client git-gui vcs version-control diff foss</tags>
+    <summary>Free, open-source desktop Git client</summary>
+    <description>WinGit is a free, open-source desktop Git client. History graph, side-by-side diffs, staging, branches and merges are all in one window, so everyday Git work does not need the command line.
+
+Features:
+
+* Repository list, file tree and commit history with a branch graph
+* Side-by-side diffs with syntax highlighting
+* Stage, unstage and discard changes and commit
+* Branches, tags, merges and stashes
+* Clone, fetch, pull and push over HTTPS and SSH
+* Light and dark themes
+
+WinGit brings its own Java runtime. Git is installed as a dependency.</description>
+    <releaseNotes>https://github.com/biblelamp/WinGit/releases/tag/v0.3.7</releaseNotes>
+    <dependencies>
+      <dependency id="git" version="2.30.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

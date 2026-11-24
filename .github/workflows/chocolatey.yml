@@ -1,0 +1,50 @@
+# Test of the Chocolatey package (packaging/chocolatey/wingit) on Windows: packs it, installs it
+# from the local folder (Git comes from the community repository as a dependency), checks the
+# installed files and uninstalls it. The .nupkg is uploaded as an artifact; that file is what
+# gets pushed to community.chocolatey.org. Run it manually (Actions -> Chocolatey -> Run workflow)
+# after changing the package.
+name: Chocolatey
+
+on:
+  workflow_dispatch:
+
+jobs:
+  chocolatey:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pack
+        working-directory: packaging/chocolatey/wingit
+        run: |
+          choco pack
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Get-ChildItem *.nupkg
+
+      - name: Install
+        working-directory: packaging/chocolatey/wingit
+        run: |
+          choco install wingit --source "'.;https://community.chocolatey.org/api/v2/'" -y --no-progress
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Installed files
+        run: |
+          $exe = "$env:ProgramFiles\WinGit\WinGit.exe"
+          if (-not (Test-Path $exe)) { throw "$exe is missing" }
+          Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' |
+            Where-Object DisplayName -eq 'WinGit' | Select-Object DisplayName, DisplayVersion, PSChildName
+          choco list
+
+      - name: Uninstall
+        run: |
+          choco uninstall wingit -y
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if (Test-Path "$env:ProgramFiles\WinGit\WinGit.exe") { throw "WinGit is still installed" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wingit-nupkg
+          path: packaging/chocolatey/wingit/*.nupkg

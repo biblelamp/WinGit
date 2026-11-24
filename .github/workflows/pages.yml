@@ -9,6 +9,7 @@ on:
     paths:
       - 'site/**'
       - 'ui/src/main/resources/cz/wingit/ui/icons/app/wingit.svg'
+      - 'app/src/jpackage/wingit.png'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -36,6 +37,8 @@ jobs:
           cp -r site/. _site/
           # the app icon has a single source of truth in the ui module
           cp ui/src/main/resources/cz/wingit/ui/icons/app/wingit.svg _site/assets/wingit.svg
+          # 256 px PNG: the Chocolatey package icon (iconUrl) points here
+          cp app/src/jpackage/wingit.png _site/assets/wingit.png
 
       - uses: actions/configure-pages@v5
 

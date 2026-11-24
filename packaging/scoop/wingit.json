@@ -1,0 +1,28 @@
+{
+    "version": "0.3.7",
+    "description": "Free, open-source desktop Git client: history graph, side-by-side diffs, staging, branches and merges.",
+    "homepage": "https://wgit.cz/",
+    "license": "Apache-2.0",
+    "depends": "git",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/biblelamp/WinGit/releases/download/v0.3.7/WinGit-0.3.7-windows-x64.zip",
+            "hash": "58f0234349f4b1b47606b210a50fea9f5bb8971782c25307a8387eebd4c95dd2"
+        }
+    },
+    "extract_dir": "WinGit",
+    "shortcuts": [
+        [
+            "WinGit.exe",
+            "WinGit"
+        ]
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/biblelamp/WinGit/releases/download/v$version/WinGit-$version-windows-x64.zip"
+            }
+        }
+    }
+}

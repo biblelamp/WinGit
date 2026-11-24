@@ -1,0 +1,46 @@
+# Test of the Scoop manifest (packaging/scoop/wingit.json) on Windows: installs Scoop, checks
+# that checkver finds the latest release and that the manifest's hash matches, then installs,
+# checks and uninstalls the app. Run it manually (Actions -> Scoop -> Run workflow) after
+# changing the manifest.
+name: Scoop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scoop:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Scoop
+        run: |
+          Invoke-RestMethod https://get.scoop.sh -OutFile install-scoop.ps1
+          ./install-scoop.ps1 -RunAsAdmin
+          "$HOME\scoop\shims" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: checkver
+        run: |
+          $bin = "$HOME\scoop\apps\scoop\current\bin"
+          & "$bin\checkver.ps1" -App wingit -Dir packaging/scoop
+          & "$bin\checkhashes.ps1" -App wingit -Dir packaging/scoop
+
+      - name: Install
+        run: |
+          scoop install packaging/scoop/wingit.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          scoop list
+
+      - name: Installed files
+        run: |
+          $app = "$HOME\scoop\apps\wingit\current"
+          if (-not (Test-Path "$app\WinGit.exe")) { throw "WinGit.exe is missing" }
+          $lnk = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Scoop Apps\WinGit.lnk"
+          if (-not (Test-Path $lnk)) { throw "Start menu shortcut is missing" }
+          git --version
+
+      - name: Uninstall
+        run: scoop uninstall wingit
