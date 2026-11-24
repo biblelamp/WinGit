@@ -1,12 +1,18 @@
 # Test of the Chocolatey package (packaging/chocolatey/wingit) on Windows: packs it, installs it
 # from the local folder (Git comes from the community repository as a dependency), checks the
-# installed files and uninstalls it. The .nupkg is uploaded as an artifact; that file is what
-# gets pushed to community.chocolatey.org. Run it manually (Actions -> Chocolatey -> Run workflow)
+# installed files and uninstalls it. The .nupkg is uploaded as an artifact. With "push" ticked, a
+# package that passed the test is pushed to community.chocolatey.org with the API key from the
+# CHOCOLATEY_API_KEY repository secret. Run it manually (Actions -> Chocolatey -> Run workflow)
 # after changing the package.
 name: Chocolatey
 
 on:
   workflow_dispatch:
+    inputs:
+      push:
+        description: Push the package to community.chocolatey.org
+        type: boolean
+        default: false
 
 jobs:
   chocolatey:
@@ -48,3 +54,14 @@ jobs:
         with:
           name: wingit-nupkg
           path: packaging/chocolatey/wingit/*.nupkg
+
+      - name: Push
+        if: inputs.push
+        working-directory: packaging/chocolatey/wingit
+        env:
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        run: |
+          if (-not $env:CHOCOLATEY_API_KEY) { throw "The CHOCOLATEY_API_KEY secret is not set" }
+          $nupkg = (Get-ChildItem *.nupkg).Name
+          choco push $nupkg --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
