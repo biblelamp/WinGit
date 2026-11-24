@@ -73,5 +73,12 @@ Diff navigation icons in `ui/src/main/resources/cz/wingit/ui/icons/diff/` (same 
 | previous-change.svg  | arrow-up    |
 | next-change.svg      | arrow-down  |
 
+Commit dialog icons in `ui/src/main/resources/cz/wingit/ui/icons/commit/` (same version):
+
+| File                  | Lucide icon |
+|-----------------------|-------------|
+| identity.svg          | user-check  |
+| identity-missing.svg  | user-x      |
+
 License: ISC (some icons MIT via Feather), full text in
 [`licenses/LICENSE-lucide.txt`](licenses/LICENSE-lucide.txt).

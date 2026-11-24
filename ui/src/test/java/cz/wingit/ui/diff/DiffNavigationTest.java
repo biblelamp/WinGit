@@ -59,6 +59,37 @@ class DiffNavigationTest {
     }
 
     @Test
+    void overviewMarksEachFragmentByWhatItDoes() {
+        assertThat(DiffChanges.fragments(rows())).containsExactly(
+                new DiffChanges.Fragment(10, 12, true, true),
+                new DiffChanges.Fragment(50, 51, true, true),
+                new DiffChanges.Fragment(80, 81, false, true));
+        assertThat(DiffChanges.fragments(List.of(new DiffRow(DiffRow.Type.DELETED, 1, "x", 0, null))))
+                .containsExactly(new DiffChanges.Fragment(0, 1, true, false));
+
+        assertThat(DiffOverview.rowAt(0, 200, 100)).isZero();
+        assertThat(DiffOverview.rowAt(100, 200, 100)).isEqualTo(50);
+        assertThat(DiffOverview.rowAt(250, 200, 100)).isEqualTo(99);
+    }
+
+    @Test
+    void changedLinesGetTheirChangedWordsHighlighted() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            DiffView view = new DiffView();
+            FileVersion left = new FileVersion(FileVersion.Source.INDEX, true, "", false, false);
+            FileVersion right = new FileVersion(FileVersion.Source.WORKING_TREE, true, "", false, false);
+            view.showDiff(new FileDiff("a.txt", left, right, rows()));
+
+            assertThat(view.left().changedWordCount()).isEqualTo(3); // "a" on each of the 3 changed rows
+            assertThat(view.right().changedWordCount()).isEqualTo(3);
+            assertThat(view.overview().fragments()).hasSize(3);
+
+            view.showMessage("no file");
+            assertThat(view.overview().fragments()).isEmpty();
+        });
+    }
+
+    @Test
     void opensAtTheFirstChangeAndWalksThroughTheFragments() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             DiffView view = new DiffView();

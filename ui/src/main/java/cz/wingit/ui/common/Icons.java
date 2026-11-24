@@ -50,6 +50,12 @@ public final class Icons {
         return new FlatSVGIcon(BASE + "diff/" + name + ".svg", LIST_SIZE, LIST_SIZE);
     }
 
+    /** Git user of the commit dialog: gray when name and e-mail are set, red when something is missing. */
+    public static FlatSVGIcon commitIdentity(boolean missing) {
+        String name = missing ? "identity-missing" : "identity";
+        return new FlatSVGIcon(BASE + "commit/" + name + ".svg", LIST_SIZE, LIST_SIZE);
+    }
+
     /** Repository list icon for a repository whose folder no longer exists. */
     public static FlatSVGIcon repositoryMissing() {
         return new FlatSVGIcon(BASE + "repositories/repository-missing.svg", LIST_SIZE, LIST_SIZE);

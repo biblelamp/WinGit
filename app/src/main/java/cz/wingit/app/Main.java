@@ -39,8 +39,9 @@ public final class Main {
             Messages.setLanguage(appearance.language());
             Theme.install(appearance.theme());
             MainWindow window = new MainWindow(git, repositories);
-            window.installSettings(appearance, settings::appearance, settings::setAppearance,
+            window.installSettings(appearance, settings::preferences, settings::setPreferences,
                     Restarter.currentCommand().map(command -> () -> restart(settings, window, command)));
+            window.setFetchInterval(settings.fetchInterval());
             window.setVersion(version());
             settings.windowLayout().ifPresent(window::applyLayout);
             settings.lastOpenedRepository().ifPresent(repo -> window.reopen(repo, settings.lastSelectedFile()));

@@ -18,6 +18,8 @@ import cz.wingit.ui.Language;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.main.WindowLayout;
 import cz.wingit.ui.settings.Appearance;
+import cz.wingit.ui.settings.FetchInterval;
+import cz.wingit.ui.settings.Preferences;
 
 /**
  * Small persistent user settings, stored as a UTF-8 properties file. Each change is saved at once.
@@ -34,6 +36,8 @@ final class AppSettings {
     private static final String DIVIDER_PREFIX = "window.divider.";
     private static final String LANGUAGE = "ui.language";
     private static final String THEME = "ui.theme";
+    private static final String FETCH_ENABLED = "fetch.auto";
+    private static final String FETCH_MINUTES = "fetch.intervalMinutes";
 
     private final Path file;
     private final Properties properties = new Properties();
@@ -168,6 +172,40 @@ final class AppSettings {
     void setAppearance(Appearance appearance) {
         properties.setProperty(LANGUAGE, appearance.language().code());
         properties.setProperty(THEME, appearance.theme().code());
+        save();
+    }
+
+    /** Automatic fetch interval chosen in the Settings dialog; defaults for missing or broken values. */
+    FetchInterval fetchInterval() {
+        String enabled = properties.getProperty(FETCH_ENABLED);
+        int minutes = FetchInterval.DEFAULT.minutes();
+        try {
+            String stored = properties.getProperty(FETCH_MINUTES);
+            if (stored != null) {
+                minutes = FetchInterval.clamp(Integer.parseInt(stored.trim()));
+            }
+        } catch (NumberFormatException e) {
+            // keep the default
+        }
+        return new FetchInterval(enabled == null ? FetchInterval.DEFAULT.enabled() : Boolean.parseBoolean(enabled.trim()),
+                minutes);
+    }
+
+    /** Everything the Settings dialog edits. */
+    Preferences preferences() {
+        return new Preferences(appearance(), fetchInterval());
+    }
+
+    /**
+     * Remembers what the Settings dialog edits and saves.
+     *
+     * @throws UncheckedIOException if the file cannot be written
+     */
+    void setPreferences(Preferences preferences) {
+        properties.setProperty(LANGUAGE, preferences.appearance().language().code());
+        properties.setProperty(THEME, preferences.appearance().theme().code());
+        properties.setProperty(FETCH_ENABLED, Boolean.toString(preferences.fetch().enabled()));
+        properties.setProperty(FETCH_MINUTES, Integer.toString(preferences.fetch().minutes()));
         save();
     }
 

@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -24,9 +25,11 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 
@@ -41,9 +44,9 @@ import cz.wingit.ui.Theme;
 import cz.wingit.ui.common.DialogHeader;
 
 /**
- * Modal Settings dialog: language and theme, and (read-only for now) the Git user from the global Git
- * configuration. The choice is saved and takes effect after a restart; a hint says so whenever the selection
- * differs from what the running application uses.
+ * Modal Settings dialog: language and theme, the automatic fetch interval, and (read-only for now) the Git
+ * user from the global Git configuration. Language and theme take effect after a restart (a hint says so
+ * whenever the selection differs from what the running application uses); the fetch interval at once.
  */
 final class SettingsDialog extends JDialog {
 
@@ -52,6 +55,9 @@ final class SettingsDialog extends JDialog {
     private final JComboBox<Language> languageBox = new JComboBox<>(Language.values());
     private final JComboBox<Theme.Mode> themeBox = new JComboBox<>(Theme.Mode.values());
     private final JLabel restartHint = new JLabel(Messages.get("settings.restart"));
+    private final JCheckBox fetchBox = new JCheckBox(Messages.get("settings.fetch.enabled"));
+    private final JSpinner fetchMinutes = new JSpinner(new SpinnerNumberModel(FetchInterval.DEFAULT.minutes(),
+            FetchInterval.MIN_MINUTES, FetchInterval.MAX_MINUTES, 1));
     private final JButton okButton = new JButton(Messages.get("settings.ok"));
     private final JTextField nameField = new JTextField();
     private final JTextField emailField = new JTextField();
@@ -60,7 +66,7 @@ final class SettingsDialog extends JDialog {
     private final JLabel repoNote = new JLabel(" ");
     private final transient Appearance active;
     private final transient Optional<Path> repository;
-    private transient Appearance result;
+    private transient Preferences result;
 
     /** What the background read found; {@code repository} is {@code null} when none is open. */
     private record Identities(GitIdentity global, RepositoryIdentity repository) {
@@ -68,16 +74,16 @@ final class SettingsDialog extends JDialog {
 
     /**
      * @param saved      what is stored in the settings (preselected)
-     * @param active     what the running application uses
+     * @param active     the appearance the running application uses
      * @param git        reads the Git user (off the EDT)
      * @param repository the opened repository, whose own Git user is shown too
      */
-    SettingsDialog(Window owner, Appearance saved, Appearance active, GitService git, Optional<Path> repository) {
+    SettingsDialog(Window owner, Preferences saved, Appearance active, GitService git, Optional<Path> repository) {
         super(owner, Messages.get("settings.title"), ModalityType.APPLICATION_MODAL);
         this.active = active;
         this.repository = repository;
         readIdentities(git);
-        languageBox.setSelectedItem(saved.language());
+        languageBox.setSelectedItem(saved.appearance().language());
         languageBox.setRenderer(new DefaultListCellRenderer() {
             private static final long serialVersionUID = 1L;
 
@@ -88,7 +94,7 @@ final class SettingsDialog extends JDialog {
                         isSelected, cellHasFocus);
             }
         });
-        themeBox.setSelectedItem(saved.theme());
+        themeBox.setSelectedItem(saved.appearance().theme());
         themeBox.setRenderer(new DefaultListCellRenderer() {
             private static final long serialVersionUID = 1L;
 
@@ -100,6 +106,11 @@ final class SettingsDialog extends JDialog {
             }
         });
         restartHint.setForeground(UIManager.getColor("Label.disabledForeground"));
+        fetchBox.setSelected(saved.fetch().enabled());
+        fetchMinutes.setValue(saved.fetch().minutes());
+        ((JSpinner.DefaultEditor) fetchMinutes.getEditor()).getTextField().setColumns(4);
+        fetchMinutes.setEnabled(fetchBox.isSelected());
+        fetchBox.addActionListener(e -> fetchMinutes.setEnabled(fetchBox.isSelected()));
 
         JPanel root = new JPanel(new BorderLayout());
         root.add(new DialogHeader(Messages.get("settings.header"), Messages.get("settings.description")),
@@ -122,8 +133,8 @@ final class SettingsDialog extends JDialog {
     }
 
     /** Shows the dialog; returns the chosen settings unless cancelled. */
-    static Optional<Appearance> show(Component parent, Appearance saved, Appearance active, GitService git,
-                                     Optional<Path> repository) {
+    static Optional<Preferences> show(Component parent, Preferences saved, Appearance active, GitService git,
+                                      Optional<Path> repository) {
         // The action passes the main window itself, and getWindowAncestor() of a window is null: without an
         // owner the dialog would get no icon and open in the middle of the screen.
         Window owner = parent instanceof Window ? (Window) parent : SwingUtilities.getWindowAncestor(parent);
@@ -164,26 +175,47 @@ final class SettingsDialog extends JDialog {
         c.insets = new Insets(10, 0, 0, 0);
         form.add(restartHint, c);
 
-        c.gridy = 3;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.insets = new Insets(12, 0, 8, 0);
-        form.add(new JSeparator(), c);
+        addSeparator(form, c, 3);
+        addSection(form, c, 4, Messages.get("settings.fetch.header"), true);
+        JPanel fetchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        fetchRow.add(fetchBox);
+        fetchRow.add(fetchMinutes);
+        fetchRow.add(new JLabel(Messages.get("settings.fetch.minutes")));
+        c.gridx = 0;
+        c.gridy = 5;
+        c.gridwidth = 2;
+        c.fill = GridBagConstraints.NONE;
+        c.insets = new Insets(0, -6, 0, 0); // the flow layout's own gap; keeps the check box in line
+        form.add(fetchRow, c);
+        addNote(form, c, 6, new JLabel(Messages.get("settings.fetch.note")));
 
-        addSection(form, c, 4, Messages.get("settings.git.header"));
-        addRow(form, c, 5, "settings.git.name", nameField);
-        addRow(form, c, 6, "settings.git.email", emailField);
-        addNote(form, c, 7, new JLabel(Messages.get("settings.git.note")));
+        addSeparator(form, c, 7);
+        addSection(form, c, 8, Messages.get("settings.git.header"), true);
+        addRow(form, c, 9, "settings.git.name", nameField);
+        addRow(form, c, 10, "settings.git.email", emailField);
+        addNote(form, c, 11, new JLabel(Messages.get("settings.git.note")));
         repository.ifPresent(repo -> {
             Path folder = repo.getFileName();
-            addSection(form, c, 8, Messages.format("settings.repo.header", folder == null ? repo : folder));
-            addRow(form, c, 9, "settings.git.name", repoNameField);
-            addRow(form, c, 10, "settings.git.email", repoEmailField);
-            addNote(form, c, 11, repoNote);
+            addSection(form, c, 12, Messages.format("settings.repo.header", folder == null ? repo : folder), false);
+            addRow(form, c, 13, "settings.git.name", repoNameField);
+            addRow(form, c, 14, "settings.git.email", repoEmailField);
+            addNote(form, c, 15, repoNote);
         });
         return form;
     }
 
-    private static void addSection(JPanel form, GridBagConstraints c, int row, String title) {
+    private static void addSeparator(JPanel form, GridBagConstraints c, int row) {
+        c.gridx = 0;
+        c.gridy = row;
+        c.gridwidth = 2;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.weightx = 0;
+        c.insets = new Insets(12, 0, 8, 0);
+        form.add(new JSeparator(), c);
+    }
+
+    /** {@code first}: directly below a separator, without extra space above. */
+    private static void addSection(JPanel form, GridBagConstraints c, int row, String title, boolean first) {
         JLabel section = new JLabel(title);
         section.setFont(section.getFont().deriveFont(Font.BOLD));
         c.gridx = 0;
@@ -191,7 +223,7 @@ final class SettingsDialog extends JDialog {
         c.gridwidth = 2;
         c.fill = GridBagConstraints.NONE;
         c.weightx = 0;
-        c.insets = new Insets(row == 4 ? 0 : 14, 0, 6, 0);
+        c.insets = new Insets(first ? 0 : 14, 0, 6, 0);
         form.add(section, c);
     }
 
@@ -295,6 +327,10 @@ final class SettingsDialog extends JDialog {
         return new Appearance((Language) languageBox.getSelectedItem(), (Theme.Mode) themeBox.getSelectedItem());
     }
 
+    private FetchInterval fetchSelection() {
+        return new FetchInterval(fetchBox.isSelected(), FetchInterval.clamp((Integer) fetchMinutes.getValue()));
+    }
+
     /** The hint keeps its space when hidden, so the dialog does not jump. */
     private void updateHint() {
         Appearance selected = selection();
@@ -305,7 +341,12 @@ final class SettingsDialog extends JDialog {
     }
 
     private void accept() {
-        result = selection();
+        try {
+            fetchMinutes.commitEdit(); // a number typed without pressing Enter counts too
+        } catch (java.text.ParseException e) {
+            // not a number: the last valid value stays
+        }
+        result = new Preferences(selection(), fetchSelection());
         dispose();
     }
 
@@ -326,7 +367,15 @@ final class SettingsDialog extends JDialog {
         return okButton;
     }
 
-    Appearance result() {
+    JCheckBox fetchBox() {
+        return fetchBox;
+    }
+
+    JSpinner fetchMinutes() {
+        return fetchMinutes;
+    }
+
+    Preferences result() {
         return result;
     }
 }

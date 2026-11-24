@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -23,16 +24,14 @@ import cz.wingit.core.GitService;
 
 /**
  * Keeps "new on the server" up to date without the user clicking Fetch: a repository is fetched when
- * it is opened, and all repositories of the list every {@link #INTERVAL}. Runs in the background, one
+ * it is opened, and all repositories of the list periodically ({@link #setInterval}, by default every
+ * {@link #INTERVAL}; the periodic fetch can be switched off). Runs in the background, one
  * repository at a time, and never asks for credentials ({@link GitService#fetchInBackground}); a failed
  * fetch (offline, not signed in, ...) is silently skipped, the markers then show the last fetched state.
  */
 public final class AutoFetch {
 
-    /**
-     * How often all repositories of the list are fetched. Fixed for now; meant to become an application
-     * setting later (with "never" as an option).
-     */
+    /** How often all repositories of the list are fetched unless {@link #setInterval} says otherwise. */
     public static final Duration INTERVAL = Duration.ofMinutes(10);
 
     /** A background fetch running longer is cancelled (e.g. a stuck connection) and tried again next time. */
@@ -45,6 +44,9 @@ public final class AutoFetch {
     private final ExecutorService queue = Executors.newSingleThreadExecutor(daemon("wingit-auto-fetch"));
     private final ExecutorService runner = Executors.newSingleThreadExecutor(daemon("wingit-auto-fetch-git"));
     private final Timer timer;
+    /** Whether the periodic fetch runs ({@link #setInterval} with an empty interval switches it off). */
+    private boolean periodic = true;
+    private boolean started;
 
     /**
      * @param repositories the repositories to fetch periodically; called on the EDT
@@ -58,9 +60,40 @@ public final class AutoFetch {
         timer.setInitialDelay(millis);
     }
 
-    /** Starts the periodic fetch. Call on the EDT. */
+    /** Starts the periodic fetch (unless it is switched off). Call on the EDT. */
     public void start() {
-        timer.start();
+        started = true;
+        if (periodic) {
+            timer.start();
+        }
+    }
+
+    /**
+     * Changes how often all repositories are fetched; empty switches the periodic fetch off (fetching a
+     * repository when it is opened stays). The next periodic fetch comes one full interval from now.
+     * Call on the EDT.
+     */
+    public void setInterval(Optional<Duration> interval) {
+        periodic = interval.isPresent();
+        timer.stop();
+        interval.ifPresent(d -> {
+            int millis = (int) Math.min(Integer.MAX_VALUE, d.toMillis());
+            timer.setDelay(millis);
+            timer.setInitialDelay(millis);
+        });
+        if (periodic && started) {
+            timer.start();
+        }
+    }
+
+    /** Current period, empty when the periodic fetch is off (tests). */
+    Optional<Duration> interval() {
+        return periodic ? Optional.of(Duration.ofMillis(timer.getDelay())) : Optional.empty();
+    }
+
+    /** Whether the periodic timer runs (tests). */
+    boolean isRunning() {
+        return timer.isRunning();
     }
 
     /** Fetches {@code workTree} in the background soon, unless it is waiting already. Any thread. */

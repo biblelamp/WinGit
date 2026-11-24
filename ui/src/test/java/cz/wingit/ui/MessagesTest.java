@@ -14,6 +14,8 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 
 import org.junit.jupiter.api.Test;
@@ -70,6 +72,21 @@ class MessagesTest {
             Messages.setLanguage(Language.ENGLISH);
         }
         assertThat(Messages.get("menu.repository")).isEqualTo("Repository");
+    }
+
+    /** The translated Swing texts must not break the Yes/No questions (they did with Integer mnemonics). */
+    @ParameterizedTest
+    @ValueSource(strings = {"ENGLISH", "RUSSIAN", "CZECH"})
+    void yesNoQuestionsWorkInEveryLanguage(String name) {
+        Theme.install(Theme.Mode.LIGHT);
+        try {
+            Messages.setLanguage(Language.valueOf(name));
+            JOptionPane pane = new JOptionPane("?", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
+            assertThat(pane.getUI()).isNotNull();
+            new JFileChooser();
+        } finally {
+            Messages.setLanguage(Language.ENGLISH);
+        }
     }
 
     /** The file itself, without the parent bundle's keys (so a missing translation shows). */

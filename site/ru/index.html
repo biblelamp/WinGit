@@ -49,12 +49,12 @@
           <p class="lead">WinGit — бесплатный настольный Git-клиент с открытым кодом. Граф истории, сравнение
             в две колонки, индекс, ветки и слияния — всё в одном окне.</p>
           <div class="actions">
-            <a class="btn btn-primary" id="download" href="https://github.com/biblelamp/WinGit/releases/latest"
-               data-label-windows="Скачать {version} для Windows"
-               data-label-linux="Скачать {version} для Linux (.deb)">Скачать для Windows</a>
+            <a class="btn btn-primary" id="download" href="https://apps.microsoft.com/detail/9n63b9trbd92"
+               data-label-linux="Скачать {version} для Linux (.deb)">Установить из Microsoft Store</a>
             <a class="btn btn-secondary" href="https://github.com/biblelamp/WinGit">Открыть на GitHub</a>
           </div>
-          <p class="note">Windows: <a data-asset="msi" href="https://github.com/biblelamp/WinGit/releases/latest">MSI</a>, <a data-asset="windows-zip" href="https://github.com/biblelamp/WinGit/releases/latest">ZIP</a> · Linux: <a data-asset="deb" href="https://github.com/biblelamp/WinGit/releases/latest">DEB</a>, <a data-asset="rpm" href="https://github.com/biblelamp/WinGit/releases/latest">RPM</a>, <a data-asset="tar" href="https://github.com/biblelamp/WinGit/releases/latest">tar.gz</a> · macOS в планах</p>
+          <p class="note" id="release" hidden>Текущая версия: <a id="release-version" href="https://github.com/biblelamp/WinGit/releases/latest"></a></p>
+          <p class="note">Другие загрузки — Windows: <a data-asset="msi" href="https://github.com/biblelamp/WinGit/releases/latest">MSI</a>, <a data-asset="windows-zip" href="https://github.com/biblelamp/WinGit/releases/latest">ZIP</a> · Linux: <a data-asset="deb" href="https://github.com/biblelamp/WinGit/releases/latest">DEB</a>, <a data-asset="rpm" href="https://github.com/biblelamp/WinGit/releases/latest">RPM</a>, <a data-asset="tar" href="https://github.com/biblelamp/WinGit/releases/latest">tar.gz</a>, <a href="https://aur.archlinux.org/packages/wingit-bin">AUR</a> · macOS в планах</p>
           <p class="note"><a href="start/">Новичок в Git? Начните здесь →</a></p>
           <p class="note">Apache-2.0 · <a href="privacy/">Политика конфиденциальности</a></p>
         </div>
@@ -67,11 +67,12 @@
         <h2>Возможности</h2>
         <div class="features">
           <div class="feature"><h3>Граф истории</h3><p>Ветки и слияния в виде наглядного графа коммитов.</p></div>
-          <div class="feature"><h3>Сравнение в две колонки</h3><p>Изменения бок о бок, строки выровнены, синтаксис подсвечен.</p></div>
+          <div class="feature"><h3>Сравнение в две колонки</h3><p>Изменения бок о бок с подсветкой синтаксиса; изменённые слова выделены, а полоса сбоку показывает все изменения файла.</p></div>
+          <div class="feature"><h3>Поиск и полный экран</h3><p>Ищите текст в сравнении по Ctrl+F; двойной щелчок по файлу открывает сравнение на весь экран.</p></div>
           <div class="feature"><h3>Индекс</h3><p>Добавляйте файлы в индекс, убирайте из него или отменяйте изменения перед коммитом.</p></div>
-          <div class="feature"><h3>Commit, push, pull</h3><p>Повседневная работа с удалёнными репозиториями без командной строки.</p></div>
+          <div class="feature"><h3>Commit, push, pull</h3><p>Повседневная работа с удалёнными репозиториями без командной строки. Забыли файл? Последний коммит можно исправить, пока он не отправлен.</p></div>
           <div class="feature"><h3>Ветки и слияния</h3><p>Создание, переименование, удаление и слияние веток в пару кликов.</p></div>
-          <div class="feature"><h3>Все репозитории под рукой</h3><p>Один список, репозитории с изменениями сразу заметны.</p></div>
+          <div class="feature"><h3>Все репозитории под рукой</h3><p>Один список, репозитории с изменениями сразу заметны, а новые коммиты с сервера подгружаются в фоне.</p></div>
           <div class="feature"><h3>Русский, английский, чешский</h3><p>WinGit говорит на языке системы или на том, что вы выберете в настройках.</p></div>
           <div class="feature"><h3>Светлая или тёмная</h3><p>Выберите светлую или тёмную тему — цвета сравнения подстроятся под неё.</p></div>
         </div>
@@ -95,8 +96,10 @@
         <h2>Состояние и планы</h2>
         <ul>
           <li><strong>Сейчас:</strong> ранняя, но рабочая версия — репозитории, файлы, ветки, история, сравнение,
-            индекс, commit, push, pull и слияние; на русском, английском или чешском, со светлой или тёмной темой.</li>
-          <li><strong>Дальше:</strong> найти бета-тестеров и сделать сборку для macOS.</li>
+            индекс, commit и amend, push, pull и слияние; на русском, английском или чешском, со светлой или тёмной темой.
+            Пока в истории видны только последние 50 коммитов, а конфликты слияния нужно решать другими средствами.</li>
+          <li><strong>Дальше:</strong> полная история, помощь с конфликтами слияния, добавление в индекс части файла
+            и сборка для macOS — см. <a href="https://github.com/biblelamp/WinGit/blob/main/ROADMAP.ru.md">план развития</a>.</li>
         </ul>
         <p>Хотите помочь? Скачайте WinGit, попробуйте на своих репозиториях и расскажите, что работает, а что нет.
           Сообщения об ошибках, идеи и pull request-ы приветствуются. Вопросы можно задать

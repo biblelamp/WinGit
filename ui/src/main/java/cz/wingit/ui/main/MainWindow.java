@@ -37,6 +37,7 @@ import cz.wingit.ui.branches.NewBranchAction;
 import cz.wingit.ui.branches.RenameBranchAction;
 import cz.wingit.ui.commit.CommitAction;
 import cz.wingit.ui.diff.DiffPane;
+import cz.wingit.ui.diff.DiffWindow;
 import cz.wingit.ui.files.FileAction;
 import cz.wingit.ui.files.FilesPane;
 import cz.wingit.ui.history.HistoryPane;
@@ -48,6 +49,8 @@ import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
 import cz.wingit.ui.settings.Appearance;
+import cz.wingit.ui.settings.FetchInterval;
+import cz.wingit.ui.settings.Preferences;
 import cz.wingit.ui.settings.SettingsAction;
 import cz.wingit.ui.stash.SelectedStashAction;
 import cz.wingit.ui.stash.StashAction;
@@ -69,6 +72,8 @@ public final class MainWindow extends JFrame {
     private final MainContent mainContent;
     private final FilesPane filesPane;
     private final transient GitService git;
+    private final transient AutoFetch autoFetch;
+    private final CommitAction commitAction;
     private Optional<Path> openedRepository = Optional.empty();
     private String version;
     /** Bounds in the normal (not maximized) state; what we save and restore. */
@@ -88,16 +93,20 @@ public final class MainWindow extends JFrame {
         HistoryPane historyPane = new HistoryPane(git);
         DiffPane diffPane = new DiffPane(git);
         filesPane.addFileSelectionListener(diffPane::showFile);
+        filesPane.addFileOpenListener(file -> filesPane.repository()
+                .ifPresent(repo -> DiffWindow.open(this, git, repo, file)));
         filesPane.addStatusListener((path, status) -> repositoriesPane.updateChanged(path, !status.isClean()));
+        filesPane.addStatusListener((path, status) -> DiffWindow.statusChanged(path, status.changes()));
         Runnable refresh = () -> {
             filesPane.refresh();
             branchesPane.refresh();
             historyPane.refresh();
             diffPane.refresh();
+            DiffWindow.refreshAll();
             repositoriesPane.openedRepository().ifPresent(repositoriesPane::refreshBranch);
         };
         AutoRefresh autoRefresh = new AutoRefresh(git, refresh);
-        AutoFetch autoFetch = new AutoFetch(git, repositoriesPane::paths, fetched -> {
+        autoFetch = new AutoFetch(git, repositoriesPane::paths, fetched -> {
             if (repositoriesPane.openedRepository().filter(fetched::equals).isPresent()) {
                 refresh.run(); // the history shows the new commits, the list their count
             } else {
@@ -105,7 +114,8 @@ public final class MainWindow extends JFrame {
             }
         });
         Action fetch = RemoteAction.fetch(git, repositoriesPane, refresh);
-        Action commit = new CommitAction(git, repositoriesPane, filesPane::selectedChanges, refresh);
+        commitAction = new CommitAction(git, repositoriesPane, filesPane::selectedChanges, refresh);
+        Action commit = commitAction;
         Action pull = RemoteAction.pull(git, repositoriesPane, refresh);
         Action push = RemoteAction.push(git, repositoriesPane, refresh);
         Action stage = FileAction.stage(git, filesPane, refresh);
@@ -188,10 +198,21 @@ public final class MainWindow extends JFrame {
      * stored settings ({@code save} may throw {@link java.io.UncheckedIOException}); {@code restart}, if this
      * run can restart itself, saves the state, starts a new instance and exits.
      */
-    public void installSettings(Appearance active, Supplier<Appearance> load, Consumer<Appearance> save,
+    public void installSettings(Appearance active, Supplier<Preferences> load, Consumer<Preferences> save,
                                 Optional<Runnable> restart) {
-        ((MainMenuBar) getJMenuBar()).addSettingsAction(
-                new SettingsAction(this, active, load, git, repositoriesPane::openedRepository, save, restart));
+        Consumer<Preferences> saveAndApply = chosen -> {
+            save.accept(chosen);
+            setFetchInterval(chosen.fetch());
+        };
+        SettingsAction settings = new SettingsAction(this, active, load, git,
+                repositoriesPane::openedRepository, saveAndApply, restart);
+        ((MainMenuBar) getJMenuBar()).addSettingsAction(settings);
+        commitAction.setOpenSettings(settings::open); // the Git user icon of the commit dialog
+    }
+
+    /** How often all repositories are fetched in the background (or never). Call on the EDT. */
+    public void setFetchInterval(FetchInterval interval) {
+        autoFetch.setInterval(interval.duration());
     }
 
     public void setVersion(String version) {

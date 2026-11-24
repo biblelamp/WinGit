@@ -14,6 +14,39 @@ final class DiffChanges {
     private DiffChanges() {
     }
 
+    /**
+     * A changed fragment: rows {@code start} (inclusive) to {@code end} (exclusive), and whether it removes
+     * lines of the left side and adds lines of the right side (a changed line does both).
+     */
+    record Fragment(int start, int end, boolean removes, boolean adds) {
+    }
+
+    /** The changed fragments, in order. */
+    static List<Fragment> fragments(List<DiffRow> rows) {
+        List<Fragment> fragments = new ArrayList<>();
+        int start = -1;
+        boolean removes = false;
+        boolean adds = false;
+        for (int i = 0; i <= rows.size(); i++) {
+            DiffRow.Type type = i < rows.size() ? rows.get(i).type() : DiffRow.Type.SAME;
+            if (type == DiffRow.Type.SAME) {
+                if (start >= 0) {
+                    fragments.add(new Fragment(start, i, removes, adds));
+                    start = -1;
+                }
+                continue;
+            }
+            if (start < 0) {
+                start = i;
+                removes = false;
+                adds = false;
+            }
+            removes |= type != DiffRow.Type.ADDED;
+            adds |= type != DiffRow.Type.DELETED;
+        }
+        return fragments;
+    }
+
     /** Index of the first row of each changed fragment, in order. */
     static List<Integer> starts(List<DiffRow> rows) {
         List<Integer> starts = new ArrayList<>();

@@ -65,6 +65,15 @@ class FilesPaneTest {
         assertThat(selections).hasSize(1);
         assertThat(selections.get(0)).isPresent();
 
+        // a double-click opens that file (in a diff window of its own)
+        List<FileChange> opened = new ArrayList<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0].addFileOpenListener(opened::add);
+            pane[0].openRowForTest(0);
+            pane[0].openRowForTest(-1);
+        });
+        assertThat(opened).containsExactly(selections.get(0).get());
+
         AtomicInteger filtered = new AtomicInteger();
         SwingUtilities.invokeAndWait(() -> {
             pane[0].setFilterText("SRC\\app");

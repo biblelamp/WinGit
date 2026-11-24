@@ -55,6 +55,7 @@ public final class FilesPane extends TitledPane {
     private boolean refreshQueued;
     private final transient List<BiConsumer<Path, RepositoryStatus>> statusListeners = new ArrayList<>();
     private final transient List<Consumer<Optional<FileChange>>> fileSelectionListeners = new ArrayList<>();
+    private final transient List<Consumer<FileChange>> fileOpenListeners = new ArrayList<>();
     private transient Optional<FileChange> notifiedSelection = Optional.empty();
     private boolean replacingRows;
     private int generation;
@@ -116,6 +117,11 @@ public final class FilesPane extends TitledPane {
      */
     public void addFileSelectionListener(Consumer<Optional<FileChange>> listener) {
         fileSelectionListeners.add(listener);
+    }
+
+    /** Notified (on the EDT) when a file is double-clicked, e.g. to show its diff in a window of its own. */
+    public void addFileOpenListener(Consumer<FileChange> listener) {
+        fileOpenListeners.add(listener);
     }
 
     /** Notified (on the EDT) with every status successfully read for the shown repository. */
@@ -313,9 +319,22 @@ public final class FilesPane extends TitledPane {
         table.setRowSelectionInterval(row, row);
     }
 
+    /** Opens a visible row as a double-click does (for tests). */
+    void openRowForTest(int row) {
+        openRow(row);
+    }
+
     /** Number of rows currently shown (after filtering). */
     int visibleRowCount() {
         return table.getRowCount();
+    }
+
+    private void openRow(int row) {
+        int modelRow = row >= 0 && row < table.getRowCount() ? table.convertRowIndexToModel(row) : -1;
+        if (modelRow >= 0 && modelRow < model.getRowCount()) {
+            FileChange change = model.getChange(modelRow);
+            fileOpenListeners.forEach(listener -> listener.accept(change));
+        }
     }
 
     private void configureTable() {
@@ -325,6 +344,14 @@ public final class FilesPane extends TitledPane {
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && !replacingRows) {
                 notifySelection();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
+                    openRow(table.rowAtPoint(e.getPoint()));
+                }
             }
         });
         table.getColumnModel().getColumn(FileChangeTableModel.NAME).setCellRenderer(new FileNameCellRenderer(model));

@@ -2,14 +2,19 @@ package cz.wingit.ui.diff;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Highlighter;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -17,6 +22,7 @@ import org.fife.ui.rtextarea.LineNumberFormatter;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
 import cz.wingit.core.diff.DiffRow;
+import cz.wingit.core.diff.InlineDiff;
 import cz.wingit.ui.Theme;
 
 /**
@@ -27,10 +33,26 @@ final class DiffSide extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    static final Color DELETED = new Color(0xDB, 0x58, 0x60, 56);
-    static final Color ADDED = new Color(0x59, 0xA8, 0x69, 56);
-    static final Color CHANGED = new Color(0xED, 0xA2, 0x00, 48);
+    // Line backgrounds (translucent, so they work on the light and the dark theme): a deleted or added line
+    // in full color, a changed line lighter, with its changed words (InlineDiff) in full color on top.
+    static final Color DELETED = new Color(0xE8, 0x5C, 0x64, 90); // about #F7C5C8 on a white background
+    static final Color ADDED = new Color(0x5C, 0xC8, 0x5C, 90); // about #C5ECC5 on a white background
+    static final Color CHANGED_LEFT = new Color(0xE8, 0x5C, 0x64, 36);
+    static final Color CHANGED_RIGHT = new Color(0x5C, 0xC8, 0x5C, 40);
+    static final Color CHANGED_WORDS_LEFT = new Color(0xE8, 0x5C, 0x64, 80);
+    static final Color CHANGED_WORDS_RIGHT = new Color(0x5C, 0xC8, 0x5C, 85);
     static final Color FILLER = new Color(128, 128, 128, 28);
+    static final Color MATCH = new Color(0xFF, 0xC8, 0x00, 110);
+    static final Color CURRENT_MATCH = new Color(0xFF, 0x80, 0x00, 190);
+    private static final Highlighter.HighlightPainter MATCH_PAINTER =
+            new DefaultHighlighter.DefaultHighlightPainter(MATCH);
+    private static final Highlighter.HighlightPainter CURRENT_MATCH_PAINTER =
+            new DefaultHighlighter.DefaultHighlightPainter(CURRENT_MATCH);
+
+    private static final Highlighter.HighlightPainter CHANGED_WORDS_LEFT_PAINTER =
+            new DefaultHighlighter.DefaultHighlightPainter(CHANGED_WORDS_LEFT);
+    private static final Highlighter.HighlightPainter CHANGED_WORDS_RIGHT_PAINTER =
+            new DefaultHighlighter.DefaultHighlightPainter(CHANGED_WORDS_RIGHT);
 
     private static final String DARK_SCHEME = "/org/fife/ui/rsyntaxtextarea/themes/dark.xml";
 
@@ -41,6 +63,10 @@ final class DiffSide extends JPanel {
     /** Real line number per visual line (index = visual line - 1); 0 for fillers. */
     private int[] lineNumbers = new int[0];
     private int maxLineNumber;
+    /** Highlights of the search matches on this side. */
+    private final List<Object> matchHighlights = new ArrayList<>();
+    /** Highlights of the changed words of changed lines on this side. */
+    private final List<Object> wordHighlights = new ArrayList<>();
 
     DiffSide(boolean leftSide) {
         super(new BorderLayout());
@@ -96,8 +122,12 @@ final class DiffSide extends JPanel {
         caption.setText(text);
     }
 
-    /** Shows this side of the rows; keeps the scroll position when the same file is refreshed. */
-    void setRows(List<DiffRow> rows, String syntaxStyle) {
+    /**
+     * Shows this side of the rows; keeps the scroll position when the same file is refreshed.
+     *
+     * @param changedWords per row, the changed words of a {@link DiffRow.Type#CHANGED} row, else null
+     */
+    void setRows(List<DiffRow> rows, List<InlineDiff.Result> changedWords, String syntaxStyle) {
         StringBuilder text = new StringBuilder();
         int[] numbers = new int[rows.size()];
         int max = 0;
@@ -113,6 +143,8 @@ final class DiffSide extends JPanel {
         }
         lineNumbers = numbers;
         maxLineNumber = max;
+        clearMatches();
+        clearHighlights(wordHighlights);
 
         area.setSyntaxEditingStyle(syntaxStyle);
         area.removeAllLineHighlights();
@@ -127,14 +159,36 @@ final class DiffSide extends JPanel {
                     // cannot happen: the text has exactly rows.size() lines
                 }
             }
+            InlineDiff.Result words = changedWords.get(i);
+            if (words != null) {
+                highlightWords(i, leftSide ? words.left() : words.right());
+            }
         }
         scroll.getGutter().repaint();
+    }
+
+    private void highlightWords(int row, List<InlineDiff.Range> ranges) {
+        Highlighter.HighlightPainter painter = leftSide ? CHANGED_WORDS_LEFT_PAINTER : CHANGED_WORDS_RIGHT_PAINTER;
+        try {
+            int offset = area.getLineStartOffset(row);
+            for (InlineDiff.Range range : ranges) {
+                wordHighlights.add(area.getHighlighter().addHighlight(offset + range.start(),
+                        offset + range.end(), painter));
+            }
+        } catch (BadLocationException e) {
+            // cannot happen: the ranges are within the line of this row
+        }
+    }
+
+    /** Number of changed-word highlights shown (tests). */
+    int changedWordCount() {
+        return wordHighlights.size();
     }
 
     private Color highlight(DiffRow row) {
         switch (row.type()) {
             case CHANGED:
-                return CHANGED;
+                return leftSide ? CHANGED_LEFT : CHANGED_RIGHT;
             case DELETED:
                 return leftSide ? DELETED : FILLER;
             case ADDED:
@@ -142,6 +196,53 @@ final class DiffSide extends JPanel {
             case SAME:
             default:
                 return null;
+        }
+    }
+
+    /** Highlights the matches of this side; {@code current} (of either side, or null) stands out. */
+    void showMatches(List<DiffSearch.Match> matches, DiffSearch.Match current) {
+        clearMatches();
+        for (DiffSearch.Match match : matches) {
+            if (match.left() != leftSide) {
+                continue;
+            }
+            try {
+                int offset = area.getLineStartOffset(match.row());
+                matchHighlights.add(area.getHighlighter().addHighlight(offset + match.start(),
+                        offset + match.end(), match.equals(current) ? CURRENT_MATCH_PAINTER : MATCH_PAINTER));
+            } catch (BadLocationException e) {
+                // the match belongs to rows not shown (any more); skip it
+            }
+        }
+    }
+
+    private void clearMatches() {
+        clearHighlights(matchHighlights);
+    }
+
+    private void clearHighlights(List<Object> highlights) {
+        for (Object highlight : highlights) {
+            area.getHighlighter().removeHighlight(highlight);
+        }
+        highlights.clear();
+    }
+
+    /** Scrolls a match of this side into view, with {@code contextLines} lines above and below it. */
+    void scrollToMatch(DiffSearch.Match match, int contextLines) {
+        try {
+            int offset = area.getLineStartOffset(match.row());
+            Rectangle2D start = area.modelToView2D(offset + match.start());
+            Rectangle2D end = area.modelToView2D(offset + match.end());
+            if (start == null || end == null) {
+                return; // not laid out yet
+            }
+            Rectangle bounds = start.createUnion(end).getBounds();
+            int context = contextLines * area.getLineHeight();
+            bounds.y -= context;
+            bounds.height += 2 * context;
+            area.scrollRectToVisible(bounds);
+        } catch (BadLocationException e) {
+            // the match belongs to rows not shown (any more)
         }
     }
 

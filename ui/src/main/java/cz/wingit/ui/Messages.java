@@ -85,7 +85,9 @@ public final class Messages {
             if (key.startsWith(SWING_PREFIX)) {
                 String uiKey = key.substring(SWING_PREFIX.length());
                 String value = loaded.getString(key);
-                UIManager.put(uiKey, uiKey.endsWith("Mnemonic") ? (Object) Integer.valueOf(value.trim()) : value);
+                // Mnemonics stay strings: the option pane casts them to String (a file chooser takes both),
+                // an Integer there made every Yes/No question fail silently.
+                UIManager.put(uiKey, uiKey.endsWith("Mnemonic") ? value.trim() : value);
                 installedSwingKeys.add(uiKey);
             }
         }

@@ -21,7 +21,8 @@ import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Dialogs;
 
 /**
- * Repository → Settings…: opens the Settings dialog and saves the choice (applied at the next start).
+ * Repository → Settings…: opens the Settings dialog and saves the choice. Language and theme apply at the
+ * next start (a restart is offered), the fetch interval at once.
  */
 public final class SettingsAction extends AbstractAction {
 
@@ -29,24 +30,25 @@ public final class SettingsAction extends AbstractAction {
 
     private final transient Component parent;
     private final transient Appearance active;
-    private final transient Supplier<Appearance> load;
+    private final transient Supplier<Preferences> load;
     private final transient GitService git;
     private final transient Supplier<Optional<Path>> repository;
-    private final transient Consumer<Appearance> save;
+    private final transient Consumer<Preferences> save;
     private final transient Optional<Runnable> restart;
 
     /**
-     * @param active     what the running application uses
+     * @param active     the appearance the running application uses
      * @param load       reads the saved settings
      * @param git        reads the Git user shown in the dialog
      * @param repository the opened repository, if any (called on the EDT)
-     * @param save       stores the settings; may throw {@link UncheckedIOException}
+     * @param save       stores the settings and applies what applies at once; may throw
+     *                   {@link UncheckedIOException}
      * @param restart    starts a new instance and exits (may throw {@link UncheckedIOException}); empty if
      *                   this run cannot restart itself
      */
-    public SettingsAction(Component parent, Appearance active, Supplier<Appearance> load,
+    public SettingsAction(Component parent, Appearance active, Supplier<Preferences> load,
                           GitService git, Supplier<Optional<Path>> repository,
-                          Consumer<Appearance> save, Optional<Runnable> restart) {
+                          Consumer<Preferences> save, Optional<Runnable> restart) {
         super(Messages.get("menu.repository.settings"));
         this.parent = parent;
         this.active = active;
@@ -61,17 +63,22 @@ public final class SettingsAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        Appearance saved = load.get();
-        Optional<Appearance> choice = SettingsDialog.show(parent, saved, active, git, repository.get());
+        open(parent);
+    }
+
+    /** Opens the Settings dialog over the window of {@code owner}, e.g. the commit dialog. Call on the EDT. */
+    public void open(Component owner) {
+        Preferences saved = load.get();
+        Optional<Preferences> choice = SettingsDialog.show(owner, saved, active, git, repository.get());
         choice.filter(chosen -> !chosen.equals(saved)).ifPresent(chosen -> {
             try {
                 save.accept(chosen);
             } catch (UncheckedIOException ex) {
-                Dialogs.showError(parent, Messages.get("settings.error.title"), ex.getMessage());
+                Dialogs.showError(owner, Messages.get("settings.error.title"), ex.getMessage());
                 return;
             }
-            if (differsFromActive(chosen)) {
-                restart.ifPresent(r -> offerRestart(r, chosen.language()));
+            if (differsFromActive(chosen.appearance())) {
+                restart.ifPresent(r -> offerRestart(owner, r, chosen.appearance().language()));
             }
         });
     }
@@ -84,10 +91,10 @@ public final class SettingsAction extends AbstractAction {
     }
 
     /** Asks in the newly chosen language, so the user can read it whichever language they picked. */
-    private void offerRestart(Runnable restartNow, Language language) {
+    private static void offerRestart(Component owner, Runnable restartNow, Language language) {
         String now = Messages.get(language, "settings.restart.now");
         String later = Messages.get(language, "settings.restart.later");
-        int choice = JOptionPane.showOptionDialog(parent, Messages.get(language, "settings.restart.question"),
+        int choice = JOptionPane.showOptionDialog(owner, Messages.get(language, "settings.restart.question"),
                 Messages.get(language, "settings.restart.title"), JOptionPane.DEFAULT_OPTION,
                 JOptionPane.QUESTION_MESSAGE, null, new Object[] {now, later}, now);
         if (choice != 0) {
@@ -96,7 +103,7 @@ public final class SettingsAction extends AbstractAction {
         try {
             restartNow.run();
         } catch (UncheckedIOException ex) {
-            Dialogs.showError(parent, Messages.get("settings.restart.error.title"),
+            Dialogs.showError(owner, Messages.get("settings.restart.error.title"),
                     Messages.format("settings.restart.error.message", ex.getMessage()));
         }
     }

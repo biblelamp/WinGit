@@ -1,5 +1,6 @@
 package cz.wingit.ui.diff;
 
+import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.GridBagLayout;
 import java.io.File;
@@ -16,6 +17,8 @@ import org.fife.ui.rsyntaxtextarea.FileTypeUtil;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import cz.wingit.core.diff.DiffReader;
+import cz.wingit.core.diff.DiffRow;
+import cz.wingit.core.diff.InlineDiff;
 import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.diff.FileVersion;
 import cz.wingit.ui.Messages;
@@ -35,6 +38,8 @@ final class DiffView extends JPanel {
     private final JLabel message = new JLabel();
     private final DiffSide left = new DiffSide(true);
     private final DiffSide right = new DiffSide(false);
+    /** Marks of the changes along the right edge, like a map of the whole file. */
+    private final DiffOverview overview = new DiffOverview(this::scrollToRow);
     private String shownPath;
 
     /** Lines of context shown above a fragment that "next/previous change" scrolled to. */
@@ -46,6 +51,13 @@ final class DiffView extends JPanel {
     /** Top line after that navigation; if the view is scrolled elsewhere, navigation starts from there. */
     private int navigatedTop = -1;
     private final List<Runnable> navigationListeners = new ArrayList<>();
+    /** Rows of the shown diff, for the search. */
+    private List<DiffRow> rows = List.of();
+    private String query = "";
+    private boolean matchCase;
+    private List<DiffSearch.Match> matches = List.of();
+    /** Match the user went to last (or the search jumped to), -1 for none. */
+    private int currentMatch = -1;
 
     DiffView() {
         setLayout(cards);
@@ -56,6 +68,7 @@ final class DiffView extends JPanel {
         add(messagePanel, MESSAGE);
 
         add(new HalfSplitPane(left, right), DIFF);
+        right.add(overview, BorderLayout.EAST); // beside the scroll pane, below the caption
 
         // aligned sides have the same number of lines, so they can share the vertical scroll model
         right.scrollPane().getVerticalScrollBar().setModel(left.scrollPane().getVerticalScrollBar().getModel());
@@ -67,6 +80,10 @@ final class DiffView extends JPanel {
         shownPath = null;
         changes = List.of();
         current = -1;
+        rows = List.of();
+        matches = List.of();
+        currentMatch = -1;
+        overview.setFragments(List.of(), 0);
         message.setText(text);
         cards.show(this, MESSAGE);
         fireNavigation();
@@ -88,13 +105,21 @@ final class DiffView extends JPanel {
         String style = syntaxStyle(diff.path());
         left.setCaption(caption(diff.left()));
         right.setCaption(caption(diff.right()));
-        left.setRows(diff.rows(), style);
-        right.setRows(diff.rows(), style);
+        List<InlineDiff.Result> changedWords = changedWords(diff.rows());
+        left.setRows(diff.rows(), changedWords, style);
+        right.setRows(diff.rows(), changedWords, style);
+        overview.setFragments(DiffChanges.fragments(diff.rows()), diff.rows().size());
         shownPath = diff.path();
         changes = DiffChanges.starts(diff.rows());
         if (!sameFile || current >= changes.size()) {
             current = -1;
         }
+        rows = diff.rows();
+        matches = DiffSearch.find(rows, query, matchCase);
+        if (!sameFile || currentMatch >= matches.size()) {
+            currentMatch = -1;
+        }
+        showMatches();
         cards.show(this, DIFF);
         if (sameFile) {
             SwingUtilities.invokeLater(() -> left.scrollPane().getVerticalScrollBar().setValue(scrollValue));
@@ -130,6 +155,75 @@ final class DiffView extends JPanel {
 
     void previousChange() {
         goTo(DiffChanges.previous(changes, reference(false)));
+    }
+
+    /**
+     * Searches both sides for {@code text} (plain text), highlights the matches and scrolls to the first one
+     * at or below the top of the view; an empty text ends the search.
+     */
+    void search(String text, boolean caseSensitive) {
+        query = text == null ? "" : text;
+        matchCase = caseSensitive;
+        matches = DiffSearch.find(rows, query, matchCase);
+        currentMatch = DiffSearch.firstFrom(matches, topLine());
+        showMatches();
+        scrollToMatch();
+        fireNavigation();
+    }
+
+    /** Goes to the next match, after the last one back to the first. */
+    void nextMatch() {
+        if (matches.isEmpty()) {
+            return;
+        }
+        currentMatch = currentMatch < 0 ? DiffSearch.firstFrom(matches, topLine())
+                : (currentMatch + 1) % matches.size();
+        showMatches();
+        scrollToMatch();
+        fireNavigation();
+    }
+
+    /** Goes to the previous match, before the first one to the last. */
+    void previousMatch() {
+        if (matches.isEmpty()) {
+            return;
+        }
+        int from = currentMatch < 0 ? DiffSearch.firstFrom(matches, topLine()) : currentMatch;
+        currentMatch = (from - 1 + matches.size()) % matches.size();
+        showMatches();
+        scrollToMatch();
+        fireNavigation();
+    }
+
+    /** "2 of 5" at a match, "5 match(es)", "No matches"; empty without a search. */
+    String matchesText() {
+        if (query.isEmpty()) {
+            return "";
+        }
+        if (matches.isEmpty()) {
+            return Messages.get("diff.search.none");
+        }
+        String total = String.valueOf(matches.size());
+        return currentMatch < 0 ? Messages.format("diff.search.count", total)
+                : Messages.format("diff.changes.position", String.valueOf(currentMatch + 1), total);
+    }
+
+    /** The match gone to last, or null (tests). */
+    DiffSearch.Match currentMatch() {
+        return currentMatch < 0 ? null : matches.get(currentMatch);
+    }
+
+    private void showMatches() {
+        DiffSearch.Match match = currentMatch();
+        left.showMatches(matches, match);
+        right.showMatches(matches, match);
+    }
+
+    private void scrollToMatch() {
+        DiffSearch.Match match = currentMatch();
+        if (match != null) {
+            (match.left() ? left : right).scrollToMatch(match, CONTEXT_LINES);
+        }
     }
 
     /** "3 of 7" after navigating, "7 change(s)" otherwise; empty without a diff or changes. */
@@ -187,6 +281,26 @@ final class DiffView extends JPanel {
         for (Runnable listener : navigationListeners) {
             listener.run();
         }
+    }
+
+    /** Per row, the changed words of a changed row, null for other rows. */
+    static List<InlineDiff.Result> changedWords(List<DiffRow> rows) {
+        List<InlineDiff.Result> words = new ArrayList<>(rows.size());
+        for (DiffRow row : rows) {
+            words.add(row.type() == DiffRow.Type.CHANGED ? InlineDiff.compute(row.leftText(), row.rightText()) : null);
+        }
+        return words;
+    }
+
+    /** Scrolls so that {@code row} is near the top, below a few lines of context (overview clicks). */
+    void scrollToRow(int row) {
+        JScrollBar bar = left.scrollPane().getVerticalScrollBar();
+        int lineHeight = Math.max(1, left.textArea().getLineHeight());
+        bar.setValue(Math.max(0, row - CONTEXT_LINES) * lineHeight);
+    }
+
+    DiffOverview overview() {
+        return overview;
     }
 
     /** Path of the file currently displayed, or null when a message is shown. */

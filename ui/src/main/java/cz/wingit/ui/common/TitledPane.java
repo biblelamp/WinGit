@@ -32,15 +32,24 @@ public class TitledPane extends JPanel {
             return new Dimension(size.width, Math.max(size.height, withField));
         }
     };
+    private JComponent headerMain;
 
     public TitledPane(String title, JComponent content) {
         super(new BorderLayout());
 
-        header.add(new JLabel(title), BorderLayout.WEST);
+        headerMain = new JLabel(title);
+        header.add(headerMain, BorderLayout.WEST);
         header.setBorder(SeparatorBorder.bottom(3, 6));
 
         add(header, BorderLayout.NORTH);
         add(content, BorderLayout.CENTER);
+    }
+
+    /** Replaces the title on the left side of the header with another component (e.g. a search field). */
+    protected void setHeaderMain(JComponent main) {
+        header.remove(headerMain);
+        headerMain = main;
+        header.add(main, BorderLayout.WEST);
     }
 
     /** Places a component (e.g. a filter field or small toolbar) on the right side of the header. */

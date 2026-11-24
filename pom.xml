@@ -6,7 +6,7 @@
 
     <groupId>cz.wingit</groupId>
     <artifactId>wingit-parent</artifactId>
-    <version>0.3.6-SNAPSHOT</version>
+    <version>0.3.7-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>WinGit</name>

@@ -64,8 +64,8 @@ git config --global user.email "ivan@example.com"</pre>
           <span class="step-num" aria-hidden="true">3</span>
           <div>
             <h2>Установите WinGit</h2>
-            <p>Скачайте установщик (MSI) на <a href="../">главной странице</a> и запустите его. WinGit появится в меню «Пуск».</p>
-            <p class="muted">Не хотите ничего устанавливать? Скачайте ZIP, распакуйте в любую папку и запустите <code>WinGit.exe</code>.</p>
+            <p>Откройте WinGit в <a href="https://apps.microsoft.com/detail/9n63b9trbd92">Microsoft Store</a> и нажмите <strong>Получить</strong>. WinGit появится в меню «Пуск», а Store будет сам её обновлять.</p>
+            <p class="muted">Microsoft Store недоступен? Скачайте установщик (MSI) на <a href="../">главной странице</a> и запустите его. Не хотите ничего устанавливать? Скачайте ZIP, распакуйте в любую папку и запустите <code>WinGit.exe</code>.</p>
           </div>
         </li>
         <li class="step" id="repository">
@@ -83,7 +83,7 @@ git config --global user.email "ivan@example.com"</pre>
           <span class="step-num" aria-hidden="true">5</span>
           <div>
             <h2>Посмотрите изменения</h2>
-            <p>Измените любой файл в папке репозитория. WinGit заметит это и покажет файл в списке <em>Files</em>. Щёлкните по нему: в <em>Diff</em> слева будет прежняя версия, справа — ваша, изменённые строки выделены.</p>
+            <p>Измените любой файл в папке репозитория. WinGit заметит это и покажет файл в списке <em>Files</em>. Щёлкните по нему: в <em>Diff</em> слева будет прежняя версия, справа — ваша, изменённые строки выделены. Двойной щелчок по файлу откроет сравнение на весь экран.</p>
             <p class="muted">Красное название репозитория в списке означает, что в нём есть изменения, ещё не попавшие в коммит.</p>
             <figure class="step-shot"><a href="../../assets/start/changes.webp"><img class="shot" src="../../assets/start/changes.webp" width="1280" height="759" loading="lazy" alt="Главное окно: изменённый README.md в Files, старый и новый текст рядом в Diff"></a><figcaption>Новые строки справа выделены зелёным.</figcaption></figure>
           </div>
@@ -93,7 +93,7 @@ git config --global user.email "ivan@example.com"</pre>
           <div>
             <h2>Сделайте коммит</h2>
             <p>Коммит сохраняет снимок ваших изменений в истории. Нажмите <em>Commit</em> на панели кнопок (<kbd>Ctrl+K</kbd>), отметьте нужные файлы, коротко опишите, что изменили, и нажмите <em>Commit</em>. <em>Commit &amp; Push</em> сразу же отправит коммит на сервер.</p>
-            <p class="muted">Новый коммит появится вверху <em>History</em>.</p>
+            <p class="muted">Новый коммит появится вверху <em>History</em>. Что-то забыли? Пока коммит не отправлен, отметьте в том же окне <em>Изменить последний коммит</em> — он будет исправлен, а не создан новый.</p>
             <figure class="step-shot"><a href="../../assets/start/commit.png"><img class="shot" src="../../assets/start/commit.png" width="825" height="609" loading="lazy" alt="Окно Commit с отмеченным файлом и сообщением коммита"></a></figure>
           </div>
         </li>
@@ -101,7 +101,7 @@ git config --global user.email "ivan@example.com"</pre>
           <span class="step-num" aria-hidden="true">7</span>
           <div>
             <h2>Pull и push</h2>
-            <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) отправляет ваши коммиты на сервер.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) забирает коммиты, которые отправили другие.</li><li><em>Fetch</em> только проверяет, что нового на сервере, и не меняет ваши файлы. Если иконка репозитория стала зелёной — есть что забрать через Pull.</li></ul>
+            <ul><li><em>Push</em> (<kbd>Ctrl+Shift+K</kbd>) отправляет ваши коммиты на сервер.</li><li><em>Pull</em> (<kbd>Ctrl+T</kbd>) забирает коммиты, которые отправили другие.</li><li><em>Fetch</em> только проверяет, что нового на сервере, и не меняет ваши файлы. Если иконка репозитория стала зелёной — есть что забрать через Pull. WinGit делает Fetch и сам, в фоне; интервал задаётся в <em>Настройках</em>.</li></ul>
             <figure class="step-shot"><a href="../../assets/start/pushed.png"><img class="shot" src="../../assets/start/pushed.png" width="1280" height="759" loading="lazy" alt="Главное окно после Commit &amp; Push: новый коммит вверху History"></a><figcaption>После Commit &amp; Push ветка и её копия <code>origin/…</code> указывают на один и тот же коммит — он уже на сервере.</figcaption></figure>
           </div>
         </li>

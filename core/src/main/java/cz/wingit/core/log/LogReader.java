@@ -118,6 +118,24 @@ public final class LogReader {
         return head == null ? 0 : unpushed(repository, head, max).size();
     }
 
+    /** Whether {@code commit} is on any remote-tracking branch, i.e. was pushed or fetched. */
+    public static boolean isOnRemoteBranch(Repository repository, ObjectId commit) throws IOException {
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit target = walk.parseCommit(commit);
+            for (Ref ref : repository.getRefDatabase().getRefsByPrefix(Constants.R_REMOTES)) {
+                if (ref.isSymbolic() || ref.getObjectId() == null) {
+                    continue;
+                }
+                RevObject tip = walk.peel(walk.parseAny(ref.getObjectId()));
+                if (tip instanceof RevCommit remoteCommit && walk.isMergedInto(target, remoteCommit)) {
+                    return true;
+                }
+                walk.reset();
+            }
+        }
+        return false;
+    }
+
     /**
      * Number of commits on the upstream of the checked-out branch (as last fetched) that are not on
      * HEAD, counted up to {@code max}. 0 without upstream, with a detached HEAD or without commits.

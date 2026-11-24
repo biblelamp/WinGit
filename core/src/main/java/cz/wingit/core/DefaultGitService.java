@@ -651,8 +651,8 @@ public final class DefaultGitService implements GitService {
     }
 
     @Override
-    public void commit(Path workTree, List<FileChange> changes, String message, Instant date) {
-        if (changes.isEmpty()) {
+    public void commit(Path workTree, List<FileChange> changes, String message, Instant date, boolean amend) {
+        if (changes.isEmpty() && !amend) {
             throw new IllegalArgumentException("Nothing selected to commit");
         }
         if (message.isBlank()) {
@@ -675,16 +675,36 @@ public final class DefaultGitService implements GitService {
         Map<String, String> environment = date == null ? Map.of() : Map.of(
                 "GIT_AUTHOR_DATE", gitDate(date, ZoneId.systemDefault()),
                 "GIT_COMMITTER_DATE", gitDate(date, ZoneId.systemDefault()));
+        // An amend takes the author (with its date) from the old commit; only --date replaces that date.
+        List<String> amendArgs = new ArrayList<>();
+        if (amend) {
+            amendArgs.add("--amend");
+            if (date != null) {
+                amendArgs.add("--date=" + gitDate(date, ZoneId.systemDefault()));
+            }
+        }
         if (readRepository(workTree, r -> r.getRepositoryState() != RepositoryState.SAFE)) {
+            if (amend) {
+                throw new IllegalStateException("Cannot amend while a merge or similar operation is in progress");
+            }
             cli.run(workTree, List.of("commit", "--file=-"), null, environment, message);
+            return;
+        }
+        if (paths.isEmpty()) {
+            // only the message of the last commit: --only without paths leaves other staged changes out
+            List<String> args = new ArrayList<>(List.of("commit", "--only", "--file=-"));
+            args.addAll(amendArgs);
+            cli.run(workTree, args, null, environment, message);
             return;
         }
         Path pathspecFile = null;
         try {
             pathspecFile = Files.createTempFile("wingit-commit-", ".paths");
             Files.writeString(pathspecFile, nulSeparated(paths), StandardCharsets.UTF_8);
-            cli.run(workTree, List.of("--literal-pathspecs", "commit", "--file=-",
-                    "--pathspec-from-file=" + pathspecFile, "--pathspec-file-nul"), null, environment, message);
+            List<String> args = new ArrayList<>(List.of("--literal-pathspecs", "commit", "--file=-",
+                    "--pathspec-from-file=" + pathspecFile, "--pathspec-file-nul"));
+            args.addAll(amendArgs);
+            cli.run(workTree, args, null, environment, message);
         } catch (IOException e) {
             throw new GitException("Cannot prepare the commit: " + e.getMessage(), e);
         } finally {
@@ -730,6 +750,60 @@ public final class DefaultGitService implements GitService {
                 r -> r.getConfig().getString(WINGIT_SECTION, null, COMMIT_DATE_KEY) != null)) {
             // 'git config --unset' fails when the key is missing, hence the check
             cli.run(workTree, List.of("config", "--local", "--unset-all", key));
+        }
+    }
+
+    @Override
+    public AmendCheck amendCheck(Path workTree) {
+        return readRepository(workTree, r -> {
+            try {
+                ObjectId head = r.resolve(Constants.HEAD);
+                if (head == null) {
+                    return AmendCheck.notPossible(AmendCheck.State.NO_COMMIT);
+                }
+                if (r.getRepositoryState() != RepositoryState.SAFE) {
+                    return AmendCheck.notPossible(AmendCheck.State.OPERATION_IN_PROGRESS);
+                }
+                if (LogReader.isOnRemoteBranch(r, head)) {
+                    return AmendCheck.notPossible(AmendCheck.State.PUSHED);
+                }
+                try (RevWalk walk = new RevWalk(r)) {
+                    return new AmendCheck(AmendCheck.State.POSSIBLE, walk.parseCommit(head).getFullMessage());
+                }
+            } catch (IOException e) {
+                throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /** File in the Git directory with the message of a commit not made yet. */
+    static final String COMMIT_DRAFT_FILE = "WINGIT_COMMIT_MSG";
+
+    @Override
+    public Optional<String> commitDraft(Path workTree) {
+        try {
+            Path file = readRepository(workTree, r -> r.getDirectory().toPath()).resolve(COMMIT_DRAFT_FILE);
+            if (!Files.isRegularFile(file)) {
+                return Optional.empty();
+            }
+            String text = Files.readString(file, StandardCharsets.UTF_8);
+            return text.isBlank() ? Optional.empty() : Optional.of(text);
+        } catch (GitException | IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void setCommitDraft(Path workTree, String message) {
+        Path file = readRepository(workTree, r -> r.getDirectory().toPath()).resolve(COMMIT_DRAFT_FILE);
+        try {
+            if (message == null || message.isBlank()) {
+                Files.deleteIfExists(file);
+            } else {
+                Files.writeString(file, message, StandardCharsets.UTF_8);
+            }
+        } catch (IOException e) {
+            throw new GitException("Cannot save the commit message draft: " + e.getMessage(), e);
         }
     }
 

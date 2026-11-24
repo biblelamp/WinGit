@@ -1,6 +1,9 @@
 package cz.wingit.ui.diff;
 
+import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.GraphicsEnvironment;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -28,6 +31,8 @@ import cz.wingit.ui.common.TitledPane;
 /**
  * Side-by-side diff of the file selected in the Files pane, read in the background. The header has
  * the number of changed fragments and buttons (F7 / Shift+F7) to jump to the next or previous one.
+ * Ctrl+F opens a search line above the diff (F3 / Shift+F3: next / previous match); in a
+ * {@link DiffWindow} the search is always shown in the header instead of a title.
  */
 public final class DiffPane extends TitledPane {
 
@@ -35,6 +40,7 @@ public final class DiffPane extends TitledPane {
 
     private final transient GitService git;
     private final DiffView view;
+    private final DiffSearchBar searchBar;
     private final transient LatestLoader<FileDiff> loader;
     private transient Path repository;
     private transient FileChange file;
@@ -43,18 +49,43 @@ public final class DiffPane extends TitledPane {
     private final Action next;
 
     public DiffPane(GitService git) {
-        this(git, new DiffView());
+        this(git, Messages.get("diff.title"));
     }
 
-    private DiffPane(GitService git, DiffView view) {
-        super(Messages.get("diff.title"), view);
+    private DiffPane(GitService git, String title) {
+        this(git, title, new DiffView(), false);
+    }
+
+    /** For a {@link DiffWindow}: the search fills the left of the header, where the title would be. */
+    static DiffPane withSearchInHeader(GitService git) {
+        return new DiffPane(git, "", new DiffView(), true);
+    }
+
+    private DiffPane(GitService git, String title, DiffView view, boolean searchInHeader) {
+        this(git, title, view, new DiffSearchBar(view, searchInHeader), searchInHeader);
+    }
+
+    private DiffPane(GitService git, String title, DiffView view, DiffSearchBar searchBar,
+                     boolean searchInHeader) {
+        super(title, searchInHeader ? view : withSearchBar(view, searchBar));
         this.git = git;
         this.view = view;
+        this.searchBar = searchBar;
+        if (searchInHeader) {
+            setHeaderMain(searchBar);
+        }
         this.loader = new LatestLoader<>(view::showDiff, this::showError);
         this.previous = navigation("previous", "previous-change", view::previousChange,
                 KeyStroke.getKeyStroke(KeyEvent.VK_F7, InputEvent.SHIFT_DOWN_MASK));
         this.next = navigation("next", "next-change", view::nextChange, KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0));
         setHeaderTools(createNavigation());
+        // Ctrl+F (Cmd+F on macOS); no toolkit without a display (tests)
+        int menuMask = GraphicsEnvironment.isHeadless() ? InputEvent.CTRL_DOWN_MASK
+                : Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F, menuMask), "findInDiff", searchBar::open);
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "nextMatch", view::nextMatch);
+        bind(KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.SHIFT_DOWN_MASK), "previousMatch",
+                view::previousMatch);
         view.addNavigationListener(this::updateNavigation);
         showRepository(Optional.empty());
     }
@@ -92,6 +123,31 @@ public final class DiffPane extends TitledPane {
     /** Re-reads the shown file (its content may have changed on disk). Call on the EDT. */
     public void refresh() {
         loader.refresh();
+    }
+
+    private static JPanel withSearchBar(DiffView view, DiffSearchBar searchBar) {
+        JPanel content = new JPanel(new BorderLayout());
+        content.add(searchBar, BorderLayout.NORTH);
+        content.add(view, BorderLayout.CENTER);
+        return content;
+    }
+
+    /** A shortcut anywhere in the window, like the change navigation. */
+    private void bind(KeyStroke keyStroke, String name, Runnable action) {
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, name);
+        getActionMap().put(name, new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                action.run();
+            }
+        });
+    }
+
+    /** For tests. */
+    DiffSearchBar searchBar() {
+        return searchBar;
     }
 
     /** For tests. */

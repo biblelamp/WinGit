@@ -11,17 +11,27 @@ clarity for Git newcomers first, power-user features second.
 - Repositories: open, create, clone, remove from the list.
 - Panes: files, branches, history with commit graph, diff.
 - Working tree: stage / unstage / discard whole files, commit.
+- Commit dialog: an unfinished message is kept as a draft per repository and offered
+  again (cleared after the commit); the Git user (name and e-mail) of the commit is shown.
+- Diff: jump to the next / previous change (F7 / Shift+F7), a new file opens at its
+  first change; a double-click on a file opens its diff in a separate maximized window;
+  search in the diff (Ctrl+F, F3 / Shift+F3); changed words within a line are highlighted,
+  a strip beside the diff marks all changes of the file.
+- History: a local branch and its remote branch on the same commit share one label;
+  long branch names are shortened.
 - Remote: fetch (manual and background), pull, push, credential prompt.
 - Branches: create, rename, delete, switch; merge and abort merge.
 - Tags: create, rename, delete, push.
 - Stash: save (optionally with new files), apply, apply and delete, delete.
 - File watcher with automatic refresh.
+- Settings dialog: language, theme, automatic fetch interval (or off); the Git user is
+  shown read-only.
+- User interface in English, Russian and Czech.
 
 Known gaps:
 
 - History shows only the latest 50 commits.
 - No conflict resolution tools, although merge and pull can produce conflicts.
-- No settings dialog.
 
 ## Phase 0 — Before the first beta build
 
@@ -33,11 +43,13 @@ Everything without which a newcomer gets stuck or loses work.
    "mark as resolved"; open in an external editor; a clear banner
    "merge in progress: resolve conflicts or abort".
 3. ~~**Stash** — save, apply, pop, drop.~~ Done.
-4. **Amend last commit** — message and files; warn if already pushed.
+4. ~~**Amend last commit** — message and files; warn if already pushed.~~ Done: only for a commit
+   not pushed yet (otherwise the option is off and says why).
 5. **Human-readable errors** — map raw git stderr to plain explanations
    (e.g. "the remote branch has new commits, pull first").
-6. **Settings** — git executable, theme, auto-fetch interval, user name and
-   email (checked before the first commit).
+6. **Settings** — ~~theme~~, ~~auto-fetch interval~~ done; user name and email
+   are shown (in Settings and in the commit dialog) but not editable yet; still to do:
+   git executable, editing the user and checking it before the first commit.
 
 ## Phase 1 — Next releases: core client functionality
 
@@ -61,7 +73,7 @@ Everything without which a newcomer gets stuck or loses work.
 4. Submodules, Git LFS, worktrees.
 5. Commit signing (GPG / SSH), visible hook output.
 6. Repository groups, multiple open repositories (tabs), keyboard shortcuts.
-7. Localization (Russian, Czech), auto-update.
+7. ~~Localization (Russian, Czech)~~ done; auto-update.
 8. macOS (DMG) builds in CI (Linux DEB/RPM builds are done).
 
 ## Phase 3 — Long term

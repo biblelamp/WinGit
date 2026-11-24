@@ -336,7 +336,27 @@ public interface GitService {
      *
      * @param date commit date, or {@code null} for now
      */
-    void commit(Path workTree, List<FileChange> changes, String message, Instant date);
+    default void commit(Path workTree, List<FileChange> changes, String message, Instant date) {
+        commit(workTree, changes, message, date, false);
+    }
+
+    /**
+     * As {@link #commit(Path, List, String, Instant)}; with {@code amend} the given files and message replace
+     * the last commit instead of making a new one (check with {@link #amendCheck} first). An amend may have
+     * no files: then only the message (and date) change, other staged changes are not committed. Without
+     * {@code date} an amended commit keeps its author date.
+     *
+     * @param changes files from {@link #status}; at least one unless {@code amend}
+     */
+    void commit(Path workTree, List<FileChange> changes, String message, Instant date, boolean amend);
+
+    /**
+     * Whether the last commit of the checked-out branch may be amended: it exists, is on no remote-tracking
+     * branch and no merge (or similar) is in progress.
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    AmendCheck amendCheck(Path workTree);
 
     /**
      * The commit date remembered for this repository by {@link #setSavedCommitDate} (in its local
@@ -350,6 +370,20 @@ public interface GitService {
      * @throws GitCommandException if Git cannot write the config
      */
     void setSavedCommitDate(Path workTree, Instant date);
+
+    /**
+     * The commit message the user wrote but did not commit yet (kept by {@link #setCommitDraft} in the
+     * repository's Git directory); empty if none or unreadable.
+     */
+    Optional<String> commitDraft(Path workTree);
+
+    /**
+     * Keeps {@code message} as the commit message draft of this repository, or removes the draft if
+     * {@code null} or blank.
+     *
+     * @throws GitException if the draft cannot be written
+     */
+    void setCommitDraft(Path workTree, String message);
 
     /**
      * Pushes the current branch to its upstream. A branch without upstream is pushed to

@@ -1,5 +1,6 @@
 package cz.wingit.ui.main;
 
+import java.awt.Insets;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.Map;
@@ -20,6 +21,13 @@ import cz.wingit.ui.common.Icons;
 public final class MainToolBar extends JToolBar {
 
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Inner padding of every toolbar button: top, left, bottom, right (FlatLaf scales it for HiDPI).
+     * The left/right values make a button wider than its label; increase them for wider buttons.
+     * FlatLaf's own default for toolbar buttons is 3 on every side.
+     */
+    static final Insets BUTTON_MARGIN = new Insets(3, 7, 3, 7);
 
     /**
      * Button ids; each maps to {@code toolbar.<id>} text, {@code toolbar.<id>.tooltip} and
@@ -58,6 +66,7 @@ public final class MainToolBar extends JToolBar {
         button.setIcon(Icons.toolbar(id));
         button.setVerticalTextPosition(SwingConstants.BOTTOM);
         button.setHorizontalTextPosition(SwingConstants.CENTER);
+        button.setMargin(BUTTON_MARGIN); // width beyond the label: see BUTTON_MARGIN
         button.setFocusable(false);
         return button;
     }

@@ -15,6 +15,8 @@ import cz.wingit.ui.Language;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.main.WindowLayout;
 import cz.wingit.ui.settings.Appearance;
+import cz.wingit.ui.settings.FetchInterval;
+import cz.wingit.ui.settings.Preferences;
 
 class AppSettingsTest {
 
@@ -75,6 +77,22 @@ class AppSettingsTest {
         Appearance chosen = new Appearance(Language.CZECH, Theme.Mode.DARK);
         AppSettings.load(file).setAppearance(chosen);
         assertThat(AppSettings.load(file).appearance()).isEqualTo(chosen);
+    }
+
+    @Test
+    void fetchIntervalIsPersistedWithTheAppearance() throws Exception {
+        Path file = tempDir.resolve("settings.properties");
+        assertThat(AppSettings.load(file).preferences()).isEqualTo(Preferences.DEFAULT);
+
+        Preferences chosen = new Preferences(new Appearance(Language.CZECH, Theme.Mode.DARK),
+                new FetchInterval(false, 25));
+        AppSettings.load(file).setPreferences(chosen);
+        assertThat(AppSettings.load(file).preferences()).isEqualTo(chosen);
+
+        Files.writeString(file, "fetch.auto=true\nfetch.intervalMinutes=99999\n", StandardCharsets.UTF_8);
+        assertThat(AppSettings.load(file).fetchInterval()).isEqualTo(new FetchInterval(true, FetchInterval.MAX_MINUTES));
+        Files.writeString(file, "fetch.intervalMinutes=often\n", StandardCharsets.UTF_8);
+        assertThat(AppSettings.load(file).fetchInterval()).isEqualTo(FetchInterval.DEFAULT);
     }
 
     @Test

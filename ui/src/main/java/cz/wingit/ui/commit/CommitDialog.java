@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -49,16 +50,21 @@ import javax.swing.event.DocumentListener;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 
+import cz.wingit.core.AmendCheck;
+import cz.wingit.core.GitIdentity;
 import cz.wingit.core.GitService;
 import cz.wingit.core.refs.TagNames;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Dialogs;
+import cz.wingit.ui.common.Icons;
 import cz.wingit.ui.tags.TagNameCheck;
 
 /**
  * Modal dialog: choose changed files, write a message, then commit (optionally followed by a push).
- * The new commit can get a backdated date and a tag.
+ * The last commit, if not pushed yet, can be amended instead (also with no files: only its message).
+ * The new commit can get a backdated date and a tag. The Git user who will author the commit is shown
+ * below the message. Closing without a commit keeps the message as a draft; a commit clears it.
  */
 final class CommitDialog extends JDialog {
 
@@ -77,11 +83,22 @@ final class CommitDialog extends JDialog {
     private final JCheckBox allBox = new JCheckBox(Messages.get("commit.files"));
     private final JLabel countLabel = new JLabel();
     private final JTextArea messageArea = new JTextArea(6, 60);
+    private final JCheckBox amendBox = new JCheckBox(Messages.get("commit.amend"));
+    private final transient AmendCheck amend;
+    /** No changed files: the dialog can only amend, so the amend box stays checked. */
+    private final boolean amendOnly;
+    /** The message written before amend was checked, restored when it is unchecked again. */
+    private String messageBeforeAmend = "";
     private final JCheckBox dateBox = new JCheckBox(Messages.get("commit.date"));
     private final JSpinner dateSpinner = new JSpinner(new SpinnerDateModel(new Date(), null, null, Calendar.MINUTE));
     private final JCheckBox tagBox = new JCheckBox(Messages.get("commit.tag"));
     private final JTextField tagField = new JTextField(16);
     private final JLabel tagProblem = new JLabel();
+    /** Git user of the commit: an icon with the name and e-mail in its tooltip, no action. */
+    private final JButton gituserButton = new JButton();
+    /** Message Git prepared (e.g. for a merge): not worth keeping as a draft if left unchanged. */
+    private final String preparedMessage;
+    private final transient Consumer<String> saveDraft;
     private final transient List<String> existingTags;
     private final JButton commitButton = new JButton(Messages.get("commit.commit"));
     private final JButton commitPushButton = new JButton(Messages.get("commit.commitAndPush"));
@@ -94,14 +111,24 @@ final class CommitDialog extends JDialog {
 
     /**
      * @param recentMessages messages of previous commits offered for reuse, newest first
-     * @param initialMessage message to start with (e.g. the one Git prepared for a merge), or {@code null}
+     * @param draft          message written earlier but not committed, or {@code null}; wins over
+     *                       {@code preparedMessage}
+     * @param preparedMessage message Git prepared (e.g. for a merge), or {@code null}
      * @param existingTags   tags of the repository, to check a new tag name and suggest the next version
      * @param savedDate      date of the previous backdated commit of this repository, offered again;
      *                       {@code null} to commit with the current date
+     * @param amend          whether the last commit can be amended; with no {@code changes} it must be,
+     *                       and the dialog only amends
+     * @param identity       the Git user of the repository (author and committer), {@code null} if unknown
+     * @param saveDraft      keeps the message when the dialog is closed without a commit ({@code null}
+     *                       removes the draft)
+     * @param openSettings   opens Settings over this dialog when the Git user icon is clicked; {@code null}
+     *                       if Settings are not available
      */
     CommitDialog(Window owner, GitService git, Path workTree, List<FileChange> changes,
-                 Collection<FileChange> preselected, List<String> recentMessages, String initialMessage,
-                 List<String> existingTags, Instant savedDate) {
+                 Collection<FileChange> preselected, List<String> recentMessages, String draft,
+                 String preparedMessage, List<String> existingTags, Instant savedDate, AmendCheck amend,
+                 GitIdentity identity, Consumer<String> saveDraft, Consumer<Component> openSettings) {
         super(owner, Messages.get("commit.title"), ModalityType.APPLICATION_MODAL);
         this.git = git;
         this.workTree = workTree;
@@ -109,14 +136,24 @@ final class CommitDialog extends JDialog {
         this.table = new JTable(model);
         this.recentButton = new RecentMessagesButton(recentMessages, this::useMessage);
         this.existingTags = List.copyOf(existingTags);
+        this.preparedMessage = preparedMessage;
+        this.saveDraft = saveDraft;
+        this.amend = amend;
+        this.amendOnly = changes.isEmpty();
+        if (amendOnly && !amend.possible()) {
+            throw new IllegalArgumentException("Nothing to commit and nothing to amend");
+        }
         configureTable();
         configureMessage();
         configureDate(savedDate);
         configureTag();
+        configureIdentity(identity, openSettings);
+        String initialMessage = draft != null ? draft : preparedMessage;
         if (initialMessage != null) {
             messageArea.setText(initialMessage);
             messageArea.setCaretPosition(0);
         }
+        configureAmend();
         setContentPane(createContent());
 
         allBox.addActionListener(e -> {
@@ -155,9 +192,12 @@ final class CommitDialog extends JDialog {
     /** Shows the dialog; returns how it ended if a commit was made. */
     static Optional<Result> show(Component parent, GitService git, Path workTree, List<FileChange> changes,
                                  Collection<FileChange> preselected, List<String> recentMessages,
-                                 String initialMessage, List<String> existingTags, Instant savedDate) {
+                                 String draft, String preparedMessage, List<String> existingTags,
+                                 Instant savedDate, AmendCheck amend, GitIdentity identity,
+                                 Consumer<String> saveDraft, Consumer<Component> openSettings) {
         CommitDialog dialog = new CommitDialog(SwingUtilities.getWindowAncestor(parent), git, workTree,
-                changes, preselected, recentMessages, initialMessage, existingTags, savedDate);
+                changes, preselected, recentMessages, draft, preparedMessage, existingTags, savedDate, amend,
+                identity, saveDraft, openSettings);
         dialog.setVisible(true);
         return Optional.ofNullable(dialog.result);
     }
@@ -193,7 +233,10 @@ final class CommitDialog extends JDialog {
         int optionWidth = Math.max(dateBox.getPreferredSize().width, tagBox.getPreferredSize().width);
         dateBox.setPreferredSize(new Dimension(optionWidth, dateBox.getPreferredSize().height));
         tagBox.setPreferredSize(new Dimension(optionWidth, tagBox.getPreferredSize().height));
+        JPanel amendRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        amendRow.add(amendBox);
         JPanel options = new JPanel(new GridLayout(0, 1, 0, 4));
+        options.add(amendRow);
         options.add(date);
         options.add(tag);
         message.add(options, BorderLayout.SOUTH);
@@ -204,6 +247,7 @@ final class CommitDialog extends JDialog {
         split.setContinuousLayout(true);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        buttons.add(gituserButton); // Git user of the commit, left of the Commit button
         buttons.add(commitButton);
         buttons.add(commitPushButton);
         buttons.add(cancelButton);
@@ -292,6 +336,93 @@ final class CommitDialog extends JDialog {
         });
     }
 
+    /** Icon (red when something is missing); "Name <e-mail>" of who the commit will be recorded as is its tooltip. */
+    private void configureIdentity(GitIdentity identity, Consumer<Component> openSettings) {
+        gituserButton.setIcon(Icons.commitIdentity(identityMissing(identity)));
+        gituserButton.setToolTipText(identityTooltip(identity, openSettings != null));
+        // Toolbar look: flat, background only on hover.
+        gituserButton.putClientProperty("JButton.buttonType", "toolBarButton");
+        gituserButton.setFocusable(false);
+        if (openSettings != null) {
+            // Settings show the Git user of this repository and globally
+            gituserButton.addActionListener(e -> {
+                // Settings may restart the application: keep what was written so far
+                saveDraft.accept(currentDraft());
+                openSettings.accept(this);
+            });
+        }
+    }
+
+    static boolean identityMissing(GitIdentity identity) {
+        return identity == null || identity.name().isBlank() || identity.email().isBlank();
+    }
+
+    /** "Name <e-mail>" on the first line, what it means on the second, that a click opens Settings on the third. */
+    static String identityTooltip(GitIdentity identity, boolean opensSettings) {
+        String tooltip = "<html>" + escapeHtml(identityText(identity)) + "<br>"
+                + escapeHtml(Messages.get("commit.identity.tooltip"));
+        if (opensSettings) {
+            tooltip += "<br>" + escapeHtml(Messages.get("commit.identity.click"));
+        }
+        return tooltip + "</html>";
+    }
+
+    private static String escapeHtml(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    static String identityText(GitIdentity identity) {
+        if (identity == null) {
+            return Messages.get("commit.identity.unknown");
+        }
+        String name = identity.name().isBlank() ? Messages.get("commit.identity.noName") : identity.name();
+        String email = identity.email().isBlank() ? Messages.get("commit.identity.noEmail") : identity.email();
+        return name + " <" + email + ">";
+    }
+
+    private void configureAmend() {
+        amendBox.setToolTipText(Messages.get(amendTooltipKey(amend.state(), amendOnly)));
+        if (amendOnly) {
+            amendBox.setSelected(true);
+            messageBeforeAmend = messageArea.getText();
+            if (messageArea.getText().isBlank()) {
+                useMessage(amend.message());
+            }
+        }
+        amendBox.addActionListener(e -> {
+            if (amendBox.isSelected()) {
+                messageBeforeAmend = messageArea.getText();
+                if (messageArea.getText().isBlank()) {
+                    useMessage(amend.message()); // start from the message of the commit being replaced
+                }
+            } else if (isAmendMessage(messageArea.getText())) {
+                useMessage(messageBeforeAmend); // unchanged: back to what was written before
+            }
+            updateState();
+        });
+    }
+
+    /** Tooltip of the amend box: what it does, or why it cannot be used. */
+    static String amendTooltipKey(AmendCheck.State state, boolean amendOnly) {
+        if (amendOnly) {
+            return "commit.amend.only";
+        }
+        switch (state) {
+            case NO_COMMIT:
+                return "commit.amend.noCommit";
+            case PUSHED:
+                return "commit.amend.pushed";
+            case OPERATION_IN_PROGRESS:
+                return "commit.amend.inProgress";
+            default:
+                return "commit.amend.tooltip";
+        }
+    }
+
+    private boolean isAmendMessage(String text) {
+        return amend.possible() && text.strip().equals(amend.message().strip());
+    }
+
     private void configureTag() {
         tagBox.setToolTipText(Messages.get("commit.tag.tooltip"));
         tagField.setToolTipText(Messages.get("commit.tag.tooltip"));
@@ -361,11 +492,13 @@ final class CommitDialog extends JDialog {
             updatingAllBox = false;
         }
         boolean tagOk = tagReady(); // always evaluated: it also shows the problem with the name
-        boolean ready = !running && selected > 0 && !messageArea.getText().isBlank() && tagOk;
+        boolean ready = !running && (selected > 0 || amendBox.isSelected()) && !messageArea.getText().isBlank()
+                && tagOk;
         commitButton.setEnabled(ready);
         commitPushButton.setEnabled(ready);
         table.setEnabled(!running);
-        allBox.setEnabled(!running);
+        allBox.setEnabled(!running && total > 0);
+        amendBox.setEnabled(!running && amend.possible() && !amendOnly);
         messageArea.setEditable(!running);
         recentButton.setEnabled(!running && recentButton.popup().getComponentCount() > 0);
         dateBox.setEnabled(!running);
@@ -386,13 +519,15 @@ final class CommitDialog extends JDialog {
         String message = messageArea.getText().strip() + "\n";
         Instant date = commitDate();
         String tag = tagName();
+        boolean amending = amendBox.isSelected();
         running = true;
         updateState();
         new SwingWorker<RuntimeException, Void>() {
             /** Commits and tags; returns the tag failure (the commit is made then), {@code null} if none. */
             @Override
             protected RuntimeException doInBackground() {
-                git.commit(workTree, changes, message, date);
+                git.commit(workTree, changes, message, date, amending);
+                saveDraft.accept(null); // committed: nothing to offer next time
                 try {
                     git.setSavedCommitDate(workTree, date); // offered next time; none = forget it
                 } catch (RuntimeException e) {
@@ -429,11 +564,32 @@ final class CommitDialog extends JDialog {
         }.execute();
     }
 
-    /** Cancel, Esc and window close; ignored while the commit runs (it cannot be undone halfway). */
+    /**
+     * Cancel, Esc and window close; ignored while the commit runs (it cannot be undone halfway). The message
+     * is kept as a draft unless it is empty or the unchanged message Git prepared.
+     */
     private void close() {
         if (!running) {
+            saveDraft.accept(currentDraft());
             dispose();
         }
+    }
+
+    /** The message worth keeping as a draft now: not the unchanged message of the commit being amended. */
+    private String currentDraft() {
+        String text = messageArea.getText();
+        return isAmendMessage(text) ? null : draftToKeep(text, preparedMessage);
+    }
+
+    /** What to keep after closing without a commit; {@code null} removes the draft. */
+    static String draftToKeep(String text, String preparedMessage) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        if (preparedMessage != null && text.strip().equals(preparedMessage.strip())) {
+            return null;
+        }
+        return text;
     }
 
     // For tests.
@@ -443,6 +599,10 @@ final class CommitDialog extends JDialog {
 
     JTextArea messageArea() {
         return messageArea;
+    }
+
+    JCheckBox amendBox() {
+        return amendBox;
     }
 
     JCheckBox dateBox() {
@@ -467,5 +627,9 @@ final class CommitDialog extends JDialog {
 
     JButton commitButton() {
         return commitButton;
+    }
+
+    JButton identityButton() {
+        return gituserButton;
     }
 }
