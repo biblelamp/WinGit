@@ -22,6 +22,7 @@ import javax.swing.UIManager;
 
 import cz.wingit.core.GitService;
 import cz.wingit.core.diff.FileDiff;
+import cz.wingit.core.log.CommitFile;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Icons;
@@ -118,6 +119,26 @@ public final class DiffPane extends TitledPane {
         Path repo = repository;
         FileChange selected = file;
         loader.load(() -> git.fileDiff(repo, selected));
+    }
+
+    /**
+     * Shows what commit {@code commitId} changed in {@code commitFile} (first parent vs the commit), or a hint
+     * for none. Call on the EDT.
+     */
+    public void showCommitFile(String commitId, Optional<CommitFile> commitFile) {
+        if (repository == null) {
+            return;
+        }
+        file = null;
+        if (commitFile.isEmpty()) {
+            loader.cancel();
+            view.showMessage(Messages.get("diff.placeholder.noFile"));
+            return;
+        }
+        view.showMessage(Messages.get("diff.placeholder.loading"));
+        Path repo = repository;
+        CommitFile selected = commitFile.get();
+        loader.load(() -> git.commitFileDiff(repo, commitId, selected));
     }
 
     /** Re-reads the shown file (its content may have changed on disk). Call on the EDT. */

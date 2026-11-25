@@ -88,7 +88,8 @@ public final class FileChangeTableModel extends AbstractTableModel {
         return staged + ", " + typeText(change.unstaged());
     }
 
-    private static String typeText(ChangeType type) {
+    /** E.g. "Modified", "Added". */
+    public static String typeText(ChangeType type) {
         switch (type) {
             case ADDED:
                 return Messages.get("files.status.added");

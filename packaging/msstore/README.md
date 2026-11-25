@@ -24,7 +24,7 @@ installed by users). Locally, after building the app image:
 
 ```
 mvn -q -pl app -am -Ppackage -DskipTests package -Djpackage.type=app-image
-powershell -File packaging/msstore/build-msix.ps1 -AppImage app/target/installer/WinGit -Version 0.3.7 -Output dist/WinGit.msix
+powershell -File packaging/msstore/build-msix.ps1 -AppImage app/target/installer/WinGit -Version 0.4.0 -Output dist/WinGit.msix
 ```
 
 ## Trying the package locally
@@ -33,7 +33,7 @@ An unsigned MSIX cannot be installed, but its unpacked contents can be registere
 when Windows **Developer Mode** is on (Settings → System → For developers):
 
 ```
-powershell -File packaging/msstore/build-msix.ps1 -AppImage app/target/installer/WinGit -Version 0.3.7 -Output C:\Temp\wingit-msix -LayoutOnly
+powershell -File packaging/msstore/build-msix.ps1 -AppImage app/target/installer/WinGit -Version 0.4.0 -Output C:\Temp\wingit-msix -LayoutOnly
 Add-AppxPackage -Register C:\Temp\wingit-msix\AppxManifest.xml
 ```
 

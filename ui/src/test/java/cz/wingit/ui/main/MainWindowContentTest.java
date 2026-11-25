@@ -42,6 +42,7 @@ import cz.wingit.ui.commit.CommitAction;
 import cz.wingit.ui.diff.DiffPane;
 import cz.wingit.ui.files.FileAction;
 import cz.wingit.ui.files.FilesPane;
+import cz.wingit.ui.common.WindowLayout;
 import cz.wingit.ui.history.HistoryPane;
 import cz.wingit.ui.remote.RemoteAction;
 import cz.wingit.ui.repositories.AddRepositoryAction;

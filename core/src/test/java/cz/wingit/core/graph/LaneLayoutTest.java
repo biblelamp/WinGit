@@ -81,6 +81,24 @@ class LaneLayoutTest {
         assertThat(rows.get(4).upper()).noneMatch(Segment::unpushed);
     }
 
+    @Test
+    void historyLaidOutInPortionsGivesTheSameRowsAsAllAtOnce() {
+        // two merges, a side branch tip, unpushed commits on top: lanes open across portion borders
+        List<CommitInfo> commits = List.of(
+                unpushed("u", "m2"), c("m2", "a", "f2"), c("x", "b"), c("f2", "f1"), c("a", "m1"),
+                c("m1", "b", "f1"), c("f1", "r"), c("b", "r"), c("r"));
+        List<GraphRow> whole = LaneLayout.layout(commits);
+
+        for (int size = 1; size <= commits.size(); size++) {
+            LaneLayout layout = new LaneLayout();
+            List<GraphRow> rows = new java.util.ArrayList<>();
+            for (int from = 0; from < commits.size(); from += size) {
+                rows.addAll(layout.append(commits.subList(from, Math.min(commits.size(), from + size))));
+            }
+            assertThat(rows).as("portions of %d", size).isEqualTo(whole);
+        }
+    }
+
     private static CommitInfo unpushed(String id, String... parents) {
         return new CommitInfo(id, Arrays.asList(parents), id, "Test", Instant.EPOCH, List.of(), true);
     }

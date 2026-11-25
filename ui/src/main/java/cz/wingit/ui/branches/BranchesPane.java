@@ -59,6 +59,8 @@ public final class BranchesPane extends TitledPane {
     private transient RepositoryRefs shown;
     private transient Path workTree;
     private boolean switching;
+    /** Notified after a branch was checked out from this pane. */
+    private final transient List<Runnable> switchListeners = new ArrayList<>();
     private JPopupMenu branchPopup;
     private JPopupMenu tagPopup;
     private JPopupMenu stashPopup;
@@ -146,6 +148,7 @@ public final class BranchesPane extends TitledPane {
                 setCursor(null);
                 try {
                     get();
+                    switchListeners.forEach(Runnable::run);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException e) {
@@ -177,6 +180,14 @@ public final class BranchesPane extends TitledPane {
                 switchToSelected();
             }
         });
+    }
+
+    /**
+     * Notified (on the EDT) after a branch was checked out by double-click or Enter in this pane, e.g. to
+     * show the history of the new HEAD at once.
+     */
+    public void addSwitchListener(Runnable listener) {
+        switchListeners.add(listener);
     }
 
     /** The open repository, if any. */

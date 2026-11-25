@@ -90,14 +90,17 @@ class BranchesPaneTest {
         DefaultGitService service = new DefaultGitService(new GitCli());
 
         AtomicReference<BranchesPane> pane = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger switched = new java.util.concurrent.atomic.AtomicInteger();
         SwingUtilities.invokeAndWait(() -> {
             pane.set(new BranchesPane(service));
+            pane.get().addSwitchListener(switched::incrementAndGet);
             pane.get().showRepository(Optional.of(repo));
         });
         assertThat(awaitRows(pane.get(), 6)).contains("feature");
 
         SwingUtilities.invokeAndWait(() -> {
             pane.get().selectRowForTest("feature");
+            assertThat(switched.get()).isZero(); // selecting alone does not switch
             pane.get().switchToSelected();
         });
 
@@ -106,6 +109,11 @@ class BranchesPaneTest {
             Thread.sleep(50);
         }
         assertThat(service.currentBranch(repo)).contains("feature");
+        deadline = System.currentTimeMillis() + 10_000;
+        while (switched.get() == 0 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+        assertThat(switched.get()).isEqualTo(1); // e.g. the log window re-reads the history of the new HEAD
     }
 
     @Test

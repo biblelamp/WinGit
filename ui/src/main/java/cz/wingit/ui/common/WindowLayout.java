@@ -1,9 +1,9 @@
-package cz.wingit.ui.main;
+package cz.wingit.ui.common;
 
 import java.util.Map;
 
 /**
- * Saved geometry of the main window: its normal (not maximized) bounds, whether it is maximized,
+ * Saved geometry of a window (main or log window): its normal (not maximized) bounds, whether it is maximized,
  * and the dividers of the split panes, keyed by split name. All values are in screen pixels.
  */
 public record WindowLayout(int x, int y, int width, int height, boolean maximized, Map<String, Divider> dividers) {

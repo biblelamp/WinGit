@@ -20,80 +20,98 @@ import cz.wingit.core.log.CommitInfo;
  * <p>
  * Edges from an unpushed commit to its parents are flagged ({@link Segment#unpushed()}) along their
  * whole way, so the outgoing part of the graph can be painted in its own color.
+ * <p>
+ * A history read in portions is laid out by one instance: {@link #append} continues where the previous
+ * portion ended, with the same result as laying out all commits at once. Not thread-safe.
  */
 public final class LaneLayout {
 
-    private LaneLayout() {
+    /** Lane -> expected commit id, {@code null} = free. */
+    private final List<String> lanes = new ArrayList<>();
+    /** Lane -> its line started at an unpushed commit. */
+    private final List<Boolean> unpushedLanes = new ArrayList<>();
+
+    /** An empty layout, before the newest commit. */
+    public LaneLayout() {
     }
 
     /** Rows in the same order as {@code commits} (newest first). */
     public static List<GraphRow> layout(List<CommitInfo> commits) {
-        List<String> lanes = new ArrayList<>(); // lane -> expected commit id, null = free
-        List<Boolean> unpushedLanes = new ArrayList<>(); // lane -> line started at an unpushed commit
+        return new LaneLayout().append(commits);
+    }
+
+    /**
+     * Rows of the next {@code commits} (older than all appended before, newest first), continuing the
+     * lanes of the previous rows.
+     */
+    public List<GraphRow> append(List<CommitInfo> commits) {
         List<GraphRow> rows = new ArrayList<>(commits.size());
-
         for (CommitInfo commit : commits) {
-            String id = commit.id();
-            List<Segment> upper = new ArrayList<>();
-            List<Segment> lower = new ArrayList<>();
-
-            int node = lanes.indexOf(id);
-            boolean expected = node >= 0;
-            if (!expected) {
-                node = freeLane(lanes, Set.of());
-            }
-
-            Set<Integer> passing = new HashSet<>();
-            Set<Integer> freed = new HashSet<>();
-            for (int lane = 0; lane < lanes.size(); lane++) {
-                String target = lanes.get(lane);
-                if (target == null) {
-                    continue;
-                }
-                boolean unpushedLine = unpushedLanes.get(lane);
-                if (target.equals(id)) {
-                    upper.add(new Segment(lane, node, unpushedLine));
-                    lanes.set(lane, null);
-                    unpushedLanes.set(lane, false);
-                    if (lane != node) {
-                        freed.add(lane);
-                    }
-                } else {
-                    upper.add(new Segment(lane, lane, unpushedLine));
-                    passing.add(lane);
-                }
-            }
-            boolean outgoing = commit.unpushed();
-
-            List<String> parents = commit.parents();
-            if (!parents.isEmpty()) {
-                String first = parents.get(0);
-                int existing = lanes.indexOf(first);
-                if (existing >= 0) {
-                    lower.add(new Segment(node, existing, outgoing));
-                } else {
-                    set(lanes, unpushedLanes, node, first, outgoing);
-                    lower.add(new Segment(node, node, outgoing));
-                }
-                for (String parent : parents.subList(1, parents.size())) {
-                    int lane = lanes.indexOf(parent);
-                    if (lane < 0) {
-                        Set<Integer> blocked = new HashSet<>(freed);
-                        blocked.add(node);
-                        lane = freeLane(lanes, blocked);
-                        set(lanes, unpushedLanes, lane, parent, outgoing);
-                    }
-                    lower.add(new Segment(node, lane, outgoing));
-                }
-            }
-            for (int lane : passing) {
-                lower.add(new Segment(lane, lane, unpushedLanes.get(lane)));
-            }
-
-            trimTrailingFree(lanes, unpushedLanes);
-            rows.add(new GraphRow(node, sorted(upper), sorted(lower), laneCount(node, upper, lower)));
+            rows.add(next(commit));
         }
         return rows;
+    }
+
+    private GraphRow next(CommitInfo commit) {
+        String id = commit.id();
+        List<Segment> upper = new ArrayList<>();
+        List<Segment> lower = new ArrayList<>();
+
+        int node = lanes.indexOf(id);
+        boolean expected = node >= 0;
+        if (!expected) {
+            node = freeLane(lanes, Set.of());
+        }
+
+        Set<Integer> passing = new HashSet<>();
+        Set<Integer> freed = new HashSet<>();
+        for (int lane = 0; lane < lanes.size(); lane++) {
+            String target = lanes.get(lane);
+            if (target == null) {
+                continue;
+            }
+            boolean unpushedLine = unpushedLanes.get(lane);
+            if (target.equals(id)) {
+                upper.add(new Segment(lane, node, unpushedLine));
+                lanes.set(lane, null);
+                unpushedLanes.set(lane, false);
+                if (lane != node) {
+                    freed.add(lane);
+                }
+            } else {
+                upper.add(new Segment(lane, lane, unpushedLine));
+                passing.add(lane);
+            }
+        }
+        boolean outgoing = commit.unpushed();
+
+        List<String> parents = commit.parents();
+        if (!parents.isEmpty()) {
+            String first = parents.get(0);
+            int existing = lanes.indexOf(first);
+            if (existing >= 0) {
+                lower.add(new Segment(node, existing, outgoing));
+            } else {
+                set(lanes, unpushedLanes, node, first, outgoing);
+                lower.add(new Segment(node, node, outgoing));
+            }
+            for (String parent : parents.subList(1, parents.size())) {
+                int lane = lanes.indexOf(parent);
+                if (lane < 0) {
+                    Set<Integer> blocked = new HashSet<>(freed);
+                    blocked.add(node);
+                    lane = freeLane(lanes, blocked);
+                    set(lanes, unpushedLanes, lane, parent, outgoing);
+                }
+                lower.add(new Segment(node, lane, outgoing));
+            }
+        }
+        for (int lane : passing) {
+            lower.add(new Segment(lane, lane, unpushedLanes.get(lane)));
+        }
+
+        trimTrailingFree(lanes, unpushedLanes);
+        return new GraphRow(node, sorted(upper), sorted(lower), laneCount(node, upper, lower));
     }
 
     /** First free lane not in {@code blocked}, or a new lane at the end. */

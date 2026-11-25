@@ -1,5 +1,6 @@
 package cz.wingit.ui.files;
 
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -14,6 +15,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.concurrent.ExecutionException;
 
+import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu;
@@ -119,7 +121,10 @@ public final class FilesPane extends TitledPane {
         fileSelectionListeners.add(listener);
     }
 
-    /** Notified (on the EDT) when a file is double-clicked, e.g. to show its diff in a window of its own. */
+    /**
+     * Notified (on the EDT) when a file is double-clicked, or Enter is pressed with one file selected,
+     * e.g. to show its diff in a window of its own.
+     */
     public void addFileOpenListener(Consumer<FileChange> listener) {
         fileOpenListeners.add(listener);
     }
@@ -329,6 +334,18 @@ public final class FilesPane extends TitledPane {
         return table.getRowCount();
     }
 
+    /** Enter: opens the selected file if exactly one is selected (JTable would move to the next row). */
+    private void openSelected() {
+        if (table.getSelectedRowCount() == 1) {
+            openRow(table.getSelectedRow());
+        }
+    }
+
+    /** Presses Enter in the file list (for tests). */
+    void pressEnterForTest() {
+        openSelected();
+    }
+
     private void openRow(int row) {
         int modelRow = row >= 0 && row < table.getRowCount() ? table.convertRowIndexToModel(row) : -1;
         if (modelRow >= 0 && modelRow < model.getRowCount()) {
@@ -340,6 +357,15 @@ public final class FilesPane extends TitledPane {
     private void configureTable() {
         table.setShowGrid(false);
         table.getTableHeader().setReorderingAllowed(false);
+        table.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "openFile");
+        table.getActionMap().put("openFile", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openSelected();
+            }
+        });
         table.setRowSorter(sorter);
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && !replacingRows) {

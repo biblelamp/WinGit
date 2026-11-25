@@ -19,6 +19,11 @@ clarity for Git newcomers first, power-user features second.
   a strip beside the diff marks all changes of the file.
 - History: a local branch and its remote branch on the same commit share one label;
   long branch names are shortened.
+- History window (the History toolbar button or a double-click on a commit): the whole history
+  of the current branch, read in portions in the background, so even 100k+ commits show up
+  at once; details, changed files and diff of the selected commit; a filter by message,
+  author, hash, branch or tag; a double-click on a branch switches to it; the window
+  remembers its size, position and pane sizes.
 - Remote: fetch (manual and background), pull, push, credential prompt.
 - Branches: create, rename, delete, switch; merge and abort merge.
 - Tags: create, rename, delete, push.
@@ -30,15 +35,17 @@ clarity for Git newcomers first, power-user features second.
 
 Known gaps:
 
-- History shows only the latest 50 commits.
+- The history pane of the main window shows only the latest 50 commits (the history
+  window shows all of them).
 - No conflict resolution tools, although merge and pull can produce conflicts.
 
 ## Phase 0 — Before the first beta build
 
 Everything without which a newcomer gets stuck or loses work.
 
-1. **Full history** — load commits incrementally while scrolling, no 50-commit
-   limit, virtualized rendering.
+1. ~~**Full history** — load commits incrementally, no 50-commit limit, virtualized
+   rendering.~~ Done in the history window: commits are read in portions in the background
+   and shown as they come.
 2. **Conflict handling** — list conflicted files; "use mine" / "use theirs" /
    "mark as resolved"; open in an external editor; a clear banner
    "merge in progress: resolve conflicts or abort".
@@ -54,9 +61,11 @@ Everything without which a newcomer gets stuck or loses work.
 ## Phase 1 — Next releases: core client functionality
 
 1. **Partial staging** — hunks and individual lines via `git apply --cached`.
-2. **Commit actions in history** — show files and diff of a commit, checkout,
-   revert, cherry-pick, reset (soft / mixed / hard) with explicit warnings.
-3. **History search and filter** — by message, author, hash, path.
+2. **Commit actions in history** — ~~show files and diff of a commit~~ done (history
+   window); still to do: checkout, revert, cherry-pick, reset (soft / mixed / hard) with
+   explicit warnings.
+3. **History search and filter** — ~~by message, author, hash~~ done (also by branch or tag);
+   still to do: by path.
 4. **File history and blame.**
 5. **Compare** — two commits, two branches, branch vs. working tree.
 6. **Remotes** — add / edit / remove; push with branch and upstream choice;
@@ -81,7 +90,8 @@ Everything without which a newcomer gets stuck or loses work.
 1. **Hosting integrations** — GitHub, GitLab, Bitbucket: pull requests,
    review comments, checks, issue links.
 2. **Workflow support** — git-flow style feature / release / hotfix branches.
-3. **Large repositories** — 100k+ commits, hundreds of thousands of files,
-   partial clone.
-4. Standalone log window (whole repository or single file), directory compare.
+3. **Large repositories** — ~~100k+ commits~~ done for the history window; still to do:
+   hundreds of thousands of files, partial clone.
+4. Standalone log window — ~~whole repository~~ done (the history of the current branch);
+   still to do: single file; directory compare.
 5. Extensibility — custom commands, possibly a plugin API.

@@ -74,6 +74,16 @@ class FilesPaneTest {
         });
         assertThat(opened).containsExactly(selections.get(0).get());
 
+        // Enter opens the one selected file, but not when several are selected
+        opened.clear();
+        SwingUtilities.invokeAndWait(() -> {
+            pane[0].pressEnterForTest();
+            pane[0].selectAllRowsForTest();
+            pane[0].pressEnterForTest();
+            pane[0].selectRowForTest(0);
+        });
+        assertThat(opened).containsExactly(selections.get(0).get());
+
         AtomicInteger filtered = new AtomicInteger();
         SwingUtilities.invokeAndWait(() -> {
             pane[0].setFilterText("SRC\\app");

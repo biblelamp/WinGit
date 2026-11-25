@@ -152,6 +152,11 @@ public final class LogReader {
         if (branch == null || ObjectId.isId(branch)) {
             return null;
         }
+        return upstream(repository, branch);
+    }
+
+    /** The commit of local {@code branch}'s (short name) remote-tracking upstream, {@code null} if none. */
+    static ObjectId upstream(Repository repository, String branch) throws IOException {
         String tracking = new BranchConfig(repository.getConfig(), branch).getRemoteTrackingBranch();
         if (tracking == null) {
             return null;
@@ -161,7 +166,7 @@ public final class LogReader {
     }
 
     /** Commits reachable from {@code upstream} but not from {@code head} ({@code upstream --not HEAD}), at most {@code limit}. */
-    private static Set<ObjectId> unpulled(Repository repository, ObjectId head, ObjectId upstream, int limit)
+    static Set<ObjectId> unpulled(Repository repository, ObjectId head, ObjectId upstream, int limit)
             throws IOException {
         Set<ObjectId> result = new HashSet<>();
         try (RevWalk walk = new RevWalk(repository)) {
@@ -182,7 +187,7 @@ public final class LogReader {
      * at most {@code limit}. The walk stops where the remote branches join the history, so it only
      * visits the local commits plus a small boundary, not the whole history.
      */
-    private static Set<ObjectId> unpushed(Repository repository, ObjectId head, int limit) throws IOException {
+    static Set<ObjectId> unpushed(Repository repository, ObjectId head, int limit) throws IOException {
         List<Ref> remotes = repository.getRefDatabase().getRefsByPrefix(Constants.R_REMOTES);
         Set<ObjectId> result = new HashSet<>();
         try (RevWalk walk = new RevWalk(repository)) {
@@ -211,7 +216,7 @@ public final class LogReader {
         return result;
     }
 
-    private static Map<ObjectId, List<RefLabel>> labels(Repository repository) throws IOException {
+    static Map<ObjectId, List<RefLabel>> labels(Repository repository) throws IOException {
         Map<ObjectId, List<RefLabel>> labels = new HashMap<>();
         RefDatabase refs = repository.getRefDatabase();
         String head = repository.getFullBranch();

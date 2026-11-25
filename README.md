@@ -38,14 +38,18 @@ myself while it grows.
 - **Remote:** fetch (also automatically in the background, at an interval you choose), pull and
   push; asks for a user name and password (or token) when the server needs them and
   never stores them itself (Git's credential helper can remember them).
-- **History:** commit graph with branch and tag labels.
+- **History:** commit graph with branch and tag labels. The History button (or a double-click
+  on a commit) opens the history window: the whole history of the current branch, shown at
+  once even with 100k+ commits; the details, changed files and diff of each commit; a filter
+  by message, author, commit id, branch or tag. A double-click on a branch there switches to it.
 - Changes made outside WinGit are picked up automatically.
 
 ### Status and plans
 
-- **Status:** early but working; I use it every day. It still shows only the latest
-  50 commits of the history and has no tools for resolving merge conflicts yet.
-- **Next:** full history, conflict handling, partial (hunk) staging. The full plan is in
+- **Status:** early but working; I use it every day. Version 0.4.0 adds the history window
+  with the whole history of a branch. There are no tools for resolving merge conflicts yet.
+- **Next:** conflict handling, partial (hunk) staging, commit actions in the history
+  (checkout, revert, cherry-pick, reset). The full plan is in
   the [roadmap](ROADMAP.md) ([на русском](ROADMAP.ru.md)).
 
 Want to help test WinGit or contribute? Open an issue. Feedback, bug reports,

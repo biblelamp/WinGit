@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import cz.wingit.core.DefaultGitService;
+import cz.wingit.core.GitService;
+import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.ui.Theme;
 
@@ -83,6 +85,172 @@ class HistoryPaneTest {
             pane.get().selectRowForTest(1);
             assertThat(pane.get().selectedCommit()).map(c -> c.message()).contains("First");
         });
+    }
+
+    @Test
+    void commitAskedForWhileLoadingIsSelectedOnceRead() throws Exception {
+        String first;
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            commit(git, "First");
+            first = git.log().call().iterator().next().getName();
+            commit(git, "Second");
+        }
+        AtomicReference<HistoryPane> pane = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(new HistoryPane(new DefaultGitService(new GitCli())));
+            pane.get().showRepository(Optional.of(repo));
+            pane.get().selectCommit(first); // nothing read yet
+        });
+        await(pane.get(), m -> m.size() == 2);
+
+        SwingUtilities.invokeAndWait(() ->
+                assertThat(pane.get().selectedCommit()).map(c -> c.message()).contains("First"));
+    }
+
+    @Test
+    void fullHistoryShowsAllCommitsInPortionsAndSelectsOneFromALaterPortion() throws Exception {
+        int total = HistoryStreamLoader.FIRST_PORTION + 120;
+        String oldest;
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            commit(git, "Commit 1");
+            oldest = git.log().call().iterator().next().getName();
+            for (int i = 2; i <= total; i++) {
+                commit(git, "Commit " + i);
+            }
+        }
+
+        AtomicReference<HistoryPane> pane = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(HistoryPane.fullHistory(new DefaultGitService(new GitCli())));
+            pane.get().showRepository(Optional.of(repo));
+            pane.get().selectCommit(oldest); // in the second portion
+        });
+
+        List<String> messages = await(pane.get(), m -> m.size() == total);
+        assertThat(messages).hasSize(total);
+        assertThat(messages.get(0)).isEqualTo("Commit " + total);
+        assertThat(messages.get(total - 1)).isEqualTo("Commit 1");
+        SwingUtilities.invokeAndWait(() -> {
+            assertThat(pane.get().isComplete()).isTrue();
+            assertThat(pane.get().selectedCommit()).map(c -> c.id()).contains(oldest);
+        });
+
+        // a refresh with a new commit replaces the rows at once and keeps the selection
+        try (Git git = Git.open(repo.toFile())) {
+            commit(git, "Newest");
+        }
+        SwingUtilities.invokeAndWait(() -> pane.get().refresh());
+        messages = await(pane.get(), m -> m.size() == total + 1);
+        assertThat(messages.get(0)).isEqualTo("Newest");
+        SwingUtilities.invokeAndWait(() ->
+                assertThat(pane.get().selectedCommit()).map(c -> c.id()).contains(oldest));
+    }
+
+    @Test
+    void fullHistoryIsReadAgainOnlyWhenRefsChangeAndKeepsTheSelectionMeanwhile() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            commit(git, "First");
+            commit(git, "Second");
+        }
+        java.util.concurrent.atomic.AtomicInteger opened = new java.util.concurrent.atomic.AtomicInteger();
+        GitService real = new DefaultGitService(new GitCli());
+        GitService counting = (GitService) java.lang.reflect.Proxy.newProxyInstance(
+                GitService.class.getClassLoader(), new Class<?>[] {GitService.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("openHistory")) {
+                        opened.incrementAndGet();
+                    }
+                    try {
+                        return method.invoke(real, args);
+                    } catch (java.lang.reflect.InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+        List<Optional<CommitInfo>> notified = new java.util.concurrent.CopyOnWriteArrayList<>();
+        AtomicReference<HistoryPane> pane = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(HistoryPane.fullHistory(counting));
+            pane.get().addSelectionListener(notified::add);
+            pane.get().showRepository(Optional.of(repo));
+        });
+        await(pane.get(), m -> m.size() == 2);
+        awaitIdle(pane.get());
+        SwingUtilities.invokeAndWait(() -> pane.get().selectRowForTest(1)); // "First"
+        assertThat(opened.get()).isEqualTo(1);
+
+        // only files changed: the history is not read again
+        Files.writeString(repo.resolve("a.txt"), "edited", StandardCharsets.UTF_8);
+        SwingUtilities.invokeAndWait(() -> pane.get().refresh());
+        awaitIdle(pane.get());
+        assertThat(opened.get()).isEqualTo(1);
+
+        // a new commit: read again, and the selected commit stays selected without passing through "none"
+        notified.clear();
+        try (Git git = Git.open(repo.toFile())) {
+            commit(git, "Third");
+        }
+        SwingUtilities.invokeAndWait(() -> pane.get().refresh());
+        await(pane.get(), m -> m.size() == 3);
+        awaitIdle(pane.get());
+        assertThat(opened.get()).isEqualTo(2);
+        SwingUtilities.invokeAndWait(() ->
+                assertThat(pane.get().selectedCommit()).map(CommitInfo::message).contains("First"));
+        assertThat(notified).noneMatch(Optional::isEmpty);
+    }
+
+    @Test
+    void filterShowsMatchingCommitsAndKeepsTheSelectionIfItMatches() throws Exception {
+        try (Git git = Git.init().setDirectory(repo.toFile()).setInitialBranch("main").call()) {
+            commit(git, "Add login form");
+            commit(git, "Update README");
+            commit(git, "Fix login bug");
+        }
+        List<Optional<CommitInfo>> notified = new java.util.concurrent.CopyOnWriteArrayList<>();
+        AtomicReference<HistoryPane> pane = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> {
+            pane.set(HistoryPane.fullHistory(new DefaultGitService(new GitCli())));
+            pane.get().addSelectionListener(notified::add);
+            pane.get().showRepository(Optional.of(repo));
+        });
+        await(pane.get(), m -> m.size() == 3);
+        awaitIdle(pane.get());
+
+        SwingUtilities.invokeAndWait(() -> {
+            pane.get().selectRowForTest(0); // "Fix login bug"
+            notified.clear();
+            pane.get().setFilterText("login");
+            assertThat(pane.get().shownMessages()).containsExactly("Fix login bug", "Add login form");
+            assertThat(pane.get().selectedCommit()).map(CommitInfo::message).contains("Fix login bug");
+            assertThat(notified).isEmpty(); // the selected commit did not change
+
+            pane.get().setFilterText("readme"); // the selected commit is filtered out
+            assertThat(pane.get().shownMessages()).containsExactly("Update README");
+            assertThat(pane.get().selectedCommit()).isEmpty();
+            assertThat(notified).containsExactly(Optional.empty());
+
+            pane.get().setFilterText("");
+            assertThat(pane.get().shownMessages()).hasSize(3);
+
+            // Esc in the filter clears it; with an empty filter the key goes on (the window closes)
+            javax.swing.Action escape = pane.get().filterField().getActionMap().get(
+                    pane.get().filterField().getInputMap(javax.swing.JComponent.WHEN_FOCUSED)
+                            .get(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0)));
+            pane.get().setFilterText("login");
+            assertThat(escape.isEnabled()).isTrue();
+            escape.actionPerformed(null);
+            assertThat(pane.get().filterField().getText()).isEmpty();
+            assertThat(pane.get().shownMessages()).hasSize(3);
+            assertThat(escape.isEnabled()).isFalse();
+        });
+    }
+
+    private static void awaitIdle(HistoryPane pane) throws Exception {
+        AtomicReference<Boolean> reading = new AtomicReference<>(true);
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (reading.get() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+            SwingUtilities.invokeAndWait(() -> reading.set(pane.isReading()));
+        }
+        SwingUtilities.invokeAndWait(() -> { }); // let the last results reach the pane
     }
 
     @Test

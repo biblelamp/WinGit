@@ -23,14 +23,16 @@ import com.formdev.flatlaf.extras.FlatSVGUtils;
 import com.formdev.flatlaf.util.UIScale;
 
 import cz.wingit.core.GitService;
+import cz.wingit.core.log.CommitFile;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.ui.Messages;
 
 /**
  * Diff of one changed file in a window of its own, opened maximized: the same view and navigation
  * (F7 / Shift+F7) as {@link DiffPane}, with more room and the search always at hand in the header.
- * Esc closes it (in the search field: first clears the search). Open windows follow the file:
- * they re-read it on refresh and pick up its new status (e.g. after staging). Use on the EDT only.
+ * Esc closes it (in the search field: first clears the search). Windows of a working-tree file follow
+ * it: they re-read it on refresh and pick up its new status (e.g. after staging). A window can also
+ * show a file of a commit (what the commit changed in it); that never changes. Use on the EDT only.
  */
 public final class DiffWindow extends JFrame {
 
@@ -38,13 +40,31 @@ public final class DiffWindow extends JFrame {
     private static final List<DiffWindow> OPEN = new ArrayList<>();
 
     private final transient Path repository;
+    /** The working-tree file shown; {@code null} in a window of a commit's file. */
     private transient FileChange file;
+    /** The commit whose file is shown, and that file; {@code null} in a window of a working-tree file. */
+    private final transient String commitId;
+    private final transient CommitFile commitFile;
     private final DiffPane pane;
 
     private DiffWindow(GitService git, Path repository, FileChange file) {
-        super(Messages.format("diff.window.title", file.path()));
+        this(git, repository, Messages.format("diff.window.title", file.path()), file, null, null);
+        pane.showFile(Optional.of(file));
+    }
+
+    private DiffWindow(GitService git, Path repository, String commitId, CommitFile commitFile) {
+        this(git, repository, Messages.format("diff.window.commitTitle", commitFile.path(), shortId(commitId)),
+                null, commitId, commitFile);
+        pane.showCommitFile(commitId, Optional.of(commitFile));
+    }
+
+    private DiffWindow(GitService git, Path repository, String title, FileChange file, String commitId,
+                       CommitFile commitFile) {
+        super(title);
         this.repository = repository;
         this.file = file;
+        this.commitId = commitId;
+        this.commitFile = commitFile;
         this.pane = DiffPane.withSearchInHeader(git); // the path is in the window title already
         setIconImages(FlatSVGUtils.createWindowIconImages("/cz/wingit/ui/icons/app/wingit.svg"));
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -66,7 +86,6 @@ public final class DiffWindow extends JFrame {
             }
         });
         pane.showRepository(Optional.of(repository));
-        pane.showFile(Optional.of(file));
     }
 
     /**
@@ -75,18 +94,36 @@ public final class DiffWindow extends JFrame {
      */
     public static void open(Component owner, GitService git, Path repository, FileChange file) {
         for (DiffWindow window : OPEN) {
-            if (window.repository.equals(repository) && window.file.path().equals(file.path())) {
+            if (window.repository.equals(repository) && window.file != null
+                    && window.file.path().equals(file.path())) {
                 window.showFile(file);
                 window.pane.refresh();
-                if ((window.getExtendedState() & Frame.ICONIFIED) != 0) {
-                    window.setExtendedState(window.getExtendedState() & ~Frame.ICONIFIED);
-                }
-                window.toFront();
+                toFront(window);
                 return;
             }
         }
-        DiffWindow window = new DiffWindow(git, repository, file);
-        // the restored size; the window opens maximized on the screen of the main window
+        show(owner, new DiffWindow(git, repository, file));
+    }
+
+    /**
+     * Shows what commit {@code commitId} changed in {@code file} (first parent vs the commit) in its own
+     * maximized window on the screen of {@code owner}; a window already open for that file of that commit is
+     * brought to front instead.
+     */
+    public static void openCommitFile(Component owner, GitService git, Path repository, String commitId,
+                                      CommitFile file) {
+        for (DiffWindow window : OPEN) {
+            if (window.repository.equals(repository) && commitId.equals(window.commitId)
+                    && window.commitFile.equals(file)) {
+                toFront(window);
+                return;
+            }
+        }
+        show(owner, new DiffWindow(git, repository, commitId, file));
+    }
+
+    private static void show(Component owner, DiffWindow window) {
+        // the restored size; the window opens maximized on the screen of the owner
         window.setSize(UIScale.scale(1100), UIScale.scale(750));
         window.setLocationRelativeTo(owner instanceof Window ? owner
                 : owner == null ? null : SwingUtilities.getWindowAncestor(owner));
@@ -95,17 +132,30 @@ public final class DiffWindow extends JFrame {
         window.setVisible(true);
     }
 
-    /** Re-reads the files of all open windows (their content may have changed on disk). */
+    private static void toFront(DiffWindow window) {
+        if ((window.getExtendedState() & Frame.ICONIFIED) != 0) {
+            window.setExtendedState(window.getExtendedState() & ~Frame.ICONIFIED);
+        }
+        window.toFront();
+    }
+
+    private static String shortId(String id) {
+        return id.substring(0, Math.min(7, id.length()));
+    }
+
+    /** Re-reads the working-tree files of all open windows (their content may have changed on disk). */
     public static void refreshAll() {
         for (DiffWindow window : OPEN) {
-            window.pane.refresh();
+            if (window.file != null) { // a commit's file never changes
+                window.pane.refresh();
+            }
         }
     }
 
     /** New status of {@code repository}: its open windows show their file with its new status. */
     public static void statusChanged(Path repository, List<FileChange> changes) {
         for (DiffWindow window : OPEN) {
-            if (window.repository.equals(repository)) {
+            if (window.repository.equals(repository) && window.file != null) {
                 updated(window.file, changes).ifPresent(window::showFile);
             }
         }

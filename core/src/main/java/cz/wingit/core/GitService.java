@@ -7,7 +7,10 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import cz.wingit.core.diff.FileDiff;
+import cz.wingit.core.log.CommitDetails;
+import cz.wingit.core.log.CommitFile;
 import cz.wingit.core.log.CommitInfo;
+import cz.wingit.core.log.HistoryReader;
 import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.refs.Stash;
@@ -61,6 +64,38 @@ public interface GitService {
      * @throws GitException if the repository cannot be read
      */
     List<CommitInfo> recentCommits(Path workTree, int limit);
+
+    /**
+     * A fingerprint of HEAD, the branches, remote-tracking branches, tags and the current upstream: while it
+     * stays the same, a history read earlier (with its labels and marks) is still up to date. Cheap: reads
+     * no commits.
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    String historyVersion(Path workTree);
+
+    /**
+     * Opens the whole history of {@code revision} ({@code HEAD}, a full ref name such as
+     * {@code refs/heads/main}, or a commit id) for reading in portions; the caller must close it.
+     * Finding the unpushed commits happens here, so call it off the EDT.
+     *
+     * @throws GitException if the repository cannot be read or {@code revision} is not a commit
+     */
+    HistoryReader openHistory(Path workTree, String revision);
+
+    /**
+     * Metadata, full message and changed files (compared with the first parent) of commit {@code id}.
+     *
+     * @throws GitException if the repository or the commit cannot be read
+     */
+    CommitDetails commitDetails(Path workTree, String id);
+
+    /**
+     * A file changed by commit {@code id}: its version in the first parent vs the one in the commit.
+     *
+     * @throws GitException if the repository or the commit cannot be read
+     */
+    FileDiff commitFileDiff(Path workTree, String id, CommitFile file);
 
     /**
      * Full messages of the newest commits on HEAD (merges skipped, duplicates removed), newest first,

@@ -45,6 +45,13 @@ public class TitledPane extends JPanel {
         add(content, BorderLayout.CENTER);
     }
 
+    /** Changes the title text, unless the title was replaced by {@link #setHeaderMain}. */
+    protected void setTitle(String title) {
+        if (headerMain instanceof JLabel label) {
+            label.setText(title);
+        }
+    }
+
     /** Replaces the title on the left side of the header with another component (e.g. a search field). */
     protected void setHeaderMain(JComponent main) {
         header.remove(headerMain);

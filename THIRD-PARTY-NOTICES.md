@@ -45,7 +45,7 @@ Toolbar icons in `ui/src/main/resources/cz/wingit/ui/icons/toolbar/` are taken f
 | discard.svg   | undo-2                  |
 | delete.svg    | trash-2                 |
 | stash.svg     | archive                 |
-| history.svg   | history                 |
+| history.svg   | git-graph               |
 
 Repository list icons in `ui/src/main/resources/cz/wingit/ui/icons/repositories/` (same version):
 

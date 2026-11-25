@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import cz.wingit.ui.Language;
 import cz.wingit.ui.Theme;
-import cz.wingit.ui.main.WindowLayout;
+import cz.wingit.ui.common.WindowLayout;
 import cz.wingit.ui.settings.Appearance;
 import cz.wingit.ui.settings.FetchInterval;
 import cz.wingit.ui.settings.Preferences;
@@ -67,6 +67,28 @@ class AppSettingsTest {
                 Map.of("main", new WindowLayout.Divider(250, 880)));
         AppSettings.load(file).setWindowLayout(normal);
         assertThat(AppSettings.load(file).windowLayout()).contains(normal);
+    }
+
+    @Test
+    void logWindowLayoutIsPersistedApartFromTheMainWindow() {
+        Path file = tempDir.resolve("settings.properties");
+        assertThat(AppSettings.load(file).logWindowLayout()).isEmpty();
+
+        WindowLayout main = new WindowLayout(10, 20, 900, 700, false,
+                Map.of("main", new WindowLayout.Divider(250, 880)));
+        WindowLayout log = new WindowLayout(50, 60, 1300, 850, true,
+                Map.of("main", new WindowLayout.Divider(420, 830), "commit", new WindowLayout.Divider(150, 400)));
+        AppSettings.load(file).setWindowLayout(main);
+        AppSettings.load(file).setLogWindowLayout(log);
+        assertThat(AppSettings.load(file).windowLayout()).contains(main);
+        assertThat(AppSettings.load(file).logWindowLayout()).contains(log);
+
+        // saving one window's dividers leaves the other's alone
+        WindowLayout mainAgain = new WindowLayout(10, 20, 900, 700, false,
+                Map.of("left", new WindowLayout.Divider(300, 690)));
+        AppSettings.load(file).setWindowLayout(mainAgain);
+        assertThat(AppSettings.load(file).logWindowLayout()).contains(log);
+        assertThat(AppSettings.load(file).windowLayout()).contains(mainAgain);
     }
 
     @Test

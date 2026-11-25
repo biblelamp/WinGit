@@ -18,6 +18,8 @@ import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.repo.RepositoryList;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.Theme;
+import cz.wingit.ui.common.WindowLayout;
+import cz.wingit.ui.log.LogWindow;
 import cz.wingit.ui.main.MainWindow;
 import cz.wingit.ui.settings.Appearance;
 
@@ -44,6 +46,7 @@ public final class Main {
             window.setFetchInterval(settings.fetchInterval());
             window.setVersion(version());
             settings.windowLayout().ifPresent(window::applyLayout);
+            LogWindow.setLayoutStore(settings::logWindowLayout, layout -> rememberLogLayout(settings, layout));
             settings.lastOpenedRepository().ifPresent(repo -> window.reopen(repo, settings.lastSelectedFile()));
             window.addOpenListener(opened -> rememberOpened(settings, opened));
             // Window listeners run before EXIT_ON_CLOSE ends the JVM.
@@ -93,13 +96,23 @@ public final class Main {
         System.exit(0);
     }
 
-    /** Window geometry and the selected file, saved when the window closes. */
+    /** Window geometry (also of open log windows) and the selected file, saved when the window closes. */
     private static void rememberLayout(AppSettings settings, MainWindow window) {
+        LogWindow.rememberLayouts();
         try {
             settings.setWindowLayout(window.currentLayout());
             settings.setLastSelectedFile(window.selectedFile());
         } catch (UncheckedIOException e) {
             // Not critical: the next start uses the default window size.
+            System.err.println("WinGit: " + e.getMessage());
+        }
+    }
+
+    private static void rememberLogLayout(AppSettings settings, WindowLayout layout) {
+        try {
+            settings.setLogWindowLayout(layout);
+        } catch (UncheckedIOException e) {
+            // Not critical: the next log window opens with the default size.
             System.err.println("WinGit: " + e.getMessage());
         }
     }

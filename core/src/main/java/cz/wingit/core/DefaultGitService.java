@@ -43,6 +43,11 @@ import cz.wingit.core.cli.GitResult;
 import cz.wingit.core.diff.DiffReader;
 import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
+import cz.wingit.core.log.CommitDetails;
+import cz.wingit.core.log.CommitFile;
+import cz.wingit.core.log.CommitReader;
+import cz.wingit.core.log.HistoryReader;
+import cz.wingit.core.log.HistoryVersion;
 import cz.wingit.core.log.LogReader;
 import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.BranchNames;
@@ -137,6 +142,48 @@ public final class DefaultGitService implements GitService {
             return LogReader.recent(git.getRepository(), limit);
         } catch (IOException e) {
             throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public String historyVersion(Path workTree) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return HistoryVersion.of(git.getRepository());
+        } catch (IOException e) {
+            throw new GitException("Cannot read branches of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public HistoryReader openHistory(Path workTree, String revision) {
+        Git git;
+        try {
+            git = Git.open(workTree.toFile());
+        } catch (IOException e) {
+            throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
+        }
+        try {
+            return HistoryReader.open(git.getRepository(), revision); // closes the repository on failure
+        } catch (IOException e) {
+            throw new GitException("Cannot read history of " + revision + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public CommitDetails commitDetails(Path workTree, String id) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return CommitReader.read(git.getRepository(), id);
+        } catch (IOException e) {
+            throw new GitException("Cannot read commit " + id + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public FileDiff commitFileDiff(Path workTree, String id, CommitFile file) {
+        try (Git git = Git.open(workTree.toFile())) {
+            return DiffReader.readCommit(git.getRepository(), id, file);
+        } catch (IOException e) {
+            throw new GitException("Cannot read " + file.path() + ": " + e.getMessage(), e);
         }
     }
 

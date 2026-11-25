@@ -325,12 +325,23 @@ final class DiffView extends JPanel {
             case INDEX:
                 source = Messages.get("diff.source.index");
                 break;
+            case COMMIT:
+                source = Messages.format("diff.source.commit", shortId(version.revision()));
+                break;
+            case PARENT:
+                source = version.revision() == null ? Messages.get("diff.source.noParent")
+                        : Messages.format("diff.source.parent", shortId(version.revision()));
+                break;
             case WORKING_TREE:
             default:
                 source = Messages.get("diff.source.workingTree");
                 break;
         }
         return version.exists() ? source : Messages.format("diff.source.missing", source);
+    }
+
+    private static String shortId(String id) {
+        return id == null ? "" : id.substring(0, Math.min(7, id.length()));
     }
 
     /** Syntax highlighting by file name (extension); plain text if unknown. */
