@@ -24,6 +24,7 @@ import javax.swing.JTree;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.ToolTipManager;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
@@ -82,6 +83,7 @@ public final class BranchesPane extends TitledPane {
         tree.setRootVisible(false);
         tree.setShowsRootHandles(true);
         tree.setCellRenderer(new BranchCellRenderer());
+        ToolTipManager.sharedInstance().registerComponent(tree); // full upstream of a tracking branch
         installSwitchGestures();
         installContextGestures();
         showRepository(Optional.empty());

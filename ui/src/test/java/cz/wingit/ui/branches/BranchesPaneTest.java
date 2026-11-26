@@ -20,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 import cz.wingit.core.DefaultGitService;
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.refs.LocalBranch;
+import cz.wingit.ui.Messages;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.stash.SelectedStashAction;
 import cz.wingit.ui.tags.SelectedTagAction;
@@ -56,7 +57,7 @@ class BranchesPaneTest {
 
         // no remote, so no remote group
         assertThat(awaitRows(pane.get(), 5)).containsExactly(
-                "Local (2)", "feature", "main", "Tags (1)", "Stashes (1)");
+                "Local Branches (2)", "feature", "main", "Tags (1)", "Stashes (1)");
 
         // expand Tags (row 3), add a tag, refresh: Tags stays expanded and shows both
         SwingUtilities.invokeAndWait(() -> pane.get().expandRowForTest(3));
@@ -67,16 +68,32 @@ class BranchesPaneTest {
 
         // Stashes was not expanded, so it stays collapsed
         assertThat(awaitRows(pane.get(), 7)).containsExactly(
-                "Local (2)", "feature", "main", "Tags (2)", "v1 - init", "v2 - init", "Stashes (1)");
+                "Local Branches (2)", "feature", "main", "Tags (2)", "v1 - init", "v2 - init", "Stashes (1)");
     }
 
     @Test
     void trackingDetailShowsUpstreamAndCounts() {
         assertThat(BranchTreeBuilder.trackingDetail(new LocalBranch("main", null, 0, 0, true))).isNull();
         assertThat(BranchTreeBuilder.trackingDetail(new LocalBranch("main", "origin/main", 0, 0, true)))
-                .isEqualTo("origin/main");
+                .isEqualTo("→ origin");
         assertThat(BranchTreeBuilder.trackingDetail(new LocalBranch("main", "origin/main", 2, 1, true)))
-                .isEqualTo("origin/main ↑2 ↓1");
+                .isEqualTo("→ origin ↑2 ↓1");
+        // a different name on the server stays in full
+        assertThat(BranchTreeBuilder.trackingDetail(new LocalBranch("main", "origin/trunk", 0, 0, true)))
+                .isEqualTo("→ origin/trunk");
+        assertThat(BranchTreeBuilder.trackingDetail(new LocalBranch("fix/main", "origin/main", 0, 0, true)))
+                .isEqualTo("→ origin/main");
+        assertThat(BranchTreeBuilder.trackingDetail(new LocalBranch("main", "origin/fix/main", 0, 0, true)))
+                .isEqualTo("→ origin/fix/main");
+    }
+
+    @Test
+    void trackingTooltipShowsFullUpstream() {
+        assertThat(BranchTreeBuilder.trackingTooltip(new LocalBranch("main", null, 0, 0, true))).isNull();
+        assertThat(BranchTreeBuilder.trackingTooltip(new LocalBranch("main", "origin/main", 2, 1, true)))
+                .isEqualTo(Messages.format("branches.tracking.tooltip", "origin/main")
+                        + Messages.format("branches.tracking.ahead", "2")
+                        + Messages.format("branches.tracking.behind", "1"));
     }
 
     @Test

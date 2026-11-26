@@ -6,8 +6,10 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
@@ -86,8 +88,11 @@ public final class MergeAction extends AbstractAction {
     }
 
     /** What the merge dialog needs, read in the background. */
-    private record Prepared(boolean inProgress, String current, List<String> candidates) {
+    private record Prepared(boolean inProgress, String current, List<String> candidates, Set<String> remote) {
     }
+
+    /** How many incoming commits the merge dialog lists. */
+    private static final int PREVIEW_COMMITS = 50;
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -103,10 +108,10 @@ public final class MergeAction extends AbstractAction {
             protected Prepared doInBackground() {
                 boolean inProgress = git.mergeInProgress(repo);
                 if (abort || inProgress) {
-                    return new Prepared(inProgress, null, List.of());
+                    return new Prepared(inProgress, null, List.of(), Set.of());
                 }
                 RepositoryRefs refs = git.refs(repo);
-                return new Prepared(false, currentName(refs), candidates(refs));
+                return new Prepared(false, currentName(refs), candidates(refs), remoteCandidates(refs));
             }
 
             @Override
@@ -144,8 +149,20 @@ public final class MergeAction extends AbstractAction {
             Dialogs.showInfo(repositories, Messages.get("merge.title"), Messages.get("merge.noBranches"));
             return;
         }
-        MergeDialog.show(repositories, prepared.current(), prepared.candidates(), preselected)
+        MergeDialog.show(repositories, prepared.current(), prepared.candidates(), prepared.remote(), preselected,
+                        ref -> git.mergePreview(repo, ref, PREVIEW_COMMITS), ref -> git.mergeConflicts(repo, ref))
                 .ifPresent(choice -> runMerge(repo, prepared.current(), choice));
+    }
+
+    /** The remote branches among {@link #candidates} ({@code remote/branch}). */
+    static Set<String> remoteCandidates(RepositoryRefs refs) {
+        Set<String> result = new HashSet<>();
+        for (RemoteBranches remote : refs.remotes()) {
+            for (String branch : remote.branches()) {
+                result.add(remote.remote() + "/" + branch);
+            }
+        }
+        return result;
     }
 
     /** Local branches except the current one, then remote branches ({@code remote/branch}). */

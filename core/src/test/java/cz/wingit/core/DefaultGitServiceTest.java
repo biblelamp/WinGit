@@ -24,6 +24,14 @@ class DefaultGitServiceTest {
     private final GitService git = new DefaultGitService(new GitCli());
 
     @Test
+    void parsesMergeTreeConflictsOncePerPath() {
+        String out = "7af980caafe2732666c31fa09df6c4ebd75c16c9\0a.txt\0dir/ž b.txt\0a.txt\0";
+
+        assertThat(DefaultGitService.parseMergeTreeConflicts(out)).containsExactly("a.txt", "dir/ž b.txt");
+        assertThat(DefaultGitService.parseMergeTreeConflicts("7af980caafe2732666c31fa09df6c4ebd75c16c9\0")).isEmpty();
+    }
+
+    @Test
     void initCreatesRepository() throws Exception {
         Path dir = Files.createDirectory(tempDir.resolve("fresh"));
 

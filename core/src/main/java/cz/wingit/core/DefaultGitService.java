@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -49,6 +50,9 @@ import cz.wingit.core.log.CommitReader;
 import cz.wingit.core.log.HistoryReader;
 import cz.wingit.core.log.HistoryVersion;
 import cz.wingit.core.log.LogReader;
+import cz.wingit.core.merge.MergeConflicts;
+import cz.wingit.core.merge.MergePreview;
+import cz.wingit.core.merge.MergePreviewReader;
 import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.BranchNames;
 import cz.wingit.core.refs.RefsReader;
@@ -352,6 +356,59 @@ public final class DefaultGitService implements GitService {
                 throw new GitException("Cannot read the merge result: " + e.getMessage(), e);
             }
         });
+    }
+
+    @Override
+    public MergePreview mergePreview(Path workTree, String ref, int limit) {
+        int localChanges = (int) status(workTree).changes().stream()
+                .filter(c -> c.staged() != null || (c.unstaged() != null && c.unstaged() != ChangeType.UNTRACKED))
+                .count();
+        try (Git git = Git.open(workTree.toFile())) {
+            return MergePreviewReader.read(git.getRepository(), ref, limit, localChanges);
+        } catch (IOException e) {
+            throw new GitException("Cannot read history of " + workTree + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public MergeConflicts mergeConflicts(Path workTree, String ref) {
+        if (ref.isEmpty() || ref.startsWith("-")) {
+            throw new IllegalArgumentException("Not a branch: " + ref);
+        }
+        boolean hasHead = readRepository(workTree, DefaultGitService::headId) != null;
+        if (!hasHead) {
+            return new MergeConflicts(MergeConflicts.Certainty.EXACT, List.of()); // nothing to conflict with
+        }
+        GitResult result;
+        try {
+            result = cli.runAllowing(workTree,
+                    List.of("merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", "HEAD", ref), 1);
+        } catch (GitCommandException e) {
+            // Git before 2.38 knows no --write-tree (usage error 129); also unrelated histories end here
+            try (Git git = Git.open(workTree.toFile())) {
+                return new MergeConflicts(MergeConflicts.Certainty.LIKELY,
+                        MergePreviewReader.changedOnBothSides(git.getRepository(), ref));
+            } catch (IOException io) {
+                throw new GitException("Cannot read history of " + workTree + ": " + io.getMessage(), io);
+            }
+        }
+        return new MergeConflicts(MergeConflicts.Certainty.EXACT,
+                result.exitCode() == 0 ? List.of() : parseMergeTreeConflicts(result.stdout()));
+    }
+
+    /**
+     * {@code <tree id>NUL<path>NUL<path>NUL...} of {@code git merge-tree --write-tree --name-only -z}:
+     * the conflicting paths, each once, in Git's order.
+     */
+    static List<String> parseMergeTreeConflicts(String output) {
+        String[] tokens = output.split("\0");
+        Set<String> paths = new LinkedHashSet<>();
+        for (int i = 1; i < tokens.length; i++) {
+            if (!tokens[i].isEmpty()) {
+                paths.add(tokens[i]);
+            }
+        }
+        return List.copyOf(paths);
     }
 
     @Override

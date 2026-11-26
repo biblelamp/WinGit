@@ -9,8 +9,13 @@ package cz.wingit.ui.branches;
  * @param detail  dimmed text after the label (upstream, ahead/behind, stash message), or {@code null}
  * @param current whether this is the checked-out branch (shown bold)
  * @param target  branch checked out on double-click / Enter, or {@code null} if the node has none
+ * @param tooltip tooltip text, or {@code null}
  */
-record BranchItem(String key, String label, String detail, boolean current, Target target) {
+record BranchItem(String key, String label, String detail, boolean current, Target target, String tooltip) {
+
+    BranchItem(String key, String label, String detail, boolean current, Target target) {
+        this(key, label, detail, current, target, null);
+    }
 
     /**
      * A branch that can be checked out.

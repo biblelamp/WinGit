@@ -13,7 +13,7 @@ import cz.wingit.ui.Messages;
 /**
  * Commit date text: "Today 14:05", "Yesterday 09:32", otherwise a short localized date and time.
  */
-final class CommitDates {
+public final class CommitDates {
 
     private final Clock clock;
     private final DateTimeFormatter time;
@@ -25,11 +25,11 @@ final class CommitDates {
         this.dateTime = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(locale);
     }
 
-    static CommitDates system() {
+    public static CommitDates system() {
         return new CommitDates(Clock.systemDefaultZone(), Locale.getDefault(Locale.Category.FORMAT));
     }
 
-    String format(Instant instant) {
+    public String format(Instant instant) {
         ZonedDateTime when = instant.atZone(clock.getZone());
         LocalDate today = LocalDate.now(clock);
         LocalDate day = when.toLocalDate();

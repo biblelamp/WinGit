@@ -23,6 +23,9 @@ final class BranchCellRenderer extends DefaultTreeCellRenderer {
         Object user = value instanceof DefaultMutableTreeNode node ? node.getUserObject() : null;
         if (user instanceof BranchItem item) {
             setText(html(item));
+            setToolTipText(item.tooltip());
+        } else {
+            setToolTipText(null);
         }
         return this;
     }

@@ -35,14 +35,13 @@ WinGit is an early but working version, developed in the open at https://github.
 
 ### What's new in this version
 
-Version 0.4.0:
-- New history window: the whole history of the current branch with the graph. Open it with the History button or by double-clicking a commit
-- Select a commit to see its author, date, parents and full message, the changed files and the diff of each file
-- Filter commits by message, author, commit id, branch or tag
-- Even a very long history opens quickly: the newest commits show up at once, older ones are read in the background
-- Double-click a branch in the history window to switch to it
-- The history window remembers its size, position and pane sizes
-- New icon for the History button
+Version 0.4.1:
+- New merge window: before merging you see which commits come in and how many files change
+- A small picture shows how the history will look after the merge
+- WinGit checks in advance whether the merge will cause conflicts, and in which files
+- Choose whether to move the branch forward when possible or always make a merge commit
+- A warning when you have uncommitted changes before a merge
+- Branch list: a local branch shows the remote it tracks (for example "→ origin") and the commits to push or pull; the full name is in the tooltip
 
 ### Product features
 
@@ -65,7 +64,7 @@ git client
 git gui
 version control
 source control
-github
+repository
 diff
 ```
 
@@ -99,14 +98,13 @@ WinGit — ранняя, но уже рабочая версия; разрабо
 
 ### Что нового в этой версии
 
-Версия 0.4.0:
-- Новое окно истории: вся история текущей ветки с графом. Открывается кнопкой «История» или двойным щелчком по коммиту
-- Для выбранного коммита видны автор, дата, родители и полное сообщение, изменённые файлы и сравнение каждого файла
-- Фильтр коммитов по сообщению, автору, id коммита, ветке или тегу
-- Даже очень длинная история открывается быстро: новые коммиты видны сразу, старые дочитываются в фоне
-- Двойной щелчок по ветке в окне истории переключает на неё
-- Окно истории запоминает свой размер, положение и размеры панелей
-- Новая иконка кнопки «История»
+Версия 0.4.1:
+- Новое окно слияния: до слияния видно, какие коммиты придут и сколько файлов изменится
+- Небольшая схема показывает, как будет выглядеть история после слияния
+- WinGit заранее проверяет, будут ли конфликты, и в каких файлах
+- Можно выбрать: сдвигать ветку вперёд, когда это возможно, или всегда создавать коммит слияния
+- Предупреждение о незакоммиченных изменениях перед слиянием
+- Список веток: у локальной ветки виден отслеживаемый удалённый репозиторий (например, «→ origin») и коммиты к отправке или получению; полное имя — в подсказке
 
 ### Функции продукта
 
@@ -129,14 +127,14 @@ git клиент
 git gui
 контроль версий
 система контроля версий
-github
+репозиторий
 diff
 ```
 
 ### Подписи к снимкам экрана
 
 1. Репозитории, файлы, граф истории коммитов и сравнение версий в одном окне
-2. Сообщение коммита и выбор файлов для коммита
+2. Создание коммита и выбор файлов для коммита
 3. Тёмная тема
 
 ---
@@ -163,14 +161,13 @@ WinGit je raná, ale funkční verze, vyvíjená otevřeně na https://github.co
 
 ### Co je nového v této verzi
 
-Verze 0.4.0:
-- Nové okno historie: celá historie aktuální větve s grafem. Otevře se tlačítkem Historie nebo dvojklikem na commit
-- U vybraného commitu je vidět autor, datum, rodiče a celá zpráva, změněné soubory a porovnání každého souboru
-- Filtr commitů podle zprávy, autora, id commitu, větve nebo tagu
-- I velmi dlouhá historie se otevře rychle: nejnovější commity jsou vidět hned, starší se dočítají na pozadí
-- Dvojklik na větev v okně historie na ni přepne
-- Okno historie si pamatuje svou velikost, polohu a velikosti panelů
-- Nová ikona tlačítka Historie
+Verze 0.4.1:
+- Nové okno pro merge: ještě před merge vidíte, které commity přibudou a kolik souborů se změní
+- Malé schéma ukáže, jak bude historie po merge vypadat
+- WinGit předem zjistí, zda merge způsobí konflikty a ve kterých souborech
+- Můžete zvolit, zda větev jen posunout dopředu, když to jde, nebo vždy vytvořit merge commit
+- Upozornění na necommitnuté změny před merge
+- Seznam větví: u lokální větve je vidět sledovaný vzdálený repozitář (například „→ origin“) a commity k odeslání nebo stažení; celé jméno je v nápovědě
 
 ### Funkce produktu
 
@@ -193,7 +190,7 @@ git klient
 git gui
 správa verzí
 verzovací systém
-github
+repozitář
 diff
 ```
 

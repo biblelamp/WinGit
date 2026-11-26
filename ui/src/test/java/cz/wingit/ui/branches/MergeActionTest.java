@@ -22,5 +22,6 @@ class MergeActionTest {
                 List.of(), List.of());
 
         assertThat(MergeAction.candidates(refs)).containsExactly("feature", "origin/feature", "origin/main");
+        assertThat(MergeAction.remoteCandidates(refs)).containsExactlyInAnyOrder("origin/feature", "origin/main");
     }
 }

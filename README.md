@@ -34,7 +34,9 @@ myself while it grows.
 - **Commit:** pick the files, write the message (an unfinished one is kept as a draft), set a
   date or a tag; amend the last commit as long as it has not been pushed.
 - **Branches, tags and stash:** create, rename, delete, switch; merge and abort a merge;
-  push tags; save and apply stashes.
+  push tags; save and apply stashes. Before a merge, WinGit shows which commits come in,
+  how the history will look and whether there will be conflicts.
+  A local branch shows the remote it tracks and how many commits are to push or pull.
 - **Remote:** fetch (also automatically in the background, at an interval you choose), pull and
   push; asks for a user name and password (or token) when the server needs them and
   never stores them itself (Git's credential helper can remember them).
@@ -46,8 +48,9 @@ myself while it grows.
 
 ### Status and plans
 
-- **Status:** early but working; I use it every day. Version 0.4.0 adds the history window
-  with the whole history of a branch. There are no tools for resolving merge conflicts yet.
+- **Status:** early but working; I use it every day. Version 0.4.1 explains a merge before it
+  starts: the incoming commits, a picture of the resulting history and the files that will conflict.
+  There are no tools for resolving merge conflicts yet.
 - **Next:** conflict handling, partial (hunk) staging, commit actions in the history
   (checkout, revert, cherry-pick, reset). The full plan is in
   the [roadmap](ROADMAP.md) ([на русском](ROADMAP.ru.md)).

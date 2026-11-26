@@ -11,6 +11,8 @@ import cz.wingit.core.log.CommitDetails;
 import cz.wingit.core.log.CommitFile;
 import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.log.HistoryReader;
+import cz.wingit.core.merge.MergeConflicts;
+import cz.wingit.core.merge.MergePreview;
 import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.refs.Stash;
@@ -165,6 +167,26 @@ public interface GitService {
      * @throws GitCommandException if Git refuses to start (e.g. local changes would be overwritten)
      */
     MergeResult merge(Path workTree, String ref, boolean noFastForward);
+
+    /**
+     * What {@link #merge} of {@code ref} would do, read without changing anything: whether it would
+     * fast-forward or create a merge commit, the newest {@code limit} incoming commits, and how many
+     * files are changed locally.
+     *
+     * @throws GitException if the repository cannot be read or {@code ref} is not a commit
+     */
+    MergePreview mergePreview(Path workTree, String ref, int limit);
+
+    /**
+     * Which files would conflict if {@code ref} were merged into the current branch. Git tries the merge
+     * in memory ({@code git merge-tree --write-tree}); the working tree, index and branches stay as they
+     * are (the trial only adds unreferenced objects, which Git cleans up later). With a Git older than
+     * 2.38 the files changed differently on both branches are returned as likely conflicts instead.
+     * Runs a process: may take a moment on big repositories.
+     *
+     * @throws GitException if the repository cannot be read or {@code ref} is not a commit
+     */
+    MergeConflicts mergeConflicts(Path workTree, String ref);
 
     /** {@code true} while a merge stopped with conflicts (or before its commit) is in progress. */
     boolean mergeInProgress(Path workTree);

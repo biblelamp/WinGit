@@ -36,8 +36,9 @@ final class BranchTreeBuilder {
             local.add(leaf("detached", Messages.format("branches.detached", refs.detachedAt()), null, true, null));
         }
         for (LocalBranch branch : refs.localBranches()) {
-            local.add(leaf(LOCAL_BRANCH_KEY + branch.name(), branch.name(), trackingDetail(branch), branch.current(),
-                    branch.current() ? null : BranchItem.Target.local(branch.name())));
+            local.add(new DefaultMutableTreeNode(new BranchItem(LOCAL_BRANCH_KEY + branch.name(), branch.name(),
+                    trackingDetail(branch), branch.current(),
+                    branch.current() ? null : BranchItem.Target.local(branch.name()), trackingTooltip(branch)), false));
         }
         root.add(local);
 
@@ -72,12 +73,20 @@ final class BranchTreeBuilder {
         return subject == null || subject.isBlank() ? null : "- " + subject.strip();
     }
 
-    /** E.g. {@code origin/main \u21912 \u21931}; {@code null} without upstream. */
+    /**
+     * E.g. {@code \u2192 origin \u21912 \u21931}: just the remote when the branch has the same name there
+     * (repeating it is noise), the full upstream otherwise; {@code null} without upstream.
+     */
     static String trackingDetail(LocalBranch branch) {
         if (branch.upstream() == null) {
             return null;
         }
-        StringBuilder detail = new StringBuilder(branch.upstream());
+        String upstream = branch.upstream();
+        String remote = upstream.endsWith("/" + branch.name())
+                ? upstream.substring(0, upstream.length() - branch.name().length() - 1) : "";
+        // "origin/fix/main" for "main" is another branch on the server, not "main" on remote "origin/fix"
+        boolean sameName = !remote.isEmpty() && remote.indexOf('/') < 0;
+        StringBuilder detail = new StringBuilder("\u2192 ").append(sameName ? remote : upstream);
         if (branch.ahead() > 0) {
             detail.append(" \u2191").append(branch.ahead());
         }
@@ -85,6 +94,21 @@ final class BranchTreeBuilder {
             detail.append(" \u2193").append(branch.behind());
         }
         return detail.toString();
+    }
+
+    /** E.g. {@code Tracks origin/main, 2 to push, 1 to pull}; {@code null} without upstream. */
+    static String trackingTooltip(LocalBranch branch) {
+        if (branch.upstream() == null) {
+            return null;
+        }
+        StringBuilder tooltip = new StringBuilder(Messages.format("branches.tracking.tooltip", branch.upstream()));
+        if (branch.ahead() > 0) {
+            tooltip.append(Messages.format("branches.tracking.ahead", String.valueOf(branch.ahead())));
+        }
+        if (branch.behind() > 0) {
+            tooltip.append(Messages.format("branches.tracking.behind", String.valueOf(branch.behind())));
+        }
+        return tooltip.toString();
     }
 
     private static DefaultMutableTreeNode group(String key, String name, int count) {

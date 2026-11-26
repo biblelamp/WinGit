@@ -72,6 +72,35 @@ public final class GitCli {
      */
     public GitResult run(Path workDir, List<String> args, Consumer<String> progress,
                          Map<String, String> environment, String stdin) {
+        GitResult result = execute(workDir, args, progress, environment, stdin);
+        if (result.exitCode() != 0) {
+            throw new GitCommandException(display(args), result.exitCode(), result.stderr());
+        }
+        return result;
+    }
+
+    /**
+     * Runs {@code git <args>} like {@link #run(Path, List)}, but also returns (with its output) when Git
+     * exits with one of {@code allowedExitCodes}, for commands that report a result by the exit code
+     * (e.g. {@code git merge-tree}: 1 means conflicts).
+     *
+     * @throws GitCommandException on any other non-zero exit code
+     */
+    public GitResult runAllowing(Path workDir, List<String> args, int... allowedExitCodes) {
+        GitResult result = execute(workDir, args, null, Map.of(), null);
+        if (result.exitCode() == 0) {
+            return result;
+        }
+        for (int allowed : allowedExitCodes) {
+            if (result.exitCode() == allowed) {
+                return result;
+            }
+        }
+        throw new GitCommandException(display(args), result.exitCode(), result.stderr());
+    }
+
+    private GitResult execute(Path workDir, List<String> args, Consumer<String> progress,
+                              Map<String, String> environment, String stdin) {
         List<String> command = new ArrayList<>();
         command.add(executable);
         command.addAll(BASE_OPTIONS);
@@ -104,9 +133,6 @@ public final class GitCli {
             throw new GitCancelledException();
         }
 
-        if (exitCode != 0) {
-            throw new GitCommandException(display(args), exitCode, stderr.text());
-        }
         return new GitResult(exitCode, stdout.text(), stderr.text());
     }
 

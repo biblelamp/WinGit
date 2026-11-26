@@ -9,7 +9,7 @@
   GitHub's windows-latest runners have it.
 
 .EXAMPLE
-  ./build-msix.ps1 -AppImage app/target/installer/WinGit -Version 0.4.0 -Output dist/WinGit.msix
+  ./build-msix.ps1 -AppImage app/target/installer/WinGit -Version 0.4.1 -Output dist/WinGit.msix
 #>
 param(
     # jpackage app image folder (the one with WinGit.exe)
