@@ -13,7 +13,9 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
 
 import cz.wingit.core.GitService;
+import cz.wingit.core.log.CommitInfo;
 import cz.wingit.core.refs.LocalBranch;
+import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.common.Dialogs;
 import cz.wingit.ui.repositories.RepositoriesPane;
@@ -51,19 +53,26 @@ public final class NewBranchAction extends AbstractAction {
         }
         Path repo = opened.get();
         busy = true;
-        new SwingWorker<List<String>, Void>() {
+        new SwingWorker<Prepared, Void>() {
             @Override
-            protected List<String> doInBackground() {
-                return git.refs(repo).localBranches().stream().map(LocalBranch::name).toList();
+            protected Prepared doInBackground() {
+                RepositoryRefs refs = git.refs(repo);
+                List<String> existing = refs.localBranches().stream().map(LocalBranch::name).toList();
+                String current = refs.localBranches().stream().filter(LocalBranch::current)
+                        .map(LocalBranch::name).findFirst().orElse(null);
+                List<CommitInfo> head = git.recentCommits(repo, 1);
+                return new Prepared(existing,
+                        head.isEmpty() ? null : new NewBranchDialog.Source(head.get(0), current));
             }
 
             @Override
             protected void done() {
                 busy = false;
                 try {
-                    List<String> existing = get();
+                    Prepared prepared = get();
                     if (pane.openedRepository().equals(Optional.of(repo))) {
-                        NewBranchDialog.show(pane, existing).ifPresent(r -> create(repo, r));
+                        NewBranchDialog.show(pane, prepared.existing(), prepared.source())
+                                .ifPresent(r -> create(repo, r));
                     }
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
@@ -72,6 +81,10 @@ public final class NewBranchAction extends AbstractAction {
                 }
             }
         }.execute();
+    }
+
+    /** What the dialog needs, read in the background. */
+    private record Prepared(List<String> existing, NewBranchDialog.Source source) {
     }
 
     private void create(Path repo, NewBranchDialog.Result request) {

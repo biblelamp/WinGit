@@ -67,6 +67,7 @@ public final class RenameDialog extends JDialog {
 
         nameField.setText(oldName);
         nameField.selectAll();
+        PastedNameFilter.install(nameField); // a pasted title gets "_" instead of spaces
         nameField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
