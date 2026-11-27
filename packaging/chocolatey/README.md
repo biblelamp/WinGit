@@ -29,8 +29,15 @@ artifacts.
 
 ## For every release
 
-1. In `wingit.nuspec`: set `version` and the version in `releaseNotes`.
-2. In `tools/chocolateyInstall.ps1`: set the version in `url64bit` and `checksum64` to the
-   SHA-256 of the new `WinGit-X.Y.Z-windows-x64.msi` (`Get-FileHash` in PowerShell).
-3. Run the Chocolatey workflow with **push** ticked. Every version is reviewed
-   before it is published.
+Automatic: after a release tag `vX.Y.Z` publishes the GitHub Release, `release.yml` calls the
+Chocolatey workflow with that version. It runs `update-version.ps1` (version, MSI URL and the
+SHA-256 of the MSI downloaded from the release), tests the package and pushes it. Pre-release
+tags (`vX.Y.Z-suffix`) are skipped. Every version is reviewed by a moderator before it is public;
+answer their comments on the package page.
+
+The CI run does not commit its changes. To keep the files here in step with the published
+package, run `./packaging/chocolatey/update-version.ps1 -Version X.Y.Z` after the release and
+commit the result.
+
+By hand (e.g. to publish an existing release again): Actions → **Chocolatey** → Run workflow
+with **version** `X.Y.Z` and **push** ticked.

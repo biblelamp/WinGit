@@ -2,6 +2,8 @@
 #   Windows: MSI and a portable ZIP (app image), signed through SignPath when configured;
 #   Linux:   DEB, RPM and a portable tar.gz (app image).
 #   Microsoft Store: an unsigned MSIX, only as the workflow artifact WinGit-<version>-msstore.
+#   Chocolatey: after the GitHub Release, the package for the new version is pushed to
+#   community.chocolatey.org (chocolatey.yml; needs the CHOCOLATEY_API_KEY secret).
 #
 # - Push a tag like v0.3.0 (or v0.3.0-beta.1 for a pre-release) -> a GitHub Release
 #   with all files attached.
@@ -219,3 +221,16 @@ jobs:
             [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
             gh release create "$tag" dist/* --title "WinGit $VERSION" --generate-notes --verify-tag "${flags[@]}"
           fi
+
+  # Chocolatey package for the new release (not for pre-releases): its install script downloads
+  # the MSI from the release published above. Each version is reviewed by a Chocolatey moderator
+  # before it goes public.
+  chocolatey:
+    if: github.event_name == 'push' && needs.version.outputs.prerelease == 'false'
+    needs: [version, release]
+    uses: ./.github/workflows/chocolatey.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      push: true
+    secrets:
+      CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}

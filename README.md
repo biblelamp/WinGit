@@ -62,6 +62,8 @@ and ideas are welcome.
 
 - **Windows:** [Microsoft Store](https://apps.microsoft.com/detail/9n63b9trbd92) — the simplest way:
   no installer warnings, updates come automatically.
+- **Windows, from the command line:** [Chocolatey](https://community.chocolatey.org/packages/wingit) —
+  `choco install wingit` (as administrator); it also installs Git if needed.
 
 Every [release](https://github.com/biblelamp/WinGit/releases/latest) also has:
 

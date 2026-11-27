@@ -1,14 +1,31 @@
-# Test of the Chocolatey package (packaging/chocolatey/wingit) on Windows: packs it, installs it
-# from the local folder (Git comes from the community repository as a dependency), checks the
-# installed files and uninstalls it. The .nupkg is uploaded as an artifact. With "push" ticked, a
-# package that passed the test is pushed to community.chocolatey.org with the API key from the
-# CHOCOLATEY_API_KEY repository secret. Run it manually (Actions -> Chocolatey -> Run workflow)
-# after changing the package.
+# Chocolatey package (packaging/chocolatey/wingit) on Windows: with a version given, first points
+# the package at that GitHub Release (update-version.ps1); then packs it, installs it from the
+# local folder (Git comes from the community repository as a dependency), checks the installed
+# files and uninstalls it. The .nupkg is uploaded as an artifact. With "push", a package that
+# passed the test is pushed to community.chocolatey.org with the API key from the
+# CHOCOLATEY_API_KEY repository secret.
+# Called by release.yml for every release tag; run it manually (Actions -> Chocolatey ->
+# Run workflow) after changing the package or to (re)publish a version by hand.
 name: Chocolatey
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: ''
+      push:
+        type: boolean
+        default: false
+    secrets:
+      CHOCOLATEY_API_KEY:
+        required: false
   workflow_dispatch:
     inputs:
+      version:
+        description: Released version to package, e.g. 0.4.1 (empty = the package as committed)
+        type: string
+        default: ''
       push:
         description: Push the package to community.chocolatey.org
         type: boolean
@@ -22,6 +39,12 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v5
+
+      - name: Set version
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+        run: ./packaging/chocolatey/update-version.ps1 -Version $env:VERSION
 
       - name: Pack
         working-directory: packaging/chocolatey/wingit

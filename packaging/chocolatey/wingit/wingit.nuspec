@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>wingit</id>
-    <version>0.3.7</version>
+    <version>0.4.1</version>
     <title>WinGit</title>
     <authors>WinGit project</authors>
     <owners>biblelamp</owners>
@@ -29,7 +29,7 @@ Features:
 * Light and dark themes
 
 WinGit brings its own Java runtime. Git is installed as a dependency.</description>
-    <releaseNotes>https://github.com/biblelamp/WinGit/releases/tag/v0.3.7</releaseNotes>
+    <releaseNotes>https://github.com/biblelamp/WinGit/releases/tag/v0.4.1</releaseNotes>
     <dependencies>
       <dependency id="git" version="2.30.0" />
     </dependencies>

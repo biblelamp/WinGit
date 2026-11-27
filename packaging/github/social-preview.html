@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Source of social-preview.png (1280x640), the repository's social preview on GitHub
+     (Settings -> General -> Social preview). Regenerate the PNG with a headless browser,
+     see README.md next to this file. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WinGit social preview</title>
+<style>
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: #ffffff;
+    background: linear-gradient(135deg, #1f5fbf 0%, #123a73 100%);
+    position: relative;
+  }
+  .text { position: absolute; left: 80px; top: 0; bottom: 0; width: 470px;
+          display: flex; flex-direction: column; justify-content: center; }
+  .icon { width: 120px; height: 120px; margin-bottom: 26px;
+          filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .25)); }
+  h1 { font-size: 92px; font-weight: 700; line-height: 1; margin: 0 0 18px; letter-spacing: -1px; }
+  .tagline { font-size: 38px; font-weight: 600; line-height: 1.2; margin: 0 0 22px; }
+  .features { font-size: 24px; line-height: 1.45; color: #d6e4fb; margin: 0 0 30px; }
+  .meta { font-size: 24px; font-weight: 600; color: #ffffff; display: flex; gap: 14px; align-items: center; }
+  .meta .dot { width: 10px; height: 10px; border-radius: 50%; background: #f08a24; }
+  .shot {
+    position: absolute; left: 600px; top: 92px; width: 760px;
+    border-radius: 14px; overflow: hidden; background: #fff;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, .40), 0 0 0 1px rgba(255, 255, 255, .15);
+    transform: perspective(1600px) rotateY(-10deg) rotateX(3deg);
+    transform-origin: left center;
+  }
+  .shot img { display: block; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="text">
+    <img class="icon" src="../../ui/src/main/resources/cz/wingit/ui/icons/app/wingit.svg" alt="">
+    <h1>WinGit</h1>
+    <p class="tagline">Free, open-source desktop Git client</p>
+    <p class="features">History graph · side-by-side diffs<br>Staging · branches · merges · stashes</p>
+    <div class="meta">Windows <span class="dot"></span> Linux <span class="dot"></span> wgit.cz</div>
+  </div>
+  <div class="shot"><img src="../../site/assets/screenshot.png" alt=""></div>
+</body>
+</html>
