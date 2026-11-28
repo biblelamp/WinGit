@@ -11,7 +11,6 @@ import java.awt.event.KeyEvent;
 import java.awt.Font;
 import java.util.Locale;
 import java.util.Optional;
-import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 
 import javax.swing.BorderFactory;
@@ -37,11 +36,11 @@ import com.formdev.flatlaf.FlatClientProperties;
 
 import cz.wingit.core.GitIdentity;
 import cz.wingit.core.GitService;
-import cz.wingit.core.RepositoryIdentity;
 import cz.wingit.ui.Language;
 import cz.wingit.ui.Messages;
 import cz.wingit.ui.Theme;
 import cz.wingit.ui.common.DialogHeader;
+import cz.wingit.ui.common.SshKeyField;
 
 /**
  * Modal Settings dialog: language and theme, the automatic fetch interval, and (read-only for now) the Git
@@ -61,28 +60,19 @@ final class SettingsDialog extends JDialog {
     private final JButton okButton = new JButton(Messages.get("settings.ok"));
     private final JTextField nameField = new JTextField();
     private final JTextField emailField = new JTextField();
-    private final JTextField repoNameField = new JTextField();
-    private final JTextField repoEmailField = new JTextField();
-    private final JLabel repoNote = new JLabel(" ");
+    private final SshKeyField sshKeyField = new SshKeyField(Messages.get("settings.ssh.key.default"));
     private final transient Appearance active;
-    private final transient Optional<Path> repository;
     private transient Preferences result;
 
-    /** What the background read found; {@code repository} is {@code null} when none is open. */
-    private record Identities(GitIdentity global, RepositoryIdentity repository) {
-    }
-
     /**
-     * @param saved      what is stored in the settings (preselected)
-     * @param active     the appearance the running application uses
-     * @param git        reads the Git user (off the EDT)
-     * @param repository the opened repository, whose own Git user is shown too
+     * @param saved  what is stored in the settings (preselected)
+     * @param active the appearance the running application uses
+     * @param git    reads the global Git user (off the EDT)
      */
-    SettingsDialog(Window owner, Preferences saved, Appearance active, GitService git, Optional<Path> repository) {
+    SettingsDialog(Window owner, Preferences saved, Appearance active, GitService git) {
         super(owner, Messages.get("settings.title"), ModalityType.APPLICATION_MODAL);
         this.active = active;
-        this.repository = repository;
-        readIdentities(git);
+        readIdentity(git);
         languageBox.setSelectedItem(saved.appearance().language());
         languageBox.setRenderer(new DefaultListCellRenderer() {
             private static final long serialVersionUID = 1L;
@@ -111,6 +101,7 @@ final class SettingsDialog extends JDialog {
         ((JSpinner.DefaultEditor) fetchMinutes.getEditor()).getTextField().setColumns(4);
         fetchMinutes.setEnabled(fetchBox.isSelected());
         fetchBox.addActionListener(e -> fetchMinutes.setEnabled(fetchBox.isSelected()));
+        sshKeyField.setKey(saved.sshKey());
 
         JPanel root = new JPanel(new BorderLayout());
         root.add(new DialogHeader(Messages.get("settings.header"), Messages.get("settings.description")),
@@ -133,13 +124,11 @@ final class SettingsDialog extends JDialog {
     }
 
     /** Shows the dialog; returns the chosen settings unless cancelled. */
-    static Optional<Preferences> show(Component parent, Preferences saved, Appearance active, GitService git,
-                                      Optional<Path> repository) {
+    static Optional<Preferences> show(Component parent, Preferences saved, Appearance active, GitService git) {
         // The action passes the main window itself, and getWindowAncestor() of a window is null: without an
         // owner the dialog would get no icon and open in the middle of the screen.
         Window owner = parent instanceof Window ? (Window) parent : SwingUtilities.getWindowAncestor(parent);
-        SettingsDialog dialog = new SettingsDialog(owner, saved, active,
-                git, repository);
+        SettingsDialog dialog = new SettingsDialog(owner, saved, active, git);
         dialog.setVisible(true);
         return Optional.ofNullable(dialog.result);
     }
@@ -194,13 +183,11 @@ final class SettingsDialog extends JDialog {
         addRow(form, c, 9, "settings.git.name", nameField);
         addRow(form, c, 10, "settings.git.email", emailField);
         addNote(form, c, 11, new JLabel(Messages.get("settings.git.note")));
-        repository.ifPresent(repo -> {
-            Path folder = repo.getFileName();
-            addSection(form, c, 12, Messages.format("settings.repo.header", folder == null ? repo : folder), false);
-            addRow(form, c, 13, "settings.git.name", repoNameField);
-            addRow(form, c, 14, "settings.git.email", repoEmailField);
-            addNote(form, c, 15, repoNote);
-        });
+
+        addSeparator(form, c, 12);
+        addSection(form, c, 13, Messages.get("settings.ssh.header"), true);
+        addRow(form, c, 14, "settings.ssh.key", sshKeyField);
+        addNote(form, c, 15, new JLabel(Messages.get("settings.ssh.note")));
         return form;
     }
 
@@ -239,55 +226,34 @@ final class SettingsDialog extends JDialog {
     }
 
     /** Git is run in the background; the fields say "reading…" until then. */
-    private void readIdentities(GitService git) {
-        for (JTextField field : new JTextField[] {nameField, emailField, repoNameField, repoEmailField}) {
+    private void readIdentity(GitService git) {
+        for (JTextField field : new JTextField[] {nameField, emailField}) {
             field.setEditable(false);
             field.setColumns(26);
             field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Messages.get("settings.git.loading"));
         }
-        new SwingWorker<Identities, Void>() {
+        new SwingWorker<GitIdentity, Void>() {
             @Override
-            protected Identities doInBackground() {
-                return new Identities(git.globalIdentity(),
-                        repository.map(git::repositoryIdentity).orElse(null));
+            protected GitIdentity doInBackground() {
+                return git.globalIdentity();
             }
 
             @Override
             protected void done() {
                 try {
-                    Identities found = get();
-                    showIdentities(found.global(), found.repository(), Messages.get("settings.git.notSet"));
+                    showIdentity(get(), Messages.get("settings.git.notSet"));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException e) {
-                    showIdentities(GitIdentity.NONE, null, Messages.get("settings.git.error"));
+                    showIdentity(GitIdentity.NONE, Messages.get("settings.git.error"));
                 }
             }
         }.execute();
     }
 
-    void showIdentities(GitIdentity global, RepositoryIdentity repo, String placeholder) {
+    void showIdentity(GitIdentity global, String placeholder) {
         fill(nameField, global.name(), placeholder);
         fill(emailField, global.email(), placeholder);
-        GitIdentity inRepo = repo == null ? GitIdentity.NONE : repo.identity();
-        fill(repoNameField, inRepo.name(), placeholder);
-        fill(repoEmailField, inRepo.email(), placeholder);
-        repoNote.setText(repo == null ? " " : Messages.get(repoNoteKey(repo)));
-        pack(); // the note may be wider than before
-    }
-
-    /** Which values the repository sets itself and which it takes from the global settings. */
-    static String repoNoteKey(RepositoryIdentity repo) {
-        if (repo.ownName() && repo.ownEmail()) {
-            return "settings.repo.own";
-        }
-        if (repo.ownName()) {
-            return "settings.repo.ownName";
-        }
-        if (repo.ownEmail()) {
-            return "settings.repo.ownEmail";
-        }
-        return "settings.repo.inherited";
     }
 
     private static void fill(JTextField field, String value, String placeholder) {
@@ -298,7 +264,7 @@ final class SettingsDialog extends JDialog {
 
     private static void addRow(JPanel form, GridBagConstraints c, int row, String labelKey, JComponent field) {
         JLabel label = new JLabel(Messages.get(labelKey));
-        label.setLabelFor(field);
+        label.setLabelFor(field instanceof SshKeyField key ? key.textField() : field);
         c.gridx = 0;
         c.gridy = row;
         c.gridwidth = 1;
@@ -346,7 +312,7 @@ final class SettingsDialog extends JDialog {
         } catch (java.text.ParseException e) {
             // not a number: the last valid value stays
         }
-        result = new Preferences(selection(), fetchSelection());
+        result = new Preferences(selection(), fetchSelection(), sshKeyField.key());
         dispose();
     }
 
@@ -373,6 +339,10 @@ final class SettingsDialog extends JDialog {
 
     JSpinner fetchMinutes() {
         return fetchMinutes;
+    }
+
+    SshKeyField sshKeyField() {
+        return sshKeyField;
     }
 
     Preferences result() {

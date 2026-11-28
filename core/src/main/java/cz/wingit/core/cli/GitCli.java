@@ -99,6 +99,22 @@ public final class GitCli {
         throw new GitCommandException(display(args), result.exitCode(), result.stderr());
     }
 
+    /**
+     * Runs {@code git <args>} and logs it to {@code log}, whatever the exit code; for operations whose
+     * steps are shown to the user.
+     *
+     * @return the logged command (check {@link LoggedCommand#succeeded()})
+     * @throws GitCancelledException if the calling thread is interrupted
+     * @throws GitException          if Git cannot be started
+     */
+    public LoggedCommand runLogged(Path workDir, List<String> args, List<LoggedCommand> log) {
+        GitResult result = execute(workDir, args, null, Map.of(), null);
+        String output = (result.stdout().strip() + "\n" + result.stderr().strip()).strip();
+        LoggedCommand command = new LoggedCommand(display(args), result.exitCode(), output);
+        log.add(command);
+        return command;
+    }
+
     private GitResult execute(Path workDir, List<String> args, Consumer<String> progress,
                               Map<String, String> environment, String stdin) {
         List<String> command = new ArrayList<>();

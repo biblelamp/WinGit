@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +28,8 @@ import java.util.stream.Stream;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.errors.ConfigInvalidException;
+import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.ConfigConstants;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -35,12 +38,16 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryState;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.util.SystemReader;
 
 import cz.wingit.core.cli.GitCli;
 import cz.wingit.core.cli.GitResult;
+import cz.wingit.core.cli.LoggedCommand;
 import cz.wingit.core.diff.DiffReader;
 import cz.wingit.core.diff.FileDiff;
 import cz.wingit.core.log.CommitInfo;
@@ -58,11 +65,14 @@ import cz.wingit.core.refs.BranchNames;
 import cz.wingit.core.refs.RefsReader;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.refs.Stash;
+import cz.wingit.core.refs.StashedSwitch;
+import cz.wingit.core.refs.SwitchClash;
 import cz.wingit.core.refs.TagNames;
 import cz.wingit.core.remote.AskPass;
 import cz.wingit.core.remote.AuthFailures;
 import cz.wingit.core.remote.Credentials;
 import cz.wingit.core.remote.RemoteTarget;
+import cz.wingit.core.remote.SshCommand;
 import cz.wingit.core.repo.Repositories;
 import cz.wingit.core.status.ChangeType;
 import cz.wingit.core.status.FileChange;
@@ -81,9 +91,112 @@ public final class DefaultGitService implements GitService {
     private static final int ABBREV_LENGTH = 7;
 
     private final GitCli cli;
+    /** Private key for SSH remotes of repositories without their own ({@code null}: ssh's defaults). */
+    private volatile Path sshKey;
 
     public DefaultGitService(GitCli cli) {
         this.cli = cli;
+    }
+
+    @Override
+    public void setSshKey(Optional<Path> key) {
+        sshKey = key.orElse(null);
+    }
+
+    @Override
+    public Optional<String> repositorySshCommand(Path workTree) {
+        try {
+            String out = cli.run(workTree, List.of("config", "--local", "--get", "core.sshCommand")).stdout();
+            String command = out.strip();
+            return command.isEmpty() ? Optional.empty() : Optional.of(command);
+        } catch (GitCommandException e) {
+            if (e.exitCode() == 1) {
+                return Optional.empty(); // not set
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public void setRepositorySshKey(Path workTree, Optional<Path> key) {
+        if (key.isPresent()) {
+            cli.run(workTree, List.of("config", "--local", "core.sshCommand", SshCommand.forKey(key.get(), false)));
+            return;
+        }
+        try {
+            cli.run(workTree, List.of("config", "--local", "--unset-all", "core.sshCommand"));
+        } catch (GitCommandException e) {
+            if (e.exitCode() != 5) { // 5: was not set
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public void setRepositoryIdentity(Path workTree, String name, String email) {
+        setLocalConfig(workTree, "user.name", name);
+        setLocalConfig(workTree, "user.email", email);
+    }
+
+    /** {@code git config --local key value}; a blank value removes the key (nothing to remove is fine). */
+    private void setLocalConfig(Path workTree, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            cli.run(workTree, List.of("config", "--local", key, value.strip()));
+            return;
+        }
+        try {
+            cli.run(workTree, List.of("config", "--local", "--unset-all", key));
+        } catch (GitCommandException e) {
+            if (e.exitCode() != 5) { // 5: was not set
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public Optional<String> remoteUrl(Path workTree, String remote) {
+        return readRepository(workTree, r -> Optional.ofNullable(r.getConfig()
+                .getString(ConfigConstants.CONFIG_REMOTE_SECTION, remote, ConfigConstants.CONFIG_KEY_URL)));
+    }
+
+    @Override
+    public void setRemoteUrl(Path workTree, String remote, String url) {
+        String trimmed = url == null ? "" : url.strip();
+        if (trimmed.isEmpty() || trimmed.startsWith("-")) {
+            throw new IllegalArgumentException("Not a remote URL: " + url);
+        }
+        boolean exists = readRepository(workTree, r -> r.getConfig()
+                .getSubsections(ConfigConstants.CONFIG_REMOTE_SECTION).contains(remote));
+        cli.run(workTree, exists ? List.of("remote", "set-url", remote, trimmed)
+                : List.of("remote", "add", remote, trimmed));
+    }
+
+    /**
+     * {@code GIT_SSH_COMMAND} with the key chosen in WinGit's settings and, for {@code batch}, without any
+     * prompt; nothing when the user configured SSH themselves ({@code core.sshCommand}, {@code GIT_SSH...}),
+     * which then wins as in plain Git.
+     */
+    Map<String, String> sshEnvironment(boolean configured, boolean batch) {
+        Path key = sshKey;
+        if (configured || (key == null && !batch)) {
+            return Map.of();
+        }
+        return Map.of("GIT_SSH_COMMAND", SshCommand.forKey(key, batch));
+    }
+
+    /** Whether {@code config} (or the environment) sets the SSH command Git runs. */
+    static boolean sshConfigured(Config config) {
+        return (config != null && config.getString(ConfigConstants.CONFIG_CORE_SECTION, null, "sshCommand") != null)
+                || System.getenv("GIT_SSH_COMMAND") != null || System.getenv("GIT_SSH") != null;
+    }
+
+    /** {@link #sshConfigured} for the global and system configuration, when there is no repository yet. */
+    private static boolean sshConfiguredOutsideRepositories() {
+        try {
+            return sshConfigured(SystemReader.getInstance().getUserConfig());
+        } catch (IOException | ConfigInvalidException e) {
+            return sshConfigured(null);
+        }
     }
 
     @Override
@@ -621,9 +734,7 @@ public final class DefaultGitService implements GitService {
             cli.run(workTree, List.of("stash", drop ? "pop" : "apply", stash.ref()));
             return List.of();
         } catch (GitCommandException e) {
-            List<String> conflicts = status(workTree).changes().stream()
-                    .filter(c -> c.staged() == ChangeType.CONFLICTED || c.unstaged() == ChangeType.CONFLICTED)
-                    .map(FileChange::path).toList();
+            List<String> conflicts = conflicts(workTree);
             if (conflicts.isEmpty()) {
                 throw e;
             }
@@ -663,12 +774,227 @@ public final class DefaultGitService implements GitService {
 
     @Override
     public void switchBranch(Path workTree, String branch) {
-        cli.run(workTree, List.of("switch", "--no-guess", branch));
+        cli.run(workTree, switchArgs(branch, null));
     }
 
     @Override
     public void switchToNewTrackingBranch(Path workTree, String remote, String branch) {
-        cli.run(workTree, List.of("switch", "--create", branch, "--track", remote + "/" + branch));
+        cli.run(workTree, switchArgs(branch, remote));
+    }
+
+    private static List<String> switchArgs(String branch, String remote) {
+        return remote == null ? List.of("switch", "--no-guess", branch)
+                : List.of("switch", "--create", branch, "--track", remote + "/" + branch);
+    }
+
+    @Override
+    public StashedSwitch switchBranchWithStash(Path workTree, String branch, String remote, boolean includeUntracked,
+                                               boolean restore) {
+        if (branch.isEmpty() || branch.startsWith("-")) {
+            throw new IllegalArgumentException("Not a branch: " + branch);
+        }
+        List<LoggedCommand> log = new ArrayList<>();
+        String previous = readRepository(workTree, DefaultGitService::localBranch);
+        ObjectId before = readRepository(workTree, DefaultGitService::stashId);
+        List<String> stashArgs = new ArrayList<>(List.of("stash", "push"));
+        if (includeUntracked) {
+            stashArgs.add("--include-untracked");
+        }
+        stashArgs.add("--message=WinGit: automatic stash before switching to " + branch);
+        if (!cli.runLogged(workTree, stashArgs, log).succeeded()) {
+            return new StashedSwitch(StashedSwitch.Outcome.NOT_STASHED, List.of(), log);
+        }
+        ObjectId created = readRepository(workTree, DefaultGitService::stashId);
+        boolean stashed = created != null && !created.equals(before);
+        boolean switched = cli.runLogged(workTree, switchArgs(branch, remote), log).succeeded();
+        if (!stashed) {
+            return new StashedSwitch(switched ? StashedSwitch.Outcome.RESTORED : StashedSwitch.Outcome.NOT_SWITCHED,
+                    List.of(), log);
+        }
+        if (switched && !restore) {
+            return new StashedSwitch(StashedSwitch.Outcome.STASHED, List.of(), log, previous, created.name());
+        }
+        return popOwnStash(workTree, created, switched, previous, log);
+    }
+
+    @Override
+    public Optional<List<SwitchClash>> predictSwitchClashes(Path workTree, String branch, String remote) {
+        String target = (remote == null ? Constants.R_HEADS + branch : Constants.R_REMOTES + remote + "/" + branch)
+                + "^{commit}";
+        ObjectId head = readRepository(workTree, repository -> resolve(repository, Constants.HEAD + "^{commit}"));
+        ObjectId other = readRepository(workTree, repository -> resolve(repository, target));
+        if (head == null || other == null) {
+            return Optional.empty();
+        }
+        Set<String> clashing = new LinkedHashSet<>();
+        try {
+            // A commit of the tracked changes, as a stash would hold them; stored nowhere.
+            String changes = cli.run(workTree, List.of("stash", "create")).stdout().strip();
+            if (!changes.isEmpty()) {
+                GitResult merge = cli.runAllowing(workTree, List.of("merge-tree", "--write-tree", "--name-only",
+                        "--no-messages", "-z", "--merge-base=" + head.name(), other.name(), changes), 1);
+                if (merge.exitCode() == 1) {
+                    String[] fields = merge.stdout().split("\0");
+                    for (int i = 1; i < fields.length; i++) { // fields[0] is the merged tree
+                        if (!fields[i].isEmpty()) {
+                            clashing.add(fields[i]);
+                        }
+                    }
+                }
+            }
+        } catch (GitCommandException e) {
+            return Optional.empty(); // e.g. merge-tree without --write-tree or --merge-base (Git < 2.40)
+        }
+        List<String> untracked = status(workTree).changes().stream()
+                .filter(c -> c.unstaged() == ChangeType.UNTRACKED).map(FileChange::path).toList();
+        List<String> asked = new ArrayList<>(clashing);
+        asked.addAll(untracked);
+        Set<String> there = readRepository(workTree, repository -> existingIn(repository, other, asked));
+        List<SwitchClash> result = new ArrayList<>();
+        for (String path : clashing) {
+            result.add(new SwitchClash(path, there.contains(path)
+                    ? SwitchClash.Reason.CHANGED_THERE : SwitchClash.Reason.MISSING_THERE));
+        }
+        for (String path : untracked) {
+            if (there.contains(path) && !clashing.contains(path)) {
+                result.add(new SwitchClash(path, SwitchClash.Reason.EXISTS_THERE));
+            }
+        }
+        return Optional.of(result);
+    }
+
+    private static ObjectId resolve(Repository repository, String revision) {
+        try {
+            return repository.resolve(revision);
+        } catch (IOException e) {
+            throw new GitException("Cannot read " + revision + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** Those of {@code paths} that are files in the tree of {@code commit}. */
+    private static Set<String> existingIn(Repository repository, ObjectId commit, List<String> paths) {
+        Set<String> existing = new LinkedHashSet<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit parsed = walk.parseCommit(commit);
+            for (String path : paths) {
+                try (TreeWalk tree = TreeWalk.forPath(repository, path, parsed.getTree())) {
+                    if (tree != null) {
+                        existing.add(path);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new GitException("Cannot read the branch: " + e.getMessage(), e);
+        }
+        return existing;
+    }
+
+    /** Applies and drops the stash just created, if it is still the newest one. */
+    private StashedSwitch popOwnStash(Path workTree, ObjectId created, boolean switched, String previous,
+                                      List<LoggedCommand> log) {
+        StashedSwitch.Outcome kept = switched ? StashedSwitch.Outcome.STASH_KEPT
+                : StashedSwitch.Outcome.NOT_SWITCHED_STASH_KEPT;
+        if (!created.equals(readRepository(workTree, DefaultGitService::stashId))) {
+            return new StashedSwitch(kept, List.of(), log); // someone else stashed meanwhile: do not guess
+        }
+        if (cli.runLogged(workTree, List.of("stash", "pop", "stash@{0}"), log).succeeded()) {
+            return new StashedSwitch(switched ? StashedSwitch.Outcome.RESTORED : StashedSwitch.Outcome.NOT_SWITCHED,
+                    List.of(), log);
+        }
+        List<String> conflicts = conflicts(workTree);
+        return new StashedSwitch(switched && !conflicts.isEmpty() ? StashedSwitch.Outcome.CONFLICTS : kept,
+                conflicts, log, previous, created.name());
+    }
+
+    @Override
+    public StashedSwitch goBackFromStashedSwitch(Path workTree, StashedSwitch conflicted) {
+        if (!conflicted.canGoBack()) {
+            throw new IllegalArgumentException("This switch cannot be taken back: " + conflicted.outcome());
+        }
+        ObjectId stash = ObjectId.fromString(conflicted.stash());
+        if (!stash.equals(readRepository(workTree, DefaultGitService::stashId))) {
+            throw new GitException("The stash with the changes is no longer the newest one; nothing was changed.");
+        }
+        List<String> newFiles = unchangedNewFilesOf(workTree, stash);
+        List<LoggedCommand> log = new ArrayList<>();
+        List<List<String>> steps = new ArrayList<>();
+        steps.add(List.of("reset", "--hard", "HEAD"));
+        if (!newFiles.isEmpty()) {
+            List<String> clean = new ArrayList<>(List.of("--literal-pathspecs", "clean", "--force", "--"));
+            clean.addAll(newFiles);
+            steps.add(clean);
+        }
+        steps.add(switchArgs(conflicted.previousBranch(), null));
+        for (List<String> step : steps) {
+            if (!cli.runLogged(workTree, step, log).succeeded()) {
+                return new StashedSwitch(StashedSwitch.Outcome.NOT_SWITCHED_STASH_KEPT, List.of(), log);
+            }
+        }
+        if (!stash.equals(readRepository(workTree, DefaultGitService::stashId))
+                || !cli.runLogged(workTree, List.of("stash", "pop", "stash@{0}"), log).succeeded()) {
+            return new StashedSwitch(StashedSwitch.Outcome.NOT_SWITCHED_STASH_KEPT, conflicts(workTree), log);
+        }
+        return new StashedSwitch(StashedSwitch.Outcome.NOT_SWITCHED, List.of(), log);
+    }
+
+    /**
+     * The new (untracked) files saved in {@code stash} that are on disk with the same content, so they can
+     * be removed; fails if one of them was changed since.
+     */
+    private List<String> unchangedNewFilesOf(Path workTree, ObjectId stash) {
+        Map<String, String> saved = readRepository(workTree, repository -> untrackedOf(repository, stash));
+        List<String> present = saved.keySet().stream().filter(p -> Files.exists(workTree.resolve(p))).toList();
+        if (present.isEmpty()) {
+            return present;
+        }
+        List<String> args = new ArrayList<>(List.of("hash-object", "--"));
+        args.addAll(present);
+        List<String> hashes = cli.run(workTree, args).stdout().lines().map(String::strip).toList();
+        for (int i = 0; i < present.size(); i++) {
+            if (i >= hashes.size() || !hashes.get(i).equals(saved.get(present.get(i)))) {
+                throw new GitException("The new file " + present.get(i) + " was changed after the switch;"
+                        + " nothing was changed.");
+            }
+        }
+        return present;
+    }
+
+    /** Path → blob id of the untracked files a stash saved (its third parent), empty if none. */
+    private static Map<String, String> untrackedOf(Repository repository, ObjectId stash) {
+        Map<String, String> files = new LinkedHashMap<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit commit = walk.parseCommit(stash);
+            if (commit.getParentCount() < 3) {
+                return files;
+            }
+            RevCommit untracked = walk.parseCommit(commit.getParent(2));
+            try (TreeWalk tree = new TreeWalk(repository)) {
+                tree.addTree(untracked.getTree());
+                tree.setRecursive(true);
+                while (tree.next()) {
+                    files.put(tree.getPathString(), tree.getObjectId(0).name());
+                }
+            }
+        } catch (IOException e) {
+            throw new GitException("Cannot read the stash: " + e.getMessage(), e);
+        }
+        return files;
+    }
+
+    /** The checked-out local branch, {@code null} if HEAD is detached. */
+    private static String localBranch(Repository repository) {
+        try {
+            String full = repository.getFullBranch();
+            return full != null && full.startsWith(Constants.R_HEADS) ? Repository.shortenRefName(full) : null;
+        } catch (IOException e) {
+            throw new GitException("Cannot read the current branch: " + e.getMessage(), e);
+        }
+    }
+
+    private List<String> conflicts(Path workTree) {
+        return status(workTree).changes().stream()
+                .filter(c -> c.staged() == ChangeType.CONFLICTED || c.unstaged() == ChangeType.CONFLICTED)
+                .map(FileChange::path).toList();
     }
 
     @Override
@@ -690,7 +1016,8 @@ public final class DefaultGitService implements GitService {
             throw new GitException("Cannot create folder " + parent + ": " + e.getMessage(), e);
         }
         try {
-            cli.run(parent, List.of("clone", "--progress", "--", url, absolute.toString()), progress);
+            cli.run(parent, List.of("clone", "--progress", "--", url, absolute.toString()), progress,
+                    sshEnvironment(sshConfiguredOutsideRepositories(), false), null);
         } catch (GitException e) {
             if (!existed) {
                 deleteQuietly(absolute);
@@ -940,10 +1267,8 @@ public final class DefaultGitService implements GitService {
             return false;
         }
         Map<String, String> environment = new HashMap<>(AskPass.storedOnlyEnvironment());
-        if (source.defaultSsh()) {
-            // OpenSSH would wait for a passphrase or a host key answer nobody sees; fail instead.
-            environment.put("GIT_SSH_COMMAND", "ssh -o BatchMode=yes");
-        }
+        // OpenSSH would wait for a passphrase or a host key answer nobody sees; fail instead.
+        environment.putAll(sshEnvironment(!source.defaultSsh(), true));
         // Git reports updated refs on stderr; nothing there means nothing changed.
         return !cli.run(workTree, source.args(false), null, environment, null).stderr().isBlank();
     }
@@ -968,8 +1293,7 @@ public final class DefaultGitService implements GitService {
             String remote = RemoteTarget.defaultRemote(repository).orElse(null);
             String url = config.getString(ConfigConstants.CONFIG_REMOTE_SECTION,
                     remote != null ? remote : remotes.iterator().next(), ConfigConstants.CONFIG_KEY_URL);
-            boolean defaultSsh = config.getString(ConfigConstants.CONFIG_CORE_SECTION, null, "sshCommand") == null
-                    && System.getenv("GIT_SSH_COMMAND") == null && System.getenv("GIT_SSH") == null;
+            boolean defaultSsh = !sshConfigured(config);
             return new FetchSource(remote, url != null ? url : remote, defaultSsh);
         }
 
@@ -1091,8 +1415,9 @@ public final class DefaultGitService implements GitService {
     private GitResult runRemote(Path workTree, List<String> args, String url, Credentials credentials,
                                 Consumer<String> progress) {
         List<String> command = credentials == null ? args : AskPass.withOptions(args);
-        Map<String, String> environment = credentials == null
-                ? AskPass.storedOnlyEnvironment() : AskPass.environment(credentials);
+        Map<String, String> environment = new HashMap<>(credentials == null
+                ? AskPass.storedOnlyEnvironment() : AskPass.environment(credentials));
+        environment.putAll(sshEnvironment(readRepository(workTree, r -> sshConfigured(r.getConfig())), false));
         try {
             return cli.run(workTree, command, progress, environment, null);
         } catch (GitCommandException e) {

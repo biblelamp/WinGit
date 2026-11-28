@@ -1,7 +1,9 @@
 # WinGit
 Use Git easily and simply
 
-**Website:** [wgit.cz](https://wgit.cz/) · **Download:** [Microsoft Store](https://apps.microsoft.com/detail/9n63b9trbd92) · [latest release](https://github.com/biblelamp/WinGit/releases/latest)
+<a href="https://apps.microsoft.com/detail/9n63b9trbd92"><picture><source media="(prefers-color-scheme: dark)" srcset="site/assets/store-badge-en-light.svg"><img src="site/assets/store-badge-en-dark.svg" height="46" alt="Get it from Microsoft Store"></picture></a>
+
+**Website:** [wgit.cz](https://wgit.cz/) · **Other downloads:** [latest release](https://github.com/biblelamp/WinGit/releases/latest)
 
 WinGit is a free, open-source desktop Git client written in Java (Swing).
 It runs on Windows and Linux; macOS builds are planned. The user interface is available
@@ -37,6 +39,8 @@ myself while it grows.
   push tags; save and apply stashes. Before a merge, WinGit shows which commits come in,
   how the history will look and whether there will be conflicts.
   A local branch shows the remote it tracks and how many commits are to push or pull.
+  When uncommitted changes block a switch to another branch, WinGit can stash them, switch and
+  bring them back, and shows every Git command it ran.
 - **Remote:** fetch (also automatically in the background, at an interval you choose), pull and
   push; asks for a user name and password (or token) when the server needs them and
   never stores them itself (Git's credential helper can remember them).
@@ -48,8 +52,8 @@ myself while it grows.
 
 ### Status and plans
 
-- **Status:** early but working; I use it every day. Version 0.4.1 explains a merge before it
-  starts: the incoming commits, a picture of the resulting history and the files that will conflict.
+- **Status:** early but working; I use it every day. Version 0.4.2 helps switch branches with
+  uncommitted changes and shows which commit a new branch starts from.
   There are no tools for resolving merge conflicts yet.
 - **Next:** conflict handling, partial (hunk) staging, commit actions in the history
   (checkout, revert, cherry-pick, reset). The full plan is in

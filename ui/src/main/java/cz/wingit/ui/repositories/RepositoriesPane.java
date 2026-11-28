@@ -50,6 +50,7 @@ public final class RepositoriesPane extends TitledPane {
     private final transient RepositoryList repositories;
     private final DefaultListModel<RepositoryEntry> model = new DefaultListModel<>();
     private final JList<RepositoryEntry> list;
+    private final JPopupMenu popup = new JPopupMenu();
     /** When the "has changes" flag of a path was last set; older background results don't overwrite it. */
     private final transient Map<Path, Long> changedStamps = new HashMap<>();
     private boolean fullRefreshRunning;
@@ -242,12 +243,19 @@ public final class RepositoriesPane extends TitledPane {
         });
     }
 
+    /** Adds {@code action} to the list's context menu (below the remove action, if installed). */
+    public void addContextAction(Action action) {
+        if (popup.getComponentCount() > 0) {
+            popup.addSeparator();
+        }
+        popup.add(action);
+    }
+
     /** Binds the remove action to the Delete key and to the list's context menu. */
     public void installRemoveAction(Action remove) {
         list.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "removeRepository");
         list.getActionMap().put("removeRepository", remove);
 
-        JPopupMenu popup = new JPopupMenu();
         popup.add(remove);
         list.addMouseListener(new MouseAdapter() {
             @Override

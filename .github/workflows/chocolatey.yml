@@ -4,8 +4,8 @@
 # files and uninstalls it. The .nupkg is uploaded as an artifact. With "push", a package that
 # passed the test is pushed to community.chocolatey.org with the API key from the
 # CHOCOLATEY_API_KEY repository secret.
-# Called by release.yml for every release tag; run it manually (Actions -> Chocolatey ->
-# Run workflow) after changing the package or to (re)publish a version by hand.
+# Run it manually (Actions -> Chocolatey -> Run workflow): after changing the package, and after
+# a release to publish that version (version X.Y.Z, push ticked). Releases do not call it.
 name: Chocolatey
 
 on:

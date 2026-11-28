@@ -30,6 +30,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
+import cz.wingit.core.GitCommandException;
 import cz.wingit.core.GitService;
 import cz.wingit.core.refs.LocalBranch;
 import cz.wingit.core.refs.RemoteBranches;
@@ -133,34 +134,52 @@ public final class BranchesPane extends TitledPane {
         }
         switching = true;
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        new SwingWorker<Void, Void>() {
+        String remote = createLocal ? target.remote() : null;
+        new SwingWorker<SwitchWithStash.Refusal, Void>() {
+            /** @return {@code null} if switched; else a refusal with local changes (maybe conflicts) */
             @Override
-            protected Void doInBackground() {
-                if (createLocal) {
-                    git.switchToNewTrackingBranch(repo, target.remote(), target.branch());
-                } else {
-                    git.switchBranch(repo, target.branch());
+            protected SwitchWithStash.Refusal doInBackground() {
+                try {
+                    if (createLocal) {
+                        git.switchToNewTrackingBranch(repo, target.remote(), target.branch());
+                    } else {
+                        git.switchBranch(repo, target.branch());
+                    }
+                    return null;
+                } catch (GitCommandException e) {
+                    return SwitchWithStash.check(git, repo, e, target.branch(), remote).orElseThrow(() -> e);
                 }
-                return null;
             }
 
             @Override
             protected void done() {
-                switching = false;
                 setCursor(null);
                 try {
-                    get();
-                    switchListeners.forEach(Runnable::run);
+                    SwitchWithStash.Refusal refusal = get();
+                    if (refusal != null && !refusal.conflicts().isEmpty()) {
+                        SwitchWithStash.explainConflicts(BranchesPane.this, target.branch(), refusal);
+                    } else if (refusal != null) {
+                        SwitchWithStash.offer(BranchesPane.this, git, repo, target.branch(), remote, refusal,
+                                BranchesPane.this::switchFinished);
+                        return;
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException e) {
                     Dialogs.showError(SwingUtilities.getWindowAncestor(BranchesPane.this),
                             Messages.format("branches.switch.error.title", target.branch()), e.getCause());
                 }
-                // The file watcher refreshes the other panes; this one updates right away.
-                refresh();
+                switchFinished();
             }
         }.execute();
+    }
+
+    /** End of a switch (whether it happened or not): listeners are told, this pane updates right away. */
+    private void switchFinished() {
+        switching = false;
+        switchListeners.forEach(Runnable::run);
+        // The file watcher refreshes the other panes; this one updates right away.
+        refresh();
     }
 
     private void installSwitchGestures() {
@@ -185,8 +204,8 @@ public final class BranchesPane extends TitledPane {
     }
 
     /**
-     * Notified (on the EDT) after a branch was checked out by double-click or Enter in this pane, e.g. to
-     * show the history of the new HEAD at once.
+     * Notified (on the EDT) after a branch switch started by double-click or Enter in this pane has ended
+     * (also when it failed or the user cancelled it), e.g. to show the history of the new HEAD at once.
      */
     public void addSwitchListener(Runnable listener) {
         switchListeners.add(listener);

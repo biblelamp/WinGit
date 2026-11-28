@@ -17,8 +17,8 @@
   <meta property="og:description" content="WinGit is a free, open-source desktop Git client: history graph, side-by-side diffs, staging, branches and merges in one window.">
   <meta property="og:url" content="https://wgit.cz/">
   <meta property="og:image" content="https://wgit.cz/assets/screenshot.png">
-  <meta property="og:image:width" content="1413">
-  <meta property="og:image:height" content="941">
+  <meta property="og:image:width" content="1430">
+  <meta property="og:image:height" content="967">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="ru_RU">
   <meta property="og:locale:alternate" content="cs_CZ">
@@ -48,8 +48,9 @@
           <p class="lead">WinGit is a free, open-source desktop Git client. History graph, side-by-side diffs,
             staging, branches and merges — all in one window.</p>
           <div class="actions">
-            <a class="btn btn-primary" id="download" href="https://apps.microsoft.com/detail/9n63b9trbd92"
-               data-label-linux="Download {version} for Linux (.deb)">Get it from Microsoft Store</a>
+            <a class="store-badge" id="store" href="https://apps.microsoft.com/detail/9n63b9trbd92"><picture><source srcset="assets/store-badge-en-light.svg" media="(prefers-color-scheme: dark)"><img src="assets/store-badge-en-dark.svg" width="161" height="44" alt="Get it from Microsoft Store"></picture></a>
+            <a class="btn btn-primary" id="download" href="https://github.com/biblelamp/WinGit/releases/latest" hidden
+               data-label-linux="Download {version} for Linux (.deb)">Download for Linux</a>
             <a class="btn btn-secondary" href="https://github.com/biblelamp/WinGit">View on GitHub</a>
           </div>
           <p class="note" id="release" hidden>Current version: <a id="release-version" href="https://github.com/biblelamp/WinGit/releases/latest"></a></p>
@@ -57,7 +58,7 @@
           <p class="note"><a href="start/">New to Git? Start here →</a></p>
           <p class="note">Apache-2.0 · <a href="privacy/">Privacy policy</a></p>
         </div>
-        <a href="assets/screenshot.png"><img class="shot" src="assets/screenshot.png" width="1413" height="941" alt="WinGit main window: repositories, branches, history graph and diff"></a>
+        <a href="assets/screenshot.png"><img class="shot" src="assets/screenshot.png" width="1430" height="967" alt="WinGit main window: repositories, branches, history graph and diff"></a>
       </div>
     </section>
 
@@ -96,7 +97,7 @@
         <ul>
           <li><strong>Now:</strong> early but working — repositories, files, branches, history, diffs, staging,
             commit and amend, push, pull and merge; in English, Russian or Czech, with a light or dark theme.
-            New in 0.4.1: a clearer merge that shows its result and possible conflicts in advance. Merge conflicts still need another tool.</li>
+            New in 0.4.2: switching branches with uncommitted changes – WinGit stashes them, switches and brings them back. Merge conflicts still need another tool.</li>
           <li><strong>Next:</strong> help with merge conflicts, staging parts of a file and a macOS
             build — see the <a href="https://github.com/biblelamp/WinGit/blob/main/ROADMAP.md">roadmap</a>.</li>
         </ul>

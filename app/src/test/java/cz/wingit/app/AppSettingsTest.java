@@ -107,7 +107,7 @@ class AppSettingsTest {
         assertThat(AppSettings.load(file).preferences()).isEqualTo(Preferences.DEFAULT);
 
         Preferences chosen = new Preferences(new Appearance(Language.CZECH, Theme.Mode.DARK),
-                new FetchInterval(false, 25));
+                new FetchInterval(false, 25), Optional.empty());
         AppSettings.load(file).setPreferences(chosen);
         assertThat(AppSettings.load(file).preferences()).isEqualTo(chosen);
 
@@ -115,6 +115,21 @@ class AppSettingsTest {
         assertThat(AppSettings.load(file).fetchInterval()).isEqualTo(new FetchInterval(true, FetchInterval.MAX_MINUTES));
         Files.writeString(file, "fetch.intervalMinutes=often\n", StandardCharsets.UTF_8);
         assertThat(AppSettings.load(file).fetchInterval()).isEqualTo(FetchInterval.DEFAULT);
+    }
+
+    @Test
+    void sshKeyIsPersistedAndRemovedWithThePreferences() throws Exception {
+        Path file = tempDir.resolve("settings.properties");
+        Path key = tempDir.resolve("keys").resolve("id_work");
+        Preferences withKey = new Preferences(Appearance.DEFAULT, FetchInterval.DEFAULT, Optional.of(key));
+
+        AppSettings.load(file).setPreferences(withKey);
+        assertThat(AppSettings.load(file).sshKey()).hasValue(key);
+        assertThat(AppSettings.load(file).preferences()).isEqualTo(withKey);
+
+        AppSettings.load(file).setPreferences(Preferences.DEFAULT);
+        assertThat(AppSettings.load(file).sshKey()).isEmpty();
+        assertThat(Files.readString(file, StandardCharsets.UTF_8)).doesNotContain("ssh.key");
     }
 
     @Test

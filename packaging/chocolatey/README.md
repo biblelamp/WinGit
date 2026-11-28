@@ -29,15 +29,11 @@ artifacts.
 
 ## For every release
 
-Automatic: after a release tag `vX.Y.Z` publishes the GitHub Release, `release.yml` calls the
-Chocolatey workflow with that version. It runs `update-version.ps1` (version, MSI URL and the
-SHA-256 of the MSI downloaded from the release), tests the package and pushes it. Pre-release
-tags (`vX.Y.Z-suffix`) are skipped. Every version is reviewed by a moderator before it is public;
-answer their comments on the package page.
+By hand, after the release tag `vX.Y.Z` has published the GitHub Release (pre-releases are not
+packaged): Actions → **Chocolatey** → Run workflow with **version** `X.Y.Z` and **push** ticked.
+The workflow runs `update-version.ps1` (version, MSI URL and the SHA-256 of the MSI downloaded
+from the release), tests the package and pushes it. Every version is reviewed by a moderator
+before it is public; answer their comments on the package page.
 
 The CI run does not commit its changes. To keep the files here in step with the published
-package, run `./packaging/chocolatey/update-version.ps1 -Version X.Y.Z` after the release and
-commit the result.
-
-By hand (e.g. to publish an existing release again): Actions → **Chocolatey** → Run workflow
-with **version** `X.Y.Z` and **push** ticked.
+package, run `./packaging/chocolatey/update-version.ps1 -Version X.Y.Z` and commit the result.

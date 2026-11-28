@@ -45,6 +45,7 @@ import cz.wingit.ui.repositories.AddRepositoryAction;
 import cz.wingit.ui.repositories.CloneAction;
 import cz.wingit.ui.repositories.CloseRepositoryAction;
 import cz.wingit.ui.repositories.RemoveRepositoryAction;
+import cz.wingit.ui.reposettings.RepositorySettingsAction;
 import cz.wingit.ui.repositories.RepositoriesPane;
 import cz.wingit.ui.settings.Appearance;
 import cz.wingit.ui.settings.FetchInterval;
@@ -70,6 +71,8 @@ public final class MainWindow extends JFrame {
     private final CommitAction commitAction;
     private Optional<Path> openedRepository = Optional.empty();
     private String version;
+    /** The SSH key of the application settings, once they are installed. */
+    private transient Supplier<Optional<Path>> globalSshKey = Optional::empty;
     /** Normal bounds and maximized state, for saving and restoring. */
     private final transient FrameGeometry geometry;
 
@@ -147,6 +150,11 @@ public final class MainWindow extends JFrame {
                 stage, unstage, discard, deleteFiles);
         menuBar.addHelpMenu(HelpActions.website(this), HelpActions.reportIssue(this),
                 HelpActions.about(this, git, () -> version));
+        RepositorySettingsAction repositorySettings = new RepositorySettingsAction(repositoriesPane, git,
+                () -> globalSshKey.get());
+        menuBar.addRepositorySettingsAction(repositorySettings);
+        repositoriesPane.addContextAction(repositorySettings);
+        commitAction.setOpenRepositorySettings(repositorySettings::open); // the Git user icon of the commit dialog
         setJMenuBar(menuBar);
         filesPane.installContextActions(deleteFiles, stage, unstage, null, discard, deleteFiles);
         // Other repositories are not watched; re-check them when the user comes back to the window.
@@ -191,11 +199,11 @@ public final class MainWindow extends JFrame {
         Consumer<Preferences> saveAndApply = chosen -> {
             save.accept(chosen);
             setFetchInterval(chosen.fetch());
+            git.setSshKey(chosen.sshKey());
         };
-        SettingsAction settings = new SettingsAction(this, active, load, git,
-                repositoriesPane::openedRepository, saveAndApply, restart);
+        globalSshKey = () -> load.get().sshKey();
+        SettingsAction settings = new SettingsAction(this, active, load, git, saveAndApply, restart);
         ((MainMenuBar) getJMenuBar()).addSettingsAction(settings);
-        commitAction.setOpenSettings(settings::open); // the Git user icon of the commit dialog
     }
 
     /** How often all repositories are fetched in the background (or never). Call on the EDT. */

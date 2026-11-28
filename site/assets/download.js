@@ -1,10 +1,12 @@
 // Fills the per-format download links (elements with data-asset) with the latest release's
-// files. The main button leads to the Microsoft Store; on Linux it is pointed at the latest
-// DEB and shows its version instead. Without a release, a matching file, or if the GitHub API
-// is unreachable, links keep their default targets (the Store, the Releases page).
+// files. The main action is the Microsoft Store badge (#store); on Linux it is replaced by the
+// hidden #download button, pointed at the latest DEB and labelled with its version. Without a
+// release, a matching file, or if the GitHub API is unreachable, links keep their default
+// targets (the Store, the Releases page).
 // Shows the latest release's version, linked to its release notes (#release, hidden until then).
 (function () {
   var button = document.getElementById('download');
+  var store = document.getElementById('store');
   if (!window.fetch) {
     return;
   }
@@ -55,6 +57,10 @@
       var template = button.getAttribute('data-label-linux');
       if (version && template) {
         button.textContent = template.replace('{version}', version);
+      }
+      button.hidden = false;
+      if (store) {
+        store.hidden = true;
       }
     })
     .catch(function () { /* keep the default links */ });

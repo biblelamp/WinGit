@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -41,8 +42,8 @@ public final class CommitAction extends AbstractAction {
     private final transient Supplier<List<FileChange>> selection;
     private final transient Runnable afterwards;
     private boolean busy;
-    /** Opens Settings over the given window; {@code null} until the application installs Settings. */
-    private transient Consumer<Component> openSettings;
+    /** Opens the Repository Settings of a repository over the given window; {@code null} until installed. */
+    private transient BiConsumer<Component, Path> openRepositorySettings;
     /** Saves and reads commit message drafts one after another, so a reopened dialog sees the last one. */
     private final transient ExecutorService drafts = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r, "wingit-commit-draft");
@@ -161,7 +162,8 @@ public final class CommitAction extends AbstractAction {
         }
         Optional<CommitDialog.Result> result = CommitDialog.show(pane, git, repo, data.changes(), preselected,
                 data.recentMessages(), data.draft(), data.mergeMessage(), data.tags(), data.savedDate(), data.amend(),
-                data.identity(), draft -> saveDraft(repo, draft), openSettings);
+                data.identity(), draft -> saveDraft(repo, draft),
+                openRepositorySettings == null ? null : owner -> openRepositorySettings.accept(owner, repo));
         if (result.isEmpty()) {
             return;
         }
@@ -172,9 +174,9 @@ public final class CommitAction extends AbstractAction {
         }
     }
 
-    /** What a click on the Git user icon of the commit dialog opens: Settings over that dialog. */
-    public void setOpenSettings(Consumer<Component> openSettings) {
-        this.openSettings = openSettings;
+    /** What a click on the Git user icon of the commit dialog opens: the Repository Settings over that dialog. */
+    public void setOpenRepositorySettings(BiConsumer<Component, Path> openRepositorySettings) {
+        this.openRepositorySettings = openRepositorySettings;
     }
 
     /** Keeps (or with {@code null}, removes) the draft in the background; a failure only loses the draft. */

@@ -5,7 +5,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.UncheckedIOException;
-import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -32,7 +31,6 @@ public final class SettingsAction extends AbstractAction {
     private final transient Appearance active;
     private final transient Supplier<Preferences> load;
     private final transient GitService git;
-    private final transient Supplier<Optional<Path>> repository;
     private final transient Consumer<Preferences> save;
     private final transient Optional<Runnable> restart;
 
@@ -40,21 +38,18 @@ public final class SettingsAction extends AbstractAction {
      * @param active     the appearance the running application uses
      * @param load       reads the saved settings
      * @param git        reads the Git user shown in the dialog
-     * @param repository the opened repository, if any (called on the EDT)
      * @param save       stores the settings and applies what applies at once; may throw
      *                   {@link UncheckedIOException}
      * @param restart    starts a new instance and exits (may throw {@link UncheckedIOException}); empty if
      *                   this run cannot restart itself
      */
     public SettingsAction(Component parent, Appearance active, Supplier<Preferences> load,
-                          GitService git, Supplier<Optional<Path>> repository,
-                          Consumer<Preferences> save, Optional<Runnable> restart) {
+                          GitService git, Consumer<Preferences> save, Optional<Runnable> restart) {
         super(Messages.get("menu.repository.settings"));
         this.parent = parent;
         this.active = active;
         this.load = load;
         this.git = git;
-        this.repository = repository;
         this.save = save;
         this.restart = restart;
         putValue(MNEMONIC_KEY, KeyEvent.VK_S);
@@ -69,7 +64,7 @@ public final class SettingsAction extends AbstractAction {
     /** Opens the Settings dialog over the window of {@code owner}, e.g. the commit dialog. Call on the EDT. */
     public void open(Component owner) {
         Preferences saved = load.get();
-        Optional<Preferences> choice = SettingsDialog.show(owner, saved, active, git, repository.get());
+        Optional<Preferences> choice = SettingsDialog.show(owner, saved, active, git);
         choice.filter(chosen -> !chosen.equals(saved)).ifPresent(chosen -> {
             try {
                 save.accept(chosen);

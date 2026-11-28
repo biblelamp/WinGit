@@ -23,6 +23,7 @@ public final class MainMenuBar extends JMenuBar {
     private static final long serialVersionUID = 1L;
 
     private final JMenu repositoryMenu;
+    private final Action removeRepository;
 
     public MainMenuBar(Action addOrCreateRepository, Action cloneRepository, Action closeRepository,
                        Action removeRepository, Action commit, Action fetch, Action pull, Action push,
@@ -32,6 +33,7 @@ public final class MainMenuBar extends JMenuBar {
                        List<Action> stashActions, Action... fileActions) {
         JMenu repository = new JMenu(Messages.get("menu.repository"));
         repositoryMenu = repository;
+        this.removeRepository = removeRepository;
         repository.setMnemonic(KeyEvent.VK_R);
         repository.add(addOrCreateRepository);
         repository.add(cloneRepository);
@@ -81,6 +83,17 @@ public final class MainMenuBar extends JMenuBar {
     }
 
     /** Adds Settings… to the Repository menu, in its own group just above Exit. */
+    /** Adds "Repository Settings…" below "Remove from List". */
+    public void addRepositorySettingsAction(Action repositorySettings) {
+        for (int i = 0; i < repositoryMenu.getMenuComponentCount(); i++) {
+            if (repositoryMenu.getMenuComponent(i) instanceof JMenuItem item && item.getAction() == removeRepository) {
+                repositoryMenu.insert(repositorySettings, i + 1);
+                return;
+            }
+        }
+        repositoryMenu.add(repositorySettings);
+    }
+
     public void addSettingsAction(Action settings) {
         int exitIndex = repositoryMenu.getMenuComponentCount() - 1;
         repositoryMenu.insert(settings, exitIndex);

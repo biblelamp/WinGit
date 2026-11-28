@@ -17,8 +17,8 @@
   <meta property="og:description" content="WinGit — бесплатный Git-клиент с открытым кодом: граф истории, сравнение в две колонки, индекс, ветки и слияния в одном окне.">
   <meta property="og:url" content="https://wgit.cz/ru/">
   <meta property="og:image" content="https://wgit.cz/assets/screenshot.png">
-  <meta property="og:image:width" content="1413">
-  <meta property="og:image:height" content="941">
+  <meta property="og:image:width" content="1430">
+  <meta property="og:image:height" content="967">
   <meta property="og:locale" content="ru_RU">
   <meta property="og:locale:alternate" content="en_US">
   <meta property="og:locale:alternate" content="cs_CZ">
@@ -49,8 +49,9 @@
           <p class="lead">WinGit — бесплатный настольный Git-клиент с открытым кодом. Граф истории, сравнение
             в две колонки, индекс, ветки и слияния — всё в одном окне.</p>
           <div class="actions">
-            <a class="btn btn-primary" id="download" href="https://apps.microsoft.com/detail/9n63b9trbd92"
-               data-label-linux="Скачать {version} для Linux (.deb)">Установить из Microsoft Store</a>
+            <a class="store-badge" id="store" href="https://apps.microsoft.com/detail/9n63b9trbd92"><picture><source srcset="../assets/store-badge-ru-light.svg" media="(prefers-color-scheme: dark)"><img src="../assets/store-badge-ru-dark.svg" width="161" height="44" alt="Установить из Microsoft Store"></picture></a>
+            <a class="btn btn-primary" id="download" href="https://github.com/biblelamp/WinGit/releases/latest" hidden
+               data-label-linux="Скачать {version} для Linux (.deb)">Скачать для Linux</a>
             <a class="btn btn-secondary" href="https://github.com/biblelamp/WinGit">Открыть на GitHub</a>
           </div>
           <p class="note" id="release" hidden>Текущая версия: <a id="release-version" href="https://github.com/biblelamp/WinGit/releases/latest"></a></p>
@@ -58,7 +59,7 @@
           <p class="note"><a href="start/">Новичок в Git? Начните здесь →</a></p>
           <p class="note">Apache-2.0 · <a href="privacy/">Политика конфиденциальности</a></p>
         </div>
-        <a href="../assets/screenshot.png"><img class="shot" src="../assets/screenshot.png" width="1413" height="941" alt="Главное окно WinGit: репозитории, ветки, граф истории и сравнение файлов"></a>
+        <a href="../assets/screenshot.png"><img class="shot" src="../assets/screenshot.png" width="1430" height="967" alt="Главное окно WinGit: репозитории, ветки, граф истории и сравнение файлов"></a>
       </div>
     </section>
 
@@ -97,7 +98,7 @@
         <ul>
           <li><strong>Сейчас:</strong> ранняя, но рабочая версия — репозитории, файлы, ветки, история, сравнение,
             индекс, commit и amend, push, pull и слияние; на русском, английском или чешском, со светлой или тёмной темой.
-            Новое в 0.4.1: понятное слияние — результат и возможные конфликты видны заранее. Конфликты слияния пока нужно решать другими средствами.</li>
+            Новое в 0.4.2: переход на другую ветку с незакоммиченными изменениями — WinGit отложит их, переключится и вернёт обратно. Конфликты слияния пока нужно решать другими средствами.</li>
           <li><strong>Дальше:</strong> помощь с конфликтами слияния, добавление в индекс части файла
             и сборка для macOS — см. <a href="https://github.com/biblelamp/WinGit/blob/main/ROADMAP.ru.md">план развития</a>.</li>
         </ul>

@@ -34,6 +34,6 @@ class CommitDraftTest {
         assertThat(CommitDialog.identityTooltip(jane, false))
                 .startsWith("<html>Jane &lt;Doe&gt; &lt;jane@example.com&gt;<br>Author and committer")
                 .doesNotContain("Settings");
-        assertThat(CommitDialog.identityTooltip(jane, true)).endsWith("<br>Click to open Settings</html>");
+        assertThat(CommitDialog.identityTooltip(jane, true)).endsWith("<br>Click to open the Repository Settings</html>");
     }
 }

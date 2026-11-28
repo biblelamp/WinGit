@@ -16,6 +16,8 @@ import cz.wingit.core.merge.MergePreview;
 import cz.wingit.core.merge.MergeResult;
 import cz.wingit.core.refs.RepositoryRefs;
 import cz.wingit.core.refs.Stash;
+import cz.wingit.core.refs.StashedSwitch;
+import cz.wingit.core.refs.SwitchClash;
 import cz.wingit.core.remote.Credentials;
 import cz.wingit.core.status.FileChange;
 import cz.wingit.core.status.RepositoryStatus;
@@ -147,6 +149,54 @@ public interface GitService {
      * @throws GitException if Git cannot be run
      */
     RepositoryIdentity repositoryIdentity(Path workTree);
+
+    /**
+     * Sets {@code user.name} and {@code user.email} in the repository's own configuration
+     * ({@code git config --local}); a blank value removes the repository's own value, so the global one
+     * applies again.
+     *
+     * @throws GitException if Git cannot write the configuration
+     */
+    void setRepositoryIdentity(Path workTree, String name, String email);
+
+    /**
+     * Private key used for SSH remotes (fetch, pull, push, clone, ...) of repositories that do not set
+     * their own SSH command; empty: whatever {@code ssh} picks itself ({@code ~/.ssh/id_*}, agent).
+     * SSH configured by the user ({@code core.sshCommand} in any Git configuration, {@code GIT_SSH_COMMAND})
+     * takes precedence. Takes effect for the next operation.
+     */
+    void setSshKey(Optional<Path> key);
+
+    /**
+     * {@code core.sshCommand} of the repository's own configuration ({@code git config --local}), if set.
+     *
+     * @throws GitException if Git cannot be run
+     */
+    Optional<String> repositorySshCommand(Path workTree);
+
+    /**
+     * Makes Git use {@code key} for SSH remotes of this repository (sets {@code core.sshCommand} in its own
+     * configuration, so plain {@code git} in a console uses the key too); empty removes the setting.
+     *
+     * @throws GitException if Git cannot write the configuration
+     */
+    void setRepositorySshKey(Path workTree, Optional<Path> key);
+
+    /**
+     * URL of {@code remote} ({@code remote.<name>.url}); empty if the remote does not exist or has no URL.
+     *
+     * @throws GitException if the repository cannot be read
+     */
+    Optional<String> remoteUrl(Path workTree, String remote);
+
+    /**
+     * Sets the URL of {@code remote} ({@code git remote set-url}), adding the remote if it does not exist
+     * yet ({@code git remote add}).
+     *
+     * @throws IllegalArgumentException if {@code url} is blank or starts with {@code -}
+     * @throws GitException             if Git refuses
+     */
+    void setRemoteUrl(Path workTree, String remote, String url);
 
     /**
      * Watches the working tree for changes that can affect status or the current branch
@@ -336,6 +386,49 @@ public interface GitService {
      * @throws GitCommandException if the branch already exists or Git refuses the switch
      */
     void switchToNewTrackingBranch(Path workTree, String remote, String branch);
+
+    /**
+     * Switches branches although local changes are in the way, as confirmed by the user: puts the
+     * changes aside as a stash, switches, and applies the stash on the new branch (deleting it if that
+     * worked without conflicts). If the switch fails, the changes are applied back where they were.
+     * Errors of the single steps are not thrown but described by the result and its log.
+     *
+     * @param remote           {@code null} to check out the local branch {@code branch}; otherwise a local
+     *                         branch {@code branch} tracking {@code remote/branch} is created (as by
+     *                         {@link #switchToNewTrackingBranch})
+     * @param includeUntracked also put new (untracked) files aside, e.g. when they block the switch
+     * @param restore          bring the changes back on the new branch; if {@code false}, they stay in the
+     *                         stash after a successful switch ({@code STASHED})
+     * @throws GitException if the repository cannot be read or Git cannot be started
+     */
+    StashedSwitch switchBranchWithStash(Path workTree, String branch, String remote, boolean includeUntracked,
+                                        boolean restore);
+
+    /**
+     * Predicts which local changes would not fit another branch, i.e. would end in conflicts if brought
+     * back there after switching ({@link #switchBranchWithStash}). Tries the merge in Git's object database
+     * only ({@code git stash create}, {@code git merge-tree}); the work tree, the index and the stashes stay
+     * as they are.
+     *
+     * @param remote as for {@link #switchBranchWithStash}
+     * @return the clashing changes (empty if all fit), or empty if it cannot be predicted (e.g. no commit
+     *         yet, Git older than 2.40)
+     */
+    Optional<List<SwitchClash>> predictSwitchClashes(Path workTree, String branch, String remote);
+
+    /**
+     * Takes back a {@linkplain #switchBranchWithStash switch with automatic stash} that ended in conflicts
+     * ({@link StashedSwitch#canGoBack()}): discards the half-applied changes, removes the new files that
+     * came from the stash, switches back to the previous branch and applies the stash there, where it was
+     * made. Meant to be offered right after the switch: edits made in the meantime would be discarded.
+     *
+     * @return {@code NOT_SWITCHED} if the changes are back on the previous branch (the stash is gone),
+     *         {@code NOT_SWITCHED_STASH_KEPT} if a step failed (the changes stay in the stash; see the log)
+     * @throws IllegalArgumentException if {@code conflicted} cannot be taken back
+     * @throws GitException if the stash is no longer the newest one or a new file from it was changed on
+     *                      disk; nothing was changed then
+     */
+    StashedSwitch goBackFromStashedSwitch(Path workTree, StashedSwitch conflicted);
 
     /** Runs {@code git init} in an existing directory. */
     void init(Path dir);

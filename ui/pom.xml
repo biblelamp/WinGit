@@ -7,7 +7,7 @@
     <parent>
         <groupId>cz.wingit</groupId>
         <artifactId>wingit-parent</artifactId>
-        <version>0.4.1-SNAPSHOT</version>
+        <version>0.4.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>wingit-ui</artifactId>

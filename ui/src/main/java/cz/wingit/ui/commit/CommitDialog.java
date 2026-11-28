@@ -122,8 +122,8 @@ final class CommitDialog extends JDialog {
      * @param identity       the Git user of the repository (author and committer), {@code null} if unknown
      * @param saveDraft      keeps the message when the dialog is closed without a commit ({@code null}
      *                       removes the draft)
-     * @param openSettings   opens Settings over this dialog when the Git user icon is clicked; {@code null}
-     *                       if Settings are not available
+     * @param openSettings   opens the Repository Settings over this dialog when the Git user icon is clicked
+     *                       (modal); {@code null} if they are not available
      */
     CommitDialog(Window owner, GitService git, Path workTree, List<FileChange> changes,
                  Collection<FileChange> preselected, List<String> recentMessages, String draft,
@@ -344,13 +344,35 @@ final class CommitDialog extends JDialog {
         gituserButton.putClientProperty("JButton.buttonType", "toolBarButton");
         gituserButton.setFocusable(false);
         if (openSettings != null) {
-            // Settings show the Git user of this repository and globally
+            // Repository Settings edit the Git user of this repository; show what they leave behind
             gituserButton.addActionListener(e -> {
-                // Settings may restart the application: keep what was written so far
-                saveDraft.accept(currentDraft());
                 openSettings.accept(this);
+                refreshIdentity();
             });
         }
+    }
+
+    /** Reads the Git user of the repository again (after the Repository Settings) and shows it. */
+    private void refreshIdentity() {
+        new SwingWorker<GitIdentity, Void>() {
+            @Override
+            protected GitIdentity doInBackground() {
+                return git.repositoryIdentity(workTree).identity();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    GitIdentity identity = get();
+                    gituserButton.setIcon(Icons.commitIdentity(identityMissing(identity)));
+                    gituserButton.setToolTipText(identityTooltip(identity, true));
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    // keep what is shown
+                }
+            }
+        }.execute();
     }
 
     static boolean identityMissing(GitIdentity identity) {

@@ -14,6 +14,7 @@ import javax.swing.JTextArea;
 import com.formdev.flatlaf.util.UIScale;
 
 import cz.wingit.core.GitCommandException;
+import cz.wingit.core.remote.SshFailures;
 import cz.wingit.ui.Messages;
 
 /**
@@ -64,14 +65,19 @@ public final class Dialogs {
                 : listed + "\n" + Messages.format("files.list.more", paths.size() - MAX_LISTED);
     }
 
-    /** Readable text of an error: Git's own output for failed Git commands. */
+    /**
+     * Readable text of an error: Git's own output for failed Git commands, preceded by an explanation when it
+     * reports a known SSH problem.
+     */
     public static String describe(Throwable error) {
         Throwable t = error;
         while (t instanceof ExecutionException && t.getCause() != null) {
             t = t.getCause();
         }
         if (t instanceof GitCommandException g && !g.stderr().isBlank()) {
-            return g.stderr().strip();
+            return SshFailures.find(g.stderr())
+                    .map(failure -> SshFailureText.describe(failure, g.stderr()))
+                    .orElse(g.stderr().strip());
         }
         return t.getMessage() != null ? t.getMessage() : t.toString();
     }

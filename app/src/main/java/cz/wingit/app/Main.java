@@ -36,6 +36,7 @@ public final class Main {
         RepositoryList repositories = RepositoryList.load(AppPaths.repositoryListFile());
         AppSettings settings = AppSettings.load(AppPaths.settingsFile());
         Appearance appearance = settings.appearance();
+        git.setSshKey(settings.sshKey());
 
         SwingUtilities.invokeLater(() -> {
             Messages.setLanguage(appearance.language());

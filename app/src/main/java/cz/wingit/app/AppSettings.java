@@ -35,6 +35,7 @@ final class AppSettings {
     private static final String THEME = "ui.theme";
     private static final String FETCH_ENABLED = "fetch.auto";
     private static final String FETCH_MINUTES = "fetch.intervalMinutes";
+    private static final String SSH_KEY = "ssh.key";
 
     private final Path file;
     private final Properties properties = new Properties();
@@ -212,9 +213,22 @@ final class AppSettings {
                 minutes);
     }
 
+    /** Private key for SSH remotes chosen in the Settings dialog; empty if none (or not a path). */
+    Optional<Path> sshKey() {
+        String value = properties.getProperty(SSH_KEY);
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Path.of(value.strip()));
+        } catch (InvalidPathException e) {
+            return Optional.empty();
+        }
+    }
+
     /** Everything the Settings dialog edits. */
     Preferences preferences() {
-        return new Preferences(appearance(), fetchInterval());
+        return new Preferences(appearance(), fetchInterval(), sshKey());
     }
 
     /**
@@ -227,6 +241,8 @@ final class AppSettings {
         properties.setProperty(THEME, preferences.appearance().theme().code());
         properties.setProperty(FETCH_ENABLED, Boolean.toString(preferences.fetch().enabled()));
         properties.setProperty(FETCH_MINUTES, Integer.toString(preferences.fetch().minutes()));
+        preferences.sshKey().ifPresentOrElse(key -> properties.setProperty(SSH_KEY, key.toString()),
+                () -> properties.remove(SSH_KEY));
         save();
     }
 

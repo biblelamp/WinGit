@@ -82,3 +82,11 @@ Commit dialog icons in `ui/src/main/resources/cz/wingit/ui/icons/commit/` (same 
 
 License: ISC (some icons MIT via Feather), full text in
 [`licenses/LICENSE-lucide.txt`](licenses/LICENSE-lucide.txt).
+
+## Microsoft Store badges (website and README only)
+
+`site/assets/store-badge-{en,ru,cs}-{dark,light}.svg` are the official "Get it from Microsoft"
+badges, downloaded unmodified from Microsoft's badge service (`get.microsoft.com/images/`, see
+[apps.microsoft.com/badge](https://apps.microsoft.com/badge)). They are used only to link to
+WinGit's own Store listing, are not part of the application and are not covered by WinGit's
+license. Microsoft and the Microsoft Store badge are trademarks of the Microsoft group of companies.
